@@ -15,7 +15,10 @@
     "db:check": "node --env-file=.env scripts/check-db.mjs",
     "db:publish": "node --env-file=.env scripts/publish-seed-places.mjs",
     "media:fetch": "node --env-file-if-exists=.env --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch-place-media.ts",
-    "media:import": "node --env-file=.env --experimental-strip-types --no-warnings=ExperimentalWarning scripts/import-place-media.ts"
+    "media:import": "node --env-file=.env --experimental-strip-types --no-warnings=ExperimentalWarning scripts/import-place-media.ts",
+    "cron:pipeline": "npx tsx --env-file=.env scripts/pipeline/run-full-ingestion-cron.ts",
+    "video:publish": "npx tsx --env-file=.env scripts/pipeline/publish-all-videos.ts",
+    "crawl:couple": "npx tsx --env-file=.env scripts/pipeline/crawl-couple-videos.ts"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",

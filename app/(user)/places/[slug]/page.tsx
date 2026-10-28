@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { HANOI_PLACES, HIDDEN_SAFETY_PLACE } from "@/lib/mock-data";
 import { getAllPublishedPlaces, findPlaceBySlug } from "@/server/services/user/places.service";
 import { getBestTimes } from "@/lib/sun";
-import { Sun, Sparkles, AlertTriangle, ArrowLeft, Heart, CalendarPlus, MapPin, Camera, Shirt, Compass } from "lucide-react";
+import { Sun, Sparkles, AlertTriangle, ArrowLeft, Heart, CalendarPlus, MapPin, Camera, Shirt, Compass, Images } from "lucide-react";
 import { PlaceDetailActions } from "./PlaceDetailActions";
+import { PlaceMediaGallery } from "@/components/user/PlaceMediaGallery";
+import { ReportPlaceModal } from "@/components/user/ReportPlaceModal";
+import { filterAiSummary } from "@/server/services/admin/governance.policy";
 
 export const revalidate = 3600; // ISR 1 giờ
 
@@ -42,6 +46,7 @@ export async function generateMetadata({
       title: `${place.name} - Hẹn hò cùng DateMate 💕`,
       description: place.summary,
       type: "article",
+      images: place.coverUrl ? [{ url: place.coverUrl, alt: place.name }] : undefined,
     },
   };
 }
@@ -147,21 +152,47 @@ export default async function PlaceDetailPage({
         </span>
       </div>
 
-      {/* Hero Section */}
+      {/* Hero Section with Cover Image */}
       <div
-        className={`rounded-3xl bg-gradient-to-br ${place.coverGradient} p-6 sm:p-10 text-white shadow-xl relative overflow-hidden`}
+        className={`rounded-3xl ${place.coverGradient} p-6 sm:p-10 text-white shadow-xl relative overflow-hidden min-h-[260px] sm:min-h-[320px] flex flex-col justify-end`}
       >
+        {place.coverUrl && (
+          <Image
+            src={place.coverUrl}
+            alt={place.name}
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 1024px"
+            className="object-cover"
+          />
+        )}
+        <div
+          className={`absolute inset-0 pointer-events-none ${
+            place.coverUrl
+              ? "bg-gradient-to-t from-black/90 via-black/45 to-black/30"
+              : "bg-black/10 mix-blend-overlay"
+          }`}
+        />
+
         <div className="relative z-10 space-y-4 max-w-2xl">
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full bg-black/30 backdrop-blur-md text-xs font-bold">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-xs font-bold">
               📍 {place.area}
             </span>
-            <span className="px-3 py-1 rounded-full bg-black/30 backdrop-blur-md text-xs font-bold">
+            <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-xs font-bold">
               💰 {place.costText}
             </span>
+            {(place.isAutoPromoted || place.tier === "B") && (
+              <span
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-peach-500/90 backdrop-blur-md text-xs font-bold text-white shadow-sm"
+                title="Địa điểm này được hệ thống gợi ý tự động dựa trên dữ liệu bản đồ mở và video review."
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Gợi ý tự động • Chưa xác minh
+              </span>
+            )}
           </div>
           <h1 className="font-display font-extrabold text-2xl sm:text-4xl leading-tight">
-            {place.emoji} {place.name}
+            {place.emoji} {place.displayName || place.name}
           </h1>
           <p className="text-sm sm:text-base text-white/95 leading-relaxed">
             {place.summary}
@@ -374,6 +405,45 @@ export default async function PlaceDetailPage({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Bộ sưu tập ảnh minh họa & video review (Unsplash / Wikimedia / Review) */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-peach-soft shadow-sm space-y-5">
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-2xl bg-peach-soft text-peach-deep flex items-center justify-center shrink-0">
+            <Images className="w-5 h-5" />
+          </span>
+          <div>
+            <h2 className="font-display font-extrabold text-lg sm:text-xl text-brown">
+              Bộ sưu tập Ảnh minh họa & Video review
+            </h2>
+            <p className="text-xs text-brown-muted">
+              Hình ảnh minh họa phong cách từ Unsplash/Wikimedia và video review tại {place.name}
+            </p>
+          </div>
+        </div>
+
+        <PlaceMediaGallery
+          media={place.media || []}
+          placeName={place.name}
+          coverUrl={place.coverUrl}
+        />
+      </div>
+
+      {/* Ghi công bản quyền OpenStreetMap (ODbL) & Báo thông tin sai */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-peach-soft text-xs text-brown-muted">
+        <div>
+          Dữ liệu địa điểm:{" "}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-brown font-medium"
+          >
+            © OpenStreetMap contributors (ODbL)
+          </a>
+        </div>
+        <ReportPlaceModal slug={place.slug} placeName={place.name} />
       </div>
     </div>
   );

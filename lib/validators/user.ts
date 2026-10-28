@@ -58,6 +58,15 @@ export const randomPlaceQuerySchema = z.object({
   exclude: csvSlugsSchema.optional(),
 });
 
+export const videoCatalogQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  category: z.string().trim().max(50).optional(),
+  tab: z.enum(["all", "recommend", "popular", "latest"]).default("all"),
+  channel: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(24),
+});
+
 export const recommendBodySchema = z.object({
   budget: budgetLevelSchema,
   moods: z.array(z.enum(MOOD_KEYS)).min(1).max(MAX_WIZARD_MOODS),
@@ -208,6 +217,12 @@ export const recoverRoomBodySchema = z
   })
   .strict();
 
+export const quickAddPlanBodySchema = z
+  .object({
+    placeId: entityIdSchema,
+  })
+  .strict();
+
 export type PlaceListQuery = z.infer<typeof placeListQuerySchema>;
 export type RecommendBody = z.infer<typeof recommendBodySchema>;
 export type CreatePlanBody = z.infer<typeof createPlanBodySchema>;
@@ -219,3 +234,5 @@ export type UpdateChecklistItemBody = z.infer<typeof updateChecklistItemBodySche
 export type SwipeBody = z.infer<typeof swipeBodySchema>;
 export type UpdateMeBody = z.infer<typeof updateMeBodySchema>;
 export type JoinRoomBody = z.infer<typeof joinRoomBodySchema>;
+export type QuickAddPlanBody = z.infer<typeof quickAddPlanBodySchema>;
+

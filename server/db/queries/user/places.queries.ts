@@ -1,6 +1,6 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/server/db/client";
-import { placeGuides, places, type Place, type PlaceGuide } from "@/server/db/schema";
+import { placeGuides, placeMedia, places, type Place, type PlaceGuide, type PlaceMedia } from "@/server/db/schema";
 
 export interface PlaceWithGuide {
   place: Place;
@@ -16,3 +16,14 @@ export async function listPublishedPlacesWithGuides(): Promise<PlaceWithGuide[]>
     .where(eq(places.status, "published"))
     .orderBy(asc(places.name));
 }
+
+/** Batch query lấy danh sách media theo danh sách placeIds (tránh N+1). */
+export async function listMediaByPlaceIds(placeIds: string[]): Promise<PlaceMedia[]> {
+  if (placeIds.length === 0) return [];
+  return db
+    .select()
+    .from(placeMedia)
+    .where(inArray(placeMedia.placeId, placeIds))
+    .orderBy(asc(placeMedia.sortOrder));
+}
+

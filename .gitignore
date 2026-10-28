@@ -45,3 +45,5 @@ next-env.d.ts
 
 # Scratch & temporary test artifacts
 /scratch/
+
+/ai-docs

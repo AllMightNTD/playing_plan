@@ -47,6 +47,11 @@ export const places = mysqlTable(
     openingHours: json("opening_hours").$type<Record<string, string>>(),
     status: mysqlEnum("status", ["draft", "published", "hidden"]).notNull().default("draft"),
     viewCount: int("view_count").notNull().default(0),
+    displayName: varchar("display_name", { length: 255 }),
+    tier: mysqlEnum("tier", ["A", "B", "C"]).notNull().default("C"),
+    batchId: varchar("batch_id", { length: 64 }),
+    publishState: mysqlEnum("publish_state", ["draft", "shadow", "published", "downgraded"]).notNull().default("draft"),
+    dateFit: mysqlEnum("date_fit", ["romantic", "chill", "casual", "fun"]).notNull().default("chill"),
     lastVerifiedAt: datetime("last_verified_at"),
     createdAt: datetime("created_at").notNull(),
     updatedAt: datetime("updated_at").notNull(),
@@ -56,6 +61,9 @@ export const places = mysqlTable(
     index("idx_places_category").on(table.category),
     index("idx_places_price_level").on(table.priceLevel),
     index("idx_places_search_name").on(table.searchName),
+    index("idx_places_tier").on(table.tier),
+    index("idx_places_publish_state").on(table.publishState),
+    index("idx_places_batch_id").on(table.batchId),
   ]
 );
 

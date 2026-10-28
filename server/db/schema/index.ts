@@ -3,3 +3,4 @@ export * from "./places";
 export * from "./plans";
 export * from "./interactions";
 export * from "./audit";
+export * from "./governance";

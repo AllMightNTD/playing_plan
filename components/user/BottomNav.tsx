@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, Compass, Flame, CalendarHeart, Camera } from "lucide-react";
+import { Sparkles, Compass, Flame, CalendarHeart, Camera, Film } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { label: "Trang chủ", href: "/", icon: Sparkles },
   { label: "Khám phá", href: "/explore", icon: Compass },
+  { label: "Video", href: "/videos", icon: Film },
   { label: "Match", href: "/match", icon: Flame, isMatch: true },
   { label: "Kế hoạch", href: "/plans", icon: CalendarHeart },
-  { label: "Kỷ niệm", href: "/memories", icon: Camera },
 ];
 
 export function BottomNav() {

@@ -7,7 +7,10 @@ import { Lock, Wand2, QrCode } from "lucide-react";
 
 export function DesktopHeader() {
   const pathname = usePathname();
-  const { setIsWheelOpen, setIsWizardOpen, setIsRoomModalOpen } = useApp();
+  const { setIsWheelOpen, setIsWizardOpen, setIsRoomModalOpen, homeSummary } = useApp();
+  const roomDisplayName = homeSummary?.room?.name
+    ? `Phòng: ${homeSummary.room.name}`
+    : "Phòng: Dũng & Linh";
 
   return (
     <header className="hidden lg:flex bg-[#F5E6E0] px-6 py-2.5 border-b border-peach-soft items-center justify-between gap-4 shrink-0">
@@ -40,7 +43,7 @@ export function DesktopHeader() {
           title="Mã phòng đôi & Sao lưu"
         >
           <QrCode className="w-3.5 h-3.5 text-peach-deep" />
-          <span>Phòng: Dũng & Linh</span>
+          <span className="max-w-[150px] truncate">{roomDisplayName}</span>
         </button>
 
         <button

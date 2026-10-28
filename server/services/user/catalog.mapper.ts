@@ -1,7 +1,7 @@
 import { CATEGORY_LABELS, CATEGORY_VISUALS, MOOD_LABELS, WEEKDAY_LABELS, type MoodKey } from "@/lib/constants/catalog";
 import { getBestTimes } from "@/lib/sun";
-import type { Place, PlaceGuide } from "@/server/db/schema";
-import type { HanoiPlace, OutfitGuide } from "@/lib/types/catalog";
+import type { Place, PlaceGuide, PlaceMedia } from "@/server/db/schema";
+import type { HanoiPlace, OutfitGuide, PlaceMediaItem } from "@/lib/types/catalog";
 
 const EMPTY_OUTFIT: OutfitGuide = { palette: [], tonSurTon: "", contrast: "", avoid: "", weatherTip: "" };
 const VND_PER_THOUSAND = 1000;
@@ -23,15 +23,42 @@ function toBestTimeText(guide: PlaceGuide | null, sunsetWindow: string): string 
   return `Hợp đi lúc ${sunsetWindow} nha`;
 }
 
+export function toPlaceMediaItem(media: PlaceMedia): PlaceMediaItem {
+  let credit = media.credit ?? null;
+  if (media.platform === "unsplash" && credit && !credit.includes("Unsplash")) {
+    credit = `${credit} / Unsplash`;
+  }
+  return {
+    id: media.id,
+    type: media.type,
+    platform: media.platform,
+    url: media.url,
+    embedId: media.embedId,
+    caption: media.caption,
+    credit,
+    sourceUrl: media.sourceUrl,
+    licenseNote: media.licenseNote,
+    license: media.license,
+    sortOrder: media.sortOrder,
+  };
+}
+
 /**
- * Chuyển bản ghi DB (places + place_guides) sang DTO catalog dùng chung FE/BE.
+ * Chuyển bản ghi DB (places + place_guides + place_media) sang DTO catalog dùng chung FE/BE.
  */
-export function toCatalogPlace(place: Place, guide: PlaceGuide | null, date: Date = new Date()): HanoiPlace {
+export function toCatalogPlace(
+  place: Place,
+  guide: PlaceGuide | null,
+  mediaList: PlaceMedia[] = [],
+  date: Date = new Date()
+): HanoiPlace {
   const lat = Number(place.lat);
   const lng = Number(place.lng);
   const sun = getBestTimes(lat, lng, date);
   const visual = CATEGORY_VISUALS[place.category];
   const sunsetWindow = `${sun.goldenHourEvening.start} - ${sun.goldenHourEvening.end}`;
+  const mappedMedia = mediaList.map(toPlaceMediaItem);
+  const coverUrl = place.coverUrl || mappedMedia[0]?.url || undefined;
 
   return {
     id: place.id,
@@ -56,11 +83,19 @@ export function toCatalogPlace(place: Place, guide: PlaceGuide | null, date: Dat
     avoidWeekdays: formatWeekdays(guide?.avoidWeekdays, "Không có"),
     summary: place.summary,
     coverGradient: visual.coverGradient,
+    coverUrl,
     emoji: visual.emoji,
+    media: mappedMedia,
     photoSpots: guide?.photoSpots ?? [],
     poses: guide?.poses ?? [],
     outfit: guide?.outfit ?? EMPTY_OUTFIT,
     tips: guide?.tips ?? "",
     nearbyIds: [],
+    tier: place.tier,
+    batchId: place.batchId,
+    dateFit: place.dateFit,
+    displayName: place.displayName,
+    isAutoPromoted: Boolean(place.batchId || place.tier === "B"),
   };
 }
+

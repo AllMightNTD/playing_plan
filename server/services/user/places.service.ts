@@ -1,8 +1,9 @@
 import { isDatabaseConfigured } from "@/server/db/client";
-import { listPublishedPlacesWithGuides } from "@/server/db/queries/user/places.queries";
+import { listMediaByPlaceIds, listPublishedPlacesWithGuides } from "@/server/db/queries/user/places.queries";
 import { toCatalogPlace } from "@/server/services/user/catalog.mapper";
 import { HANOI_PLACES, HIDDEN_SAFETY_PLACE } from "@/lib/mock-data";
 import type { HanoiPlace } from "@/lib/types/catalog";
+import type { PlaceMedia } from "@/server/db/schema";
 import {
   filterPlaces,
   paginate,
@@ -23,11 +24,28 @@ function getSeedPlaces(): HanoiPlace[] {
 export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
   if (!isDatabaseConfigured()) return getSeedPlaces();
 
-  const rows = await listPublishedPlacesWithGuides();
-  if (rows.length === 0) return getSeedPlaces();
+  try {
+    const rows = await listPublishedPlacesWithGuides();
+    if (rows.length === 0) return getSeedPlaces();
 
-  const now = new Date();
-  return rows.map(({ place, guide }) => toCatalogPlace(place, guide, now));
+    const placeIds = rows.map((r) => r.place.id);
+    const mediaRows = await listMediaByPlaceIds(placeIds);
+
+    const mediaByPlaceId = new Map<string, PlaceMedia[]>();
+    for (const media of mediaRows) {
+      const list = mediaByPlaceId.get(media.placeId) ?? [];
+      list.push(media);
+      mediaByPlaceId.set(media.placeId, list);
+    }
+
+    const now = new Date();
+    return rows.map(({ place, guide }) =>
+      toCatalogPlace(place, guide, mediaByPlaceId.get(place.id) ?? [], now)
+    );
+  } catch (err) {
+    console.warn("Không thể truy vấn TiDB Cloud, fallback dùng seed data:", err);
+    return getSeedPlaces();
+  }
 }
 
 export async function findPlaceBySlug(slug: string): Promise<HanoiPlace | null> {
@@ -37,9 +55,9 @@ export async function findPlaceBySlug(slug: string): Promise<HanoiPlace | null> 
 }
 
 /** Guard: chỉ cho thao tác (lưu, vuốt, thêm vào kế hoạch) trên địa điểm đang xuất bản. */
-export async function requirePublishedPlace(placeId: string): Promise<HanoiPlace> {
+export async function requirePublishedPlace(placeIdOrSlug: string): Promise<HanoiPlace> {
   const all = await getAllPublishedPlaces();
-  const place = all.find((candidate) => candidate.id === placeId);
+  const place = all.find((candidate) => candidate.id === placeIdOrSlug || candidate.slug === placeIdOrSlug);
   if (!place) throw new AppError(ERRORS.PLACE.NOT_FOUND);
   return place;
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useState, useMemo } from "react";
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
 import { HANOI_PLACES, HanoiPlace } from "@/lib/mock-data";
 import { normalizeVietnamese } from "@/lib/search";
 import { isTrainStreetQuery, normalizeSearchQuery } from "@/lib/catalog-filter";
+import type { HomePublicDto, HomeSummaryDto } from "@/lib/types/home";
 
 export interface PlanStopItem {
   id: string;
@@ -34,6 +35,14 @@ export interface WizardAnswers {
 }
 
 interface AppContextType {
+  // Home dynamic APIs (F12, F13, F08, F01)
+  homePublic: HomePublicDto | null;
+  homeSummary: HomeSummaryDto | null;
+  isLoadingHome: boolean;
+  refetchHomeSummary: () => Promise<void>;
+  quickAddPlaceToPlan: (placeOrId: HanoiPlace | string) => Promise<boolean>;
+  recordPlaceView: (slug: string) => void;
+
   // Places & search
   places: HanoiPlace[];
   filteredPlaces: HanoiPlace[];
@@ -102,10 +111,65 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  // 1. Places & Search
-  const places = HANOI_PLACES;
+  // 1. Places & Search (khởi tạo với mock data, sau đó nạp dữ liệu thật kèm ảnh từ TiDB API)
+  const [places, setPlaces] = useState<HanoiPlace[]>(HANOI_PLACES);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Home Dynamic APIs (F12, F13, F08, F01)
+  const [homePublic, setHomePublic] = useState<HomePublicDto | null>(null);
+  const [homeSummary, setHomeSummary] = useState<HomeSummaryDto | null>(null);
+  const [isLoadingHome, setIsLoadingHome] = useState(true);
+
+  const refetchHomeSummary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/v1/user/home/summary", { cache: "no-store" });
+      const json = await res.json();
+      if (json?.data) {
+        setHomeSummary(json.data);
+      }
+    } catch (err) {
+      console.warn("Không thể tải home summary:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/v1/user/places?limit=50")
+      .then((res) => res.json())
+      .then((payload) => {
+        if (!active) return;
+        const items = payload?.data?.items;
+        if (Array.isArray(items) && items.length > 0) {
+          setPlaces(items);
+        }
+      })
+      .catch((err) => {
+        console.warn("Không thể tải danh sách địa điểm từ API, dùng dữ liệu seed:", err);
+      });
+
+    Promise.allSettled([
+      fetch("/api/v1/user/home/public?city=hanoi").then((r) => r.json()),
+      fetch("/api/v1/user/home/summary", { cache: "no-store" }).then((r) => r.json()),
+    ]).then(([pubRes, sumRes]) => {
+      if (!active) return;
+      if (pubRes.status === "fulfilled" && pubRes.value?.data) {
+        setHomePublic(pubRes.value.data);
+      }
+      if (sumRes.status === "fulfilled" && sumRes.value?.data) {
+        const sumData: HomeSummaryDto = sumRes.value.data;
+        setHomeSummary(sumData);
+        if (Array.isArray(sumData.badges?.savedPlaceIds) && sumData.badges.savedPlaceIds.length > 0) {
+          setSavedPlaceSlugs((prev) => Array.from(new Set([...prev, ...sumData.badges.savedPlaceIds])));
+        }
+      }
+      setIsLoadingHome(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const isTrainStreetSearch = useMemo(() => isTrainStreetQuery(searchQuery), [searchQuery]);
 
@@ -140,7 +204,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     "ca-phe-view-cau-long-bien",
   ]);
 
-  const isPlaceSaved = (slug: string) => savedPlaceSlugs.includes(slug);
+  const isPlaceSaved = (slugOrId: string) => {
+    const target = places.find((p) => p.slug === slugOrId || p.id === slugOrId);
+    const slug = target ? target.slug : slugOrId;
+    const id = target ? target.id : slugOrId;
+    return savedPlaceSlugs.includes(slug) || savedPlaceSlugs.includes(id);
+  };
 
   // 3. Toasts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -157,19 +226,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const toggleSavePlace = (slugOrId: string) => {
+  const toggleSavePlace = async (slugOrId: string) => {
     const targetPlace = places.find((p) => p.slug === slugOrId || p.id === slugOrId);
     const slug = targetPlace ? targetPlace.slug : slugOrId;
+    const placeId = targetPlace ? targetPlace.id : slugOrId;
+    const isCurrentlySaved = savedPlaceSlugs.includes(slug) || savedPlaceSlugs.includes(placeId);
 
-    setSavedPlaceSlugs((prev) => {
-      if (prev.includes(slug)) {
-        addToast("Đã bỏ lưu khỏi danh sách yêu thích", "info");
-        return prev.filter((s) => s !== slug);
-      } else {
-        addToast("❤️ Đã lưu cho bạn (Đồng bộ phòng đôi)", "success");
-        return [...prev, slug];
+    if (isCurrentlySaved) {
+      setSavedPlaceSlugs((prev) => prev.filter((s) => s !== slug && s !== placeId));
+      addToast("Đã bỏ lưu khỏi danh sách yêu thích", "info");
+      try {
+        await fetch(`/api/v1/user/saved/${encodeURIComponent(placeId)}`, { method: "DELETE" });
+        refetchHomeSummary();
+      } catch (e) {
+        console.warn("Lỗi bỏ lưu:", e);
       }
-    });
+    } else {
+      setSavedPlaceSlugs((prev) => [...prev, slug]);
+      addToast("❤️ Đã lưu cho bạn (Đồng bộ phòng đôi)", "success");
+      try {
+        await fetch(`/api/v1/user/saved/${encodeURIComponent(placeId)}`, { method: "POST" });
+        refetchHomeSummary();
+      } catch (e) {
+        console.warn("Lỗi lưu địa điểm:", e);
+      }
+    }
+  };
+
+  const recordPlaceView = (slug: string) => {
+    if (!slug) return;
+    try {
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        navigator.sendBeacon(`/api/v1/user/places/${encodeURIComponent(slug)}/view`);
+      } else {
+        fetch(`/api/v1/user/places/${encodeURIComponent(slug)}/view`, {
+          method: "POST",
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
   };
 
   // 4. Match
@@ -252,6 +349,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setPlanStops((prev) => [...prev, newStop]);
     addToast(`📅 Đã thêm "${place.name}" vào Kế hoạch!`, "success");
+  };
+
+  const quickAddPlaceToPlan = async (placeOrId: HanoiPlace | string): Promise<boolean> => {
+    let place: HanoiPlace | undefined;
+    if (typeof placeOrId === "string") {
+      place = places.find((p) => p.id === placeOrId || p.slug === placeOrId);
+    } else {
+      place = placeOrId;
+    }
+    const targetId = place?.id || (typeof placeOrId === "string" ? placeOrId : "");
+    const placeName = place?.name || "Địa điểm";
+
+    try {
+      const res = await fetch("/api/v1/user/plans/quick-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placeId: targetId }),
+      });
+      const json = await res.json();
+      if (json?.data?.success) {
+        addToast(`📅 Đã thêm "${placeName}" vào Kế hoạch!`, "success");
+        if (place) {
+          addStopToPlan(place);
+        }
+        await refetchHomeSummary();
+        return true;
+      }
+    } catch (e) {
+      console.warn("Lỗi quick-add trạm:", e);
+    }
+
+    if (place) {
+      addStopToPlan(place);
+      return true;
+    }
+    return false;
   };
 
   const removeStopFromPlan = (stopId: string) => {
@@ -384,6 +517,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
+        homePublic,
+        homeSummary,
+        isLoadingHome,
+        refetchHomeSummary,
+        quickAddPlaceToPlan,
+        recordPlaceView,
+
         places,
         filteredPlaces,
         searchQuery,

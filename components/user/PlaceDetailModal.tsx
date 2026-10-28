@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { useApp } from "@/context/AppContext";
 import {
   X,
@@ -15,9 +16,11 @@ import {
   Check,
   AlertTriangle,
   ExternalLink,
+  Images,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { PlaceMediaGallery } from "@/components/user/PlaceMediaGallery";
 
 export function PlaceDetailModal() {
   const {
@@ -29,7 +32,7 @@ export function PlaceDetailModal() {
     addStopToPlan,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<"time" | "outfit" | "nearby">("time");
+  const [activeTab, setActiveTab] = useState<"time" | "media" | "outfit" | "nearby">("time");
   const [outfitMode, setOutfitMode] = useState<"tonSurTon" | "contrast">("tonSurTon");
 
   if (!activeDetailSlug) return null;
@@ -83,15 +86,36 @@ export function PlaceDetailModal() {
           <div className="lg:col-span-5 space-y-4">
             <div
               className={cn(
-                "h-52 sm:h-56 rounded-3xl bg-gradient-to-br p-5 flex flex-col justify-between text-white shadow-peach relative overflow-hidden",
+                "h-52 sm:h-56 rounded-3xl p-5 flex flex-col justify-between text-white shadow-peach relative overflow-hidden",
                 place.coverGradient || "from-[#C93F52] via-[#FF9E8D] to-cream"
               )}
             >
+              {place.coverUrl && (
+                <Image
+                  src={place.coverUrl}
+                  alt={place.name}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 420px"
+                  className="object-cover"
+                  priority
+                />
+              )}
+
+              {/* Multi-layer dark overlay */}
+              <div
+                className={cn(
+                  "absolute inset-0 pointer-events-none",
+                  place.coverUrl
+                    ? "bg-gradient-to-t from-black/85 via-black/40 to-black/30"
+                    : "bg-black/10 mix-blend-overlay"
+                )}
+              />
+
               <div className="flex items-center justify-between z-10">
                 <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm text-xs font-bold">
                   {place.categoryLabel}
                 </span>
-                <span className="text-4xl">{place.emoji}</span>
+                <span className="text-4xl drop-shadow-md">{place.emoji}</span>
               </div>
 
               <div className="z-10">
@@ -159,7 +183,7 @@ export function PlaceDetailModal() {
             </div>
           </div>
 
-          {/* Right Column: Tabs (Chụp & Pose / Phối đồ / Lưu ý & Gần đây) */}
+          {/* Right Column: Tabs (Chụp & Pose / Ảnh & Video / Phối đồ / Lưu ý & Gần đây) */}
           <div className="lg:col-span-7 bg-white rounded-3xl p-4 sm:p-5 border border-peach-soft space-y-4 shadow-sm flex flex-col justify-between">
             {/* Tabs Header */}
             <div className="flex items-center gap-1.5 bg-cream p-1.5 rounded-2xl border border-peach-soft overflow-x-auto no-scrollbar">
@@ -174,6 +198,19 @@ export function PlaceDetailModal() {
               >
                 <Camera className="w-3.5 h-3.5" />
                 <span>Góc chụp & Pose</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("media")}
+                className={cn(
+                  "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shrink-0",
+                  activeTab === "media"
+                    ? "bg-peach-deep text-white shadow-sm"
+                    : "text-brown hover:bg-peach-soft/50"
+                )}
+              >
+                <Images className="w-3.5 h-3.5" />
+                <span>Ảnh & Video ({place.media?.length || 0})</span>
               </button>
 
               <button
@@ -202,6 +239,17 @@ export function PlaceDetailModal() {
                 <span>Lưu ý & Gần đây</span>
               </button>
             </div>
+
+            {/* Tab: Media Gallery */}
+            {activeTab === "media" && (
+              <div className="py-1">
+                <PlaceMediaGallery
+                  media={place.media || []}
+                  placeName={place.name}
+                  coverUrl={place.coverUrl}
+                />
+              </div>
+            )}
 
             {/* Tab 1: Photo & Poses */}
             {activeTab === "time" && (

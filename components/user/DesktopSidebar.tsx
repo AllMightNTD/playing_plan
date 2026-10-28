@@ -12,12 +12,14 @@ import {
   Camera,
   QrCode,
   Bookmark,
+  Film,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DESK_NAV_ITEMS = [
   { label: "Trang chủ", href: "/", icon: Sparkles },
-  { label: "Khám phá 36 địa điểm", href: "/explore", icon: Compass },
+  { label: "Khám phá địa điểm", href: "/explore", icon: Compass },
+  { label: "Video Review", href: "/videos", icon: Film },
   { label: "Match cặp đôi", href: "/match", icon: Flame, isMatch: true },
   { label: "Kế hoạch & Lịch", href: "/plans", icon: CalendarHeart, isPlan: true },
   { label: "Kho kỷ niệm", href: "/memories", icon: Camera },
@@ -25,7 +27,26 @@ const DESK_NAV_ITEMS = [
 
 export function DesktopSidebar() {
   const pathname = usePathname();
-  const { savedPlaceSlugs, matchedSlugs, setIsRoomModalOpen } = useApp();
+  const {
+    savedPlaceSlugs,
+    matchedSlugs,
+    planStops,
+    setIsRoomModalOpen,
+    homeSummary,
+    homePublic,
+  } = useApp();
+
+  const matchCount = homeSummary?.badges?.matchCount ?? matchedSlugs.length;
+  const hasUpcomingPlan = homeSummary?.badges?.hasUpcomingPlan ?? planStops.length > 0;
+  const savedCount = homeSummary?.badges?.savedCount ?? savedPlaceSlugs.length;
+
+  const memberCount = homeSummary?.room?.memberCount ?? 2;
+  const roomName = homeSummary?.room?.name || "Dũng & Linh 💕";
+  const daysLeft = homeSummary?.room?.anniversary?.daysLeft;
+  const anniversaryText =
+    daysLeft !== null && daysLeft !== undefined
+      ? `Kỷ niệm: còn ${daysLeft} ngày`
+      : "Kỷ niệm: còn 12 ngày";
 
   return (
     <aside className="w-64 bg-[#FFF2EC] border-r border-peach-soft p-4 flex flex-col justify-between shrink-0 select-none sticky top-0 h-screen overflow-y-auto">
@@ -52,6 +73,11 @@ export function DesktopSidebar() {
                 ? pathname === "/"
                 : pathname.startsWith(item.href);
 
+            const displayLabel =
+              item.href === "/explore" && homePublic?.city?.totalPlaces
+                ? `Khám phá (${homePublic.city.totalPlaces})`
+                : item.label;
+
             return (
               <Link
                 key={item.href}
@@ -65,10 +91,10 @@ export function DesktopSidebar() {
               >
                 <span className="flex items-center gap-3">
                   <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
+                  <span>{displayLabel}</span>
                 </span>
 
-                {item.isMatch && matchedSlugs.length > 0 && (
+                {item.isMatch && matchCount > 0 && (
                   <span
                     className={cn(
                       "px-2 py-0.5 rounded-full text-[11px] font-extrabold",
@@ -77,11 +103,11 @@ export function DesktopSidebar() {
                         : "bg-peach-soft text-peach-deep"
                     )}
                   >
-                    {matchedSlugs.length}
+                    {matchCount}
                   </span>
                 )}
 
-                {item.isPlan && (
+                {item.isPlan && hasUpcomingPlan && (
                   <span className="w-2 h-2 rounded-full bg-sage" />
                 )}
               </Link>
@@ -97,7 +123,7 @@ export function DesktopSidebar() {
               <span>Đã lưu yêu thích</span>
             </span>
             <span className="px-2 py-0.5 rounded-full bg-peach-soft text-peach-deep font-bold text-[11px]">
-              {savedPlaceSlugs.length} nơi
+              {savedCount} nơi
             </span>
           </div>
           <p className="text-[11px] text-brown-muted leading-relaxed">
@@ -111,7 +137,7 @@ export function DesktopSidebar() {
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-sage-dark flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-sage animate-ping" />
-            <span>Phòng Đôi 2/2</span>
+            <span>Phòng Đôi {memberCount}/2</span>
           </span>
           <span className="text-[10px] font-mono text-brown-muted">Atomic Join</span>
         </div>
@@ -119,16 +145,16 @@ export function DesktopSidebar() {
         <div className="flex items-center gap-2">
           <div className="flex -space-x-2">
             <div className="w-7 h-7 rounded-full bg-peach-deep text-white text-xs font-bold flex items-center justify-center ring-2 ring-white">
-              D
+              {roomName.charAt(0) || "D"}
             </div>
             <div className="w-7 h-7 rounded-full bg-peach text-brown text-xs font-bold flex items-center justify-center ring-2 ring-white">
-              L
+              {memberCount > 1 ? "L" : "..."}
             </div>
           </div>
           <div className="text-xs">
-            <div className="font-bold text-brown">Dũng & Linh 💕</div>
+            <div className="font-bold text-brown truncate max-w-[140px]">{roomName}</div>
             <div className="text-[10px] text-peach-deep font-semibold">
-              Kỷ niệm: còn 12 ngày
+              {anniversaryText}
             </div>
           </div>
         </div>

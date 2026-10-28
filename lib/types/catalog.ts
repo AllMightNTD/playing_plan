@@ -80,5 +80,10 @@ export interface HanoiPlace {
   outfit: OutfitGuide;
   tips: string;
   nearbyIds: string[];
+  tier?: "A" | "B" | "C";
+  batchId?: string | null;
+  dateFit?: "romantic" | "chill" | "casual" | "fun";
+  displayName?: string | null;
+  isAutoPromoted?: boolean;
 }
 

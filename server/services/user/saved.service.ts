@@ -14,11 +14,13 @@ export async function listSavedPlaces(session: MemberSession | null): Promise<Ha
   return placeIds.flatMap((placeId) => placeById.get(placeId) ?? []);
 }
 
-export async function savePlace(session: MemberSession, placeId: string): Promise<void> {
-  await requirePublishedPlace(placeId);
-  await getUserRepositories().saved.save(session.memberId, placeId, new Date());
+export async function savePlace(session: MemberSession, placeIdOrSlug: string): Promise<void> {
+  const place = await requirePublishedPlace(placeIdOrSlug);
+  await getUserRepositories().saved.save(session.memberId, place.id, new Date());
 }
 
-export async function unsavePlace(session: MemberSession, placeId: string): Promise<void> {
-  await getUserRepositories().saved.remove(session.memberId, placeId);
+export async function unsavePlace(session: MemberSession, placeIdOrSlug: string): Promise<void> {
+  const place = await requirePublishedPlace(placeIdOrSlug).catch(() => null);
+  const targetId = place ? place.id : placeIdOrSlug;
+  await getUserRepositories().saved.remove(session.memberId, targetId);
 }

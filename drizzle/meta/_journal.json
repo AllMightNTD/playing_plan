@@ -15,6 +15,20 @@
       "when": 1793098467087,
       "tag": "0001_light_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1793158007372,
+      "tag": "0002_jazzy_snowbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1793163114874,
+      "tag": "0003_black_trish_tilby",
+      "breakpoints": true
     }
   ]
 }

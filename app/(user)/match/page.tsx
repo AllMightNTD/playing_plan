@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { useApp } from "@/context/AppContext";
 import { Flame, X, Heart, BookOpen, Calendar, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,10 +51,29 @@ export default function MatchPage() {
             <div className="rounded-3xl overflow-hidden border border-peach-soft bg-cream shadow-sm transition-all duration-300">
               <div
                 className={cn(
-                  "h-56 sm:h-64 bg-gradient-to-br p-5 flex flex-col justify-between text-white relative",
+                  "h-56 sm:h-64 p-5 flex flex-col justify-between text-white relative overflow-hidden",
                   currentPlace.coverGradient || "from-[#FF9E8D] to-[#C93F52]"
                 )}
               >
+                {currentPlace.coverUrl && (
+                  <Image
+                    src={currentPlace.coverUrl}
+                    alt={currentPlace.name}
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 600px"
+                    className="object-cover"
+                  />
+                )}
+                <div
+                  className={cn(
+                    "absolute inset-0 pointer-events-none",
+                    currentPlace.coverUrl
+                      ? "bg-gradient-to-t from-black/85 via-black/40 to-black/30"
+                      : "bg-black/10 mix-blend-overlay"
+                  )}
+                />
+
                 <div className="flex items-center justify-between z-10">
                   <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm text-xs font-bold">
                     📍 {currentPlace.area}
@@ -72,7 +92,7 @@ export default function MatchPage() {
                       {currentPlace.costText}
                     </p>
                   </div>
-                  <span className="text-5xl">{currentPlace.emoji}</span>
+                  <span className="text-5xl drop-shadow-md">{currentPlace.emoji}</span>
                 </div>
               </div>
 

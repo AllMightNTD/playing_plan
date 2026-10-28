@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { useApp } from "@/context/AppContext";
 import {
   CalendarCheck,
@@ -161,6 +162,22 @@ export default function PlansPage() {
                     className="p-4 rounded-2xl bg-cream border border-peach-soft flex items-start justify-between gap-3 shadow-xs hover:border-peach transition"
                   >
                     <div className="flex items-start gap-3">
+                      {place.coverUrl ? (
+                        <div
+                          onClick={() => setActiveDetailSlug(place.slug)}
+                          className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-peach-soft cursor-pointer shadow-xs hover:scale-105 transition"
+                          title={`Xem chi tiết ${place.name}`}
+                        >
+                          <Image
+                            src={place.coverUrl}
+                            alt={place.name}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : null}
+
                       <div className="px-2.5 py-1.5 rounded-xl bg-peach-deep text-white font-mono font-bold text-xs text-center shrink-0 shadow-xs flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         <span>{stop.time}</span>

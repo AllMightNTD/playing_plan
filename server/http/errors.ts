@@ -62,6 +62,28 @@ export const ERRORS = {
       status: 422,
       message: "Địa điểm còn thiếu thông tin bắt buộc trước khi xuất bản.",
     },
+    BLOCKLISTED: {
+      code: "PLACE_BLOCKLISTED",
+      status: 400,
+      message: "Địa điểm này nằm trong danh sách cấm hoặc không an toàn.",
+    },
+    AI_HALLUCINATION_FORBIDDEN: {
+      code: "PLACE_AI_HALLUCINATION_FORBIDDEN",
+      status: 422,
+      message: "Nguồn AI không được phép ghi vào các trường thực tế nhạy cảm (giờ mở cửa, chi phí, góc chụp, tư thế).",
+    },
+    PUBLISH_HALTED_BY_CIRCUIT_BREAKER: {
+      code: "PLACE_PUBLISH_HALTED_BY_CIRCUIT_BREAKER",
+      status: 503,
+      message: "Hệ thống tự động xuất bản đang tạm dừng khẩn cấp do kích hoạt phanh an toàn.",
+    },
+  },
+  YOUTUBE: {
+    QUOTA_EXCEEDED: {
+      code: "YOUTUBE_QUOTA_EXCEEDED",
+      status: 429,
+      message: "Hạn mức gọi YouTube API trong ngày đã đạt ngưỡng an toàn (8.000 units).",
+    },
   },
   AI: {
     INVALID_RESPONSE: {

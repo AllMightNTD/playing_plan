@@ -1287,3 +1287,39 @@ Nguyên tắc chung: **không đưa vào gợi ý những nơi đang bị cấm 
 3. Gắn ảnh có giấy phép (Unsplash, Pexels, Wikimedia Commons) hoặc ảnh tự chụp, ghi `credit`.
 4. Điền `best_times` (loại "vắng người" nhập tay; giờ vàng do app tự tính), `best_weekdays`, `avoid_weekdays`, `tips`.
 5. Cập nhật `last_verified_at`, rồi chuyển từ `draft` sang `published`. Ngưỡng tối thiểu để xuất bản: ảnh bìa, tọa độ, nhóm, ít nhất 1 mood và 3 mục cẩm nang.
+
+---
+
+## 15. Hệ thống Tự Động Thu Thập, Đo Lường & Xuất Bản Có Kiểm Soát (Ingestion Engine)
+
+> **Nguyên tắc**: Đo lường trước, Tự động hóa sau (Measure First, Automate Later). Tự động ở quy mô lớn, Admin chỉ giám sát ngoại lệ và chấm mẫu hằng ngày 5 phút.
+
+### 15.1 Mục tiêu và Chỉ số Thành công (KPIs)
+- **Độ chính xác địa điểm mới**: $\ge 85\%$ (đáng đi hẹn hò, còn mở, đúng thông tin).
+- **Độ chính xác video liên kết**: $\ge 90\%$ (video review đúng quán, không nhầm tên).
+- **Tỷ lệ báo sai từ người dùng**: $< 3\%$ tổng số quán đã xuất bản mỗi tuần.
+- **Thời gian can thiệp của Admin**: $\le 5$ phút/ngày (chấm 10 thẻ mẫu ngẫu nhiên 👍/👎 trên Radar).
+
+### 15.2 Cơ chế Phân Bậc (Tiering System) & Tách Bạch `date_fit`
+- **Tách `category` khỏi `date_fit`**:
+  - Quán ăn ngon, quán lẩu dê, nướng, bún chả: `category = 'food'`, `date_fit = 'casual'` (hẹn hò đời thường). Hiển thị ở Khám phá ẩm thực & Tìm kiếm, **không đưa vào Wizard lãng mạn**.
+  - Quán cafe view hồ, nhà hàng Âu, rooftop: `date_fit = 'romantic' | 'chill'`. Vào Bậc A và hiển thị trọng tâm trong Wizard.
+- **Quy tắc phân bậc**:
+  - **Bậc A** (Điểm $\ge 65$, video $\ge 80\%$ hoặc 2 video $\ge 70\%$, không blocklist, có tín hiệu OSM thứ hai): Xuất bản toàn diện (Trang chủ, Khám phá, Wizard).
+  - **Bậc B** (Điểm $45 - 64$, video $\ge 70\%$): Chỉ hiển thị ở Khám phá và Tìm kiếm, gắn nhãn `✨ Gợi ý tự động`.
+  - **Bậc C** (Điểm $< 45$ hoặc chưa có video): Giữ ở Staging (`candidate_places`), chấm lại hằng tuần.
+
+### 15.3 Bốn Phanh An Toàn Tự Động (Thay cho duyệt tay)
+1. **Xuất bản theo đợt (`batch_id`)**: Hỗ trợ hoàn tác (rollback) cả đợt chỉ với 1 click trên Radar.
+2. **Tự động ngắt khẩn cấp (Auto-Pause)**: Dừng xuất bản tự động khi độ chính xác 7 ngày $< 85\%$ hoặc quota chạm 8.000 units.
+3. **Tự động hạ bậc (Auto-Downgrade)**: Hạ bậc hoặc thu hồi khi có $\ge 3$ báo sai từ thiết bị độc lập, video bị xóa/tắt embed, hoặc $> 365$ ngày không có video mới.
+4. **Giao dịch nguyên tử & Blocklist bắt buộc**: Kiểm tra `place_blocklist` trong transaction của mọi luồng thăng hạng.
+
+### 15.4 Lộ trình 6 Giai Đoạn (3–4 tuần)
+- **Giai đoạn 0 (1-2 ngày)**: Nền móng & Schema (thêm `tier`, `batch_id`, `publish_state`, `date_fit`, `display_name`; bảng `pipeline_runs`, `place_reports`, `place_blocklist`, `field_provenance`; kill switch).
+- **Giai đoạn 1 (2-3 ngày)**: Kiểm toán & Hiệu chỉnh Mẫu vàng (chấm 100 ứng viên & 100 video, chia 50/50 train/test, chốt ngưỡng Bậc A/B/C).
+- **Giai đoạn 2 (3-5 ngày)**: Chạy bóng (Shadow Mode - tính bậc nhưng chưa xuất bản, so sánh mẫu test, đạt $\ge 85\%$ quán và $\ge 90\%$ video).
+- **Giai đoạn 3 (3-4 ngày)**: Trung tâm Chỉ huy Radar Admin (`/admin/pipeline` - Quota PT, dòng sự kiện live, chấm mẫu 👍/👎, nút quét GitHub Actions, rollback batch).
+- **Giai đoạn 4 (2-3 ngày)**: Giao diện Khách hàng (Huy hiệu gợi ý tự động, ghi công ODbL/YouTube, modal báo sai `place_reports`, ẩn mô tả AI $< 0.60$, revalidate theo yêu cầu).
+- **Giai đoạn 5 (tuần 3-4)**: Xuất bản có kiểm soát (Mở van Bậc A: 10 $\to$ 20 $\to$ 50 quán/ngày khi đạt KPI 7 ngày; mở rộng 30-50 kênh YouTube; bảo trì video 30 ngày).
+

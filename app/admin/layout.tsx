@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { LayoutDashboard, MapPin, PlusCircle, Image, History, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, MapPin, PlusCircle, Image, History, ArrowLeft, Radio } from "lucide-react";
 
 const ADMIN_NAV = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Radar Tự Động", href: "/admin/pipeline", icon: Radio },
   { label: "Quản lý địa điểm", href: "/admin/places", icon: MapPin },
   { label: "Thêm địa điểm", href: "/admin/places/new", icon: PlusCircle },
   { label: "Kho Media & Bản quyền", href: "/admin/media", icon: Image },

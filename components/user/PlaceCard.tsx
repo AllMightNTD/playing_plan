@@ -4,170 +4,233 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { HanoiPlace } from "@/lib/mock-data";
 import { useApp } from "@/context/AppContext";
-import { Heart, BookOpen, Plus, Sun, MapPin, Sparkles, Camera } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface PlaceCardProps {
   place: HanoiPlace;
   compact?: boolean;
+  index?: number;
+  featured?: boolean;
 }
 
-export function PlaceCard({ place, compact = false }: PlaceCardProps) {
-  const { isPlaceSaved, toggleSavePlace, setActiveDetailSlug, quickAddPlaceToPlan, recordPlaceView } =
-    useApp();
-  const saved = isPlaceSaved(place.slug) || isPlaceSaved(place.id);
-  const [imgError, setImgError] = useState(false);
+export function PlaceCard({ place, compact = false, index = 0, featured }: PlaceCardProps) {
+  const {
+    isPlaceSaved,
+    toggleSavePlace,
+    setActiveDetailSlug,
+    quickAddPlaceToPlan,
+    isPlaceInUpcomingPlan,
+  } = useApp();
 
-  const mediaCount = place.media?.length || 0;
-  const showCoverImage = Boolean(place.coverUrl && !imgError);
+  const [imgError, setImgError] = useState(false);
+  const saved = isPlaceSaved(place.slug) || isPlaceSaved(place.id);
+  const inSchedule = isPlaceInUpcomingPlan(place.id);
+
+  // Xếp góc nghiêng & băng dính Washi theo mẫu demo
+  const isFeatured = featured !== undefined ? featured : index % 3 === 1;
+  const tiltClass =
+    index % 3 === 0
+      ? "polaroid-tilt-left"
+      : index % 3 === 1
+      ? "polaroid-tilt-center"
+      : "polaroid-tilt-right";
+
+  const washiClass =
+    index % 3 === 0
+      ? "washi-gingham-peach"
+      : index % 3 === 2
+      ? "washi-olive"
+      : "";
 
   const handleOpenDetail = () => {
-    recordPlaceView(place.slug);
     setActiveDetailSlug(place.slug);
   };
 
+  const bestTime = place.bestTimeText
+    ? `Hợp đi lúc ${place.bestTimeText} nha`
+    : "Hợp đi lúc 16:24 - 17:24 nha";
+
+  const district = place.area?.split("-")[0]?.trim() || "Hà Nội";
+  const price = place.costText || "50k - 150k";
+
   return (
-    <div className="group bg-white rounded-3xl border border-peach-soft hover:border-peach/60 shadow-sm hover:shadow-peach transition-all duration-300 flex flex-col overflow-hidden relative">
-      {/* Cover / Photo Banner */}
-      <div
-        onClick={handleOpenDetail}
-        className={cn(
-          "w-full p-3.5 flex flex-col justify-between relative transition-transform duration-500 cursor-pointer overflow-hidden",
-          place.coverGradient || "from-[#FF9E8D] to-[#C93F52]",
-          compact ? "h-28" : "h-36 sm:h-44"
-        )}
-      >
-        {/* Real photo if available */}
-        {showCoverImage && (
-          <Image
-            src={place.coverUrl!}
-            alt={place.name}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={() => setImgError(true)}
-            loading="lazy"
-          />
-        )}
+    <article
+      className={`polaroid-card ${tiltClass} ${isFeatured ? "featured-glow" : ""} flex flex-col justify-between group select-none`}
+    >
+      {/* Băng dính Washi dán góc ảnh */}
+      {washiClass && <div className={`washi-tape ${washiClass}`} />}
 
-        {/* High-contrast multi-layer dark gradient overlay */}
+      {/* Hiệu ứng Ngôi sao lấp lánh & Con dấu mộc nếu là thẻ nổi bật (Featured) */}
+      {isFeatured && (
+        <>
+          <svg
+            className="w-11 h-11 absolute -top-5 -left-4 z-20 sparkle-anim pointer-events-none"
+            viewBox="0 0 48 48"
+            fill="none"
+          >
+            <path
+              d="M22 4L25 16L37 19L25 22L22 34L19 22L7 19L19 16L22 4Z"
+              fill="#F9DC7E"
+              stroke="#362721"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M38 28L39.5 33.5L45 35L39.5 36.5L38 42L36.5 36.5L31 35L36.5 33.5L38 28Z"
+              fill="#FFFDF9"
+              stroke="#362721"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+          </svg>
+
+          <svg
+            className="w-10 h-10 absolute -bottom-4 -right-3 z-20 sparkle-anim-delay pointer-events-none"
+            viewBox="0 0 48 48"
+            fill="none"
+          >
+            <path
+              d="M24 8L27 19L38 22L27 25L24 36L21 25L10 22L21 19L24 8Z"
+              fill="#F29B7E"
+              stroke="#362721"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+          </svg>
+
+          <div className="rubber-stamp">RECOMMENDED</div>
+
+          <div className="absolute -bottom-3 right-3 z-20 bg-[#D95338] text-white border-2 border-[#362721] px-2.5 py-1 rounded-full font-extrabold text-xs tracking-wider shadow transform -rotate-6">
+            HOT 🔥
+          </div>
+        </>
+      )}
+
+      {/* Sticker trái tim vẽ tay cho thẻ không featured */}
+      {!isFeatured && (
+        <div className="absolute -bottom-3 right-3 z-20 transform rotate-6 pointer-events-none">
+          <svg className="w-9 h-9 drop-shadow-xs" viewBox="0 0 40 40" fill="none">
+            <path
+              d="M20 34C20 34 7 25 7 15C7 10.5 10.5 7 15 7C17.8 7 20 8.5 21 11C22 8.5 24.2 7 27 7C31.5 7 35 10.5 35 15C35 25 22 34 20 34Z"
+              fill="#C84B31"
+              stroke="#362721"
+              strokeWidth="2"
+            />
+          </svg>
+        </div>
+      )}
+
+      <div>
+        {/* Khung ảnh trong thẻ Polaroid */}
         <div
-          className={cn(
-            "absolute inset-0 pointer-events-none transition-opacity duration-300",
-            showCoverImage
-              ? "bg-gradient-to-t from-black/85 via-black/35 to-black/30"
-              : "bg-black/10 mix-blend-overlay"
+          onClick={handleOpenDetail}
+          className="relative rounded overflow-hidden aspect-[16/10] bg-[#E5D1B8] cursor-pointer"
+        >
+          {place.coverUrl && !imgError ? (
+            <Image
+              src={place.coverUrl}
+              alt={place.name}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
+              className="object-cover group-hover:scale-105 transition duration-500"
+              onError={() => setImgError(true)}
+              unoptimized
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-4xl bg-brand-peach/40">
+              {place.emoji || "📸"}
+            </div>
           )}
-        />
 
-        {/* Top bar inside cover: Best Time Badge & Heart Action */}
-        <div className="flex items-center justify-between z-10">
-          <span className="px-2.5 py-1 rounded-full bg-sage/95 text-white text-[11px] font-bold shadow-sm flex items-center gap-1 backdrop-blur-xs">
-            <span>✨ {place.bestTimeText}</span>
-          </span>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15 pointer-events-none" />
 
-          <div className="flex items-center gap-1.5">
-            {showCoverImage && (
-              <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm text-white/90 text-[9px] font-medium shadow-sm">
-                Minh họa
-              </span>
-            )}
-            {mediaCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-sm text-white text-[10px] font-semibold flex items-center gap-1 shadow-sm">
-                <Camera className="w-3 h-3 text-peach" />
-                <span>{mediaCount}</span>
-              </span>
-            )}
+          {/* Nhãn thời gian gợi ý góc trên trái */}
+          <div className="absolute top-2.5 left-2.5 bg-[#5F7355]/90 backdrop-blur-xs text-[#FAF4E8] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow">
+            <span>✨</span>
+            <span>{bestTime}</span>
+          </div>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleSavePlace(place.slug);
-              }}
-              className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm",
-                saved
-                  ? "bg-peach-deep text-white scale-105"
-                  : "bg-white/90 text-brown hover:text-peach-deep hover:bg-white"
-              )}
-              title={saved ? "Bỏ lưu địa điểm" : "Lưu vào yêu thích"}
-              aria-label="Yêu thích"
+          {/* Nút Thả Tim Lưu Yêu Thích góc trên phải */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSavePlace(place.slug);
+            }}
+            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full ${
+              saved ? "bg-brand-terracotta text-white" : "bg-[#FFFDF9]/90 text-paper-ink"
+            } flex items-center justify-center shadow hover:scale-110 transition active:scale-90`}
+            title={saved ? "Bỏ lưu địa điểm" : "Lưu vào yêu thích"}
+          >
+            <svg
+              className={`w-4 h-4 ${saved ? "fill-current" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <Heart className={cn("w-4 h-4", saved ? "fill-current" : "")} />
-            </button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+          </button>
+
+          {/* Nhãn Quận kèm Ghim Kẹp Giấy góc dưới trái */}
+          <div className="absolute bottom-2.5 left-2.5 bg-[#E6D4BC]/95 border border-[#362721] text-paper-ink text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow">
+            <span>📎</span>
+            <span>{district}</span>
           </div>
         </div>
 
-        {/* Bottom banner: Area tag & Large Emoji */}
-        <div className="flex items-end justify-between z-10">
-          <span className="px-2.5 py-0.5 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-medium flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-peach" />
-            <span>{place.area}</span>
-          </span>
-          <span className="text-3xl sm:text-4xl transform group-hover:scale-110 transition drop-shadow-md select-none">
-            {place.emoji}
-          </span>
-        </div>
-      </div>
-
-      {/* Card Body */}
-      <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-        <div>
-          {/* Title & Area */}
-          <div className="flex items-start justify-between gap-2">
-            <h3
-              onClick={() => setActiveDetailSlug(place.slug)}
-              className="font-display font-extrabold text-base text-brown group-hover:text-peach-deep transition cursor-pointer line-clamp-1"
-            >
-              {place.name}
-            </h3>
-            <span className="text-[11px] text-brown-muted font-medium shrink-0 flex items-center gap-0.5 mt-0.5">
-              <MapPin className="w-3 h-3 text-peach" />
-              {place.area.split("-")[0].trim()}
-            </span>
-          </div>
-
-          {/* Short summary */}
-          <p className="text-xs text-brown-muted line-clamp-2 mt-1 leading-relaxed">
+        {/* Nội dung chữ bên dưới tấm ảnh Polaroid */}
+        <div className="mt-4 px-1">
+          <h3
+            onClick={handleOpenDetail}
+            className="font-serif font-bold text-[18px] text-brand-terracottaDark hover:text-brand-terracotta cursor-pointer leading-snug line-clamp-1"
+          >
+            {place.name}
+          </h3>
+          <p className="text-xs text-paper-muted mt-1.5 line-clamp-2 leading-relaxed">
             {place.summary}
           </p>
 
-          {/* Tags & Price */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-            <span className="text-[10px] px-2 py-0.5 rounded-lg bg-peach-soft text-peach-deep font-bold">
-              {place.costText}
+          {/* Tags chi phí & chủ đề */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+            <span className="bg-[#FADCD2] text-brand-terracottaDark text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+              {price}
             </span>
-            {place.moodLabels?.slice(0, 2).map((mood, idx) => (
+            {place.moodLabels?.slice(0, 2).map((tag, tIdx) => (
               <span
-                key={idx}
-                className="text-[10px] px-2 py-0.5 rounded-lg bg-cream border border-peach-soft text-brown-muted font-medium"
+                key={tIdx}
+                className="bg-[#EFE5D4] text-paper-ink text-[11px] font-medium px-2.5 py-0.5 rounded-full"
               >
-                #{mood}
+                #{tag}
               </span>
             ))}
           </div>
         </div>
-
-        {/* Card Footer Actions */}
-        <div className="pt-2 border-t border-peach-soft/70 flex items-center gap-2">
-          <button
-            onClick={handleOpenDetail}
-            className="flex-1 py-2 px-3 rounded-xl bg-peach-soft/70 hover:bg-peach-soft text-brown font-bold text-xs transition flex items-center justify-center gap-1.5"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-peach-deep" />
-            <span>Cẩm nang</span>
-          </button>
-
-          <button
-            onClick={() => quickAddPlaceToPlan(place)}
-            className="py-2 px-3 rounded-xl bg-cream hover:bg-peach-soft/50 border border-peach-soft text-peach-deep font-bold text-xs transition flex items-center justify-center gap-1"
-            title="Thêm vào lịch trình"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Vào lịch</span>
-          </button>
-        </div>
       </div>
-    </div>
+
+      {/* 2 Nút hành động: Cẩm nang & + Vào lịch */}
+      <div className="grid grid-cols-12 gap-2 mt-4 pt-3 border-t border-dashed border-[#E2D5C1] px-1">
+        <button
+          onClick={handleOpenDetail}
+          className="col-span-7 paper-btn py-2 px-3 text-xs font-bold flex items-center justify-center gap-1.5"
+        >
+          <span>📖 Cẩm nang</span>
+        </button>
+        <button
+          onClick={() => quickAddPlaceToPlan(place)}
+          className={`col-span-5 py-2 px-2.5 rounded text-xs font-bold border transition flex items-center justify-center gap-1 ${
+            inSchedule
+              ? "bg-brand-olive text-white border-brand-olive shadow-xs"
+              : "bg-[#FAF0E1] hover:bg-brand-peach text-brand-terracottaDark border-[#D8C3A8]"
+          }`}
+        >
+          <span>{inSchedule ? "✓ Đã vào lịch" : "+ Vào lịch"}</span>
+        </button>
+      </div>
+    </article>
   );
 }
+

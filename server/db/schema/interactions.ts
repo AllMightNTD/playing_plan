@@ -70,6 +70,22 @@ export const memoryPhotos = mysqlTable(
   ]
 );
 
+/** Giấy nhớ tự do ghim lên Kho kỷ niệm của phòng đôi, không bắt buộc gắn với kế hoạch nào. */
+export const memoryNotes = mysqlTable(
+  "memory_notes",
+  {
+    id: varchar("id", { length: 21 }).primaryKey(),
+    roomId: varchar("room_id", { length: 21 }).notNull(),
+    memberId: varchar("member_id", { length: 21 }).notNull(),
+    content: varchar("content", { length: 280 }).notNull(),
+    color: mysqlEnum("color", ["peach", "yellow", "olive"]).notNull().default("peach"),
+    createdAt: datetime("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_memory_notes_room_created").on(table.roomId, table.createdAt),
+  ]
+);
+
 export const reminders = mysqlTable(
   "reminders",
   {
@@ -90,4 +106,5 @@ export type Swipe = typeof swipes.$inferSelect;
 export type Match = typeof matches.$inferSelect;
 export type Memory = typeof memories.$inferSelect;
 export type MemoryPhoto = typeof memoryPhotos.$inferSelect;
+export type MemoryNote = typeof memoryNotes.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;

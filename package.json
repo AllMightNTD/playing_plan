@@ -18,7 +18,9 @@
     "media:import": "node --env-file=.env --experimental-strip-types --no-warnings=ExperimentalWarning scripts/import-place-media.ts",
     "cron:pipeline": "npx tsx --env-file=.env scripts/pipeline/run-full-ingestion-cron.ts",
     "video:publish": "npx tsx --env-file=.env scripts/pipeline/publish-all-videos.ts",
-    "crawl:couple": "npx tsx --env-file=.env scripts/pipeline/crawl-couple-videos.ts"
+    "crawl:couple": "npx tsx --env-file=.env scripts/pipeline/crawl-couple-videos.ts",
+    "places:ingest-fun": "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx --env-file=.env scripts/pipeline/cron-ingest-fun-places.ts",
+    "places:promote-all": "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx --env-file=.env scripts/pipeline/bulk-promote-all-candidates.ts"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",

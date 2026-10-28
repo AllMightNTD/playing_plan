@@ -2,8 +2,6 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export function ToastContainer() {
   const { toasts, removeToast } = useApp();
@@ -11,47 +9,25 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-20 lg:bottom-6 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
-      {toasts.map((toast) => {
-        const isSuccess = toast.type === "success";
-        const isError = toast.type === "error";
-
-        return (
-          <div
-            key={toast.id}
-            className={cn(
-              "pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl shadow-peach-lg border backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-4 duration-300",
-              isSuccess
-                ? "bg-white/95 border-sage/40 text-brown"
-                : isError
-                ? "bg-white/95 border-peach-deep/40 text-brown"
-                : "bg-white/95 border-peach/40 text-brown"
-            )}
+    <div
+      id="toastContainer"
+      className="fixed bottom-20 lg:bottom-6 right-5 z-[9999] flex flex-col gap-2 pointer-events-none select-none max-w-xs sm:max-w-sm"
+    >
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className="bg-[#362721] text-[#FAF4E8] border-2 border-[#CBB292] px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium flex items-center justify-between gap-2.5 pointer-events-auto animate-in fade-in slide-in-from-bottom-2 duration-300"
+        >
+          <span className="leading-snug">{toast.message}</span>
+          <button
+            onClick={() => removeToast(toast.id)}
+            className="text-[#CBB292] hover:text-white text-xs px-1"
+            aria-label="Đóng"
           >
-            <div className="shrink-0 mt-0.5">
-              {isSuccess ? (
-                <CheckCircle2 className="w-5 h-5 text-sage" />
-              ) : isError ? (
-                <AlertCircle className="w-5 h-5 text-peach-deep" />
-              ) : (
-                <Info className="w-5 h-5 text-peach" />
-              )}
-            </div>
-
-            <p className="flex-1 text-xs font-medium leading-relaxed">
-              {toast.message}
-            </p>
-
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="text-brown-muted hover:text-brown p-0.5 rounded-lg transition"
-              aria-label="Đóng"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        );
-      })}
+            ✕
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

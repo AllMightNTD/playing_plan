@@ -11,6 +11,8 @@ import {
 import {
   INVITE_CODE_LENGTH,
   MAX_PLAN_STOPS,
+  MEMORY_NOTE_COLORS,
+  MEMORY_NOTE_MAX_LENGTH,
   NICKNAME_MAX_LENGTH,
   PLAN_STATUSES,
   ROOM_NAME_MAX_LENGTH,
@@ -217,6 +219,13 @@ export const recoverRoomBodySchema = z
   })
   .strict();
 
+export const createMemoryNoteBodySchema = z
+  .object({
+    content: z.string().trim().min(1).max(MEMORY_NOTE_MAX_LENGTH),
+    color: z.enum(MEMORY_NOTE_COLORS).optional(),
+  })
+  .strict();
+
 export const quickAddPlanBodySchema = z
   .object({
     placeId: entityIdSchema,
@@ -235,4 +244,5 @@ export type SwipeBody = z.infer<typeof swipeBodySchema>;
 export type UpdateMeBody = z.infer<typeof updateMeBodySchema>;
 export type JoinRoomBody = z.infer<typeof joinRoomBodySchema>;
 export type QuickAddPlanBody = z.infer<typeof quickAddPlanBodySchema>;
+export type CreateMemoryNoteBody = z.infer<typeof createMemoryNoteBodySchema>;
 

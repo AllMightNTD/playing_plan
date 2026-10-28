@@ -1,68 +1,73 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Sparkles, Compass, Flame, CalendarHeart, Camera, Film } from "lucide-react";
+import React from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
-import { cn } from "@/lib/utils";
-
-const NAV_ITEMS = [
-  { label: "Trang chủ", href: "/", icon: Sparkles },
-  { label: "Khám phá", href: "/explore", icon: Compass },
-  { label: "Video", href: "/videos", icon: Film },
-  { label: "Match", href: "/match", icon: Flame, isMatch: true },
-  { label: "Kế hoạch", href: "/plans", icon: CalendarHeart },
-];
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { matchedSlugs } = useApp();
+  const router = useRouter();
+  const { setIsWheelOpen } = useApp();
 
-  // Hide BottomNav on admin or desktop
+  // Hide BottomNav on admin
   if (pathname.startsWith("/admin")) {
     return null;
   }
 
+  const handleNavClick = (sectionId: string) => {
+    if (pathname !== "/") {
+      router.push(`/#${sectionId}`);
+      return;
+    }
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-peach-soft px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg select-none">
-      <div className="max-w-md mx-auto flex items-center justify-around">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
+    <nav className="mobile-bottom-nav hidden fixed bottom-0 left-0 right-0 z-40 kraft-texture border-t-2 border-[#CBB292] px-2 py-1.5 justify-around items-center shadow-2xl select-none">
+      <button
+        onClick={() => handleNavClick("section-home")}
+        className="mobile-bottom-link flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg bg-brand-terracotta text-white font-semibold text-[11px] transition active:scale-95"
+      >
+        <span>🏠</span>
+        <span>Trang chủ</span>
+      </button>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center w-16 py-1 text-xs font-semibold rounded-2xl transition-all relative active:scale-95",
-                isActive
-                  ? "text-peach-deep font-bold"
-                  : "text-brown-muted hover:text-brown"
-              )}
-            >
-              <div
-                className={cn(
-                  "p-1 rounded-xl transition-colors relative",
-                  isActive && "bg-peach-soft/80"
-                )}
-              >
-                <Icon className={cn("w-5 h-5", isActive ? "stroke-[2.5]" : "stroke-2")} />
+      <button
+        onClick={() => handleNavClick("section-explore")}
+        className="mobile-bottom-link flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-paper-ink font-medium text-[11px] transition active:scale-95"
+      >
+        <span>🧭</span>
+        <span>Khám phá</span>
+      </button>
 
-                {item.isMatch && matchedSlugs.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-peach-deep text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
-                    {matchedSlugs.length}
-                  </span>
-                )}
-              </div>
-              <span className="mt-0.5 text-[10px] tracking-tight">{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
+      {/* Floating Center Dice Button */}
+      <button
+        onClick={() => setIsWheelOpen(true)}
+        className="flex flex-col items-center -mt-5 bg-brand-terracotta border-2 border-[#FAF4E8] text-white w-12 h-12 rounded-full justify-center shadow-lg active:scale-90 transition hover:scale-105"
+        title="Quay số ngẫu nhiên"
+      >
+        <span className="text-lg">🎲</span>
+      </button>
+
+      <button
+        onClick={() => handleNavClick("section-video")}
+        className="mobile-bottom-link flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-paper-ink font-medium text-[11px] transition active:scale-95"
+      >
+        <span>🎞️</span>
+        <span>Video</span>
+      </button>
+
+      <button
+        onClick={() => handleNavClick("section-memory")}
+        className="mobile-bottom-link flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-paper-ink font-medium text-[11px] transition active:scale-95"
+      >
+        <span>📸</span>
+        <span>Kỷ niệm</span>
+      </button>
     </nav>
   );
 }
+

@@ -122,6 +122,14 @@ export const ERRORS = {
       message: "Checklist tối đa 50 mục thôi nha.",
     },
   },
+  MEMORY: {
+    NOTE_NOT_FOUND: { code: "MEMORY_NOTE_NOT_FOUND", status: 404, message: "Không tìm thấy tờ giấy nhớ này." },
+    NOTE_LIMIT_REACHED: {
+      code: "MEMORY_NOTE_LIMIT_REACHED",
+      status: 409,
+      message: "Bảng kỷ niệm đã đầy 100 giấy nhớ, gỡ bớt rồi dán tiếp nha.",
+    },
+  },
 } as const satisfies Record<string, Record<string, ErrorDefinition>>;
 
 export class AppError extends Error {

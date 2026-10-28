@@ -17,6 +17,7 @@ import {
   datePlans,
   matches,
   memories,
+  memoryNotes,
   memoryPhotos,
   planStops,
   reminders,
@@ -247,6 +248,7 @@ export const drizzleRoomRepository: RoomRepository = {
         .delete(memoryPhotos)
         .where(inArray(memoryPhotos.memoryId, roomMemoryIds));
       await tx.delete(memories).where(eq(memories.roomId, roomId));
+      await tx.delete(memoryNotes).where(eq(memoryNotes.roomId, roomId));
       await tx.delete(datePlans).where(eq(datePlans.roomId, roomId));
       await tx.delete(swipes).where(eq(swipes.roomId, roomId));
       await tx.delete(matches).where(eq(matches.roomId, roomId));

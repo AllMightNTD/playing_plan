@@ -1,4 +1,4 @@
-import type { ChecklistItem, DatePlan, PlanStop } from "@/server/db/schema";
+import type { ChecklistItem, DatePlan, MemoryNote, PlanStop } from "@/server/db/schema";
 import type { SwipeChoice } from "@/lib/constants/user";
 
 export type MemberRole = "creator" | "partner";
@@ -140,9 +140,31 @@ export interface SavedPlaceRepository {
   remove(memberId: string, placeId: string): Promise<void>;
 }
 
+export interface MemoryWithCover {
+  id: string;
+  planId: string;
+  planTitle: string | null;
+  rating: number;
+  journal: string | null;
+  visitedAt: Date;
+  coverUrl: string | null;
+  coverCaption: string | null;
+}
+
+export interface MemoryRepository {
+  /** Mới nhất trước. */
+  listNotes(roomId: string, limit: number): Promise<MemoryNote[]>;
+  /** Trả về null khi phòng đã đủ `maxNotes` giấy nhớ. */
+  insertNoteWithinLimit(note: MemoryNote, maxNotes: number): Promise<MemoryNote | null>;
+  deleteNote(roomId: string, noteId: string): Promise<boolean>;
+  /** Kỷ niệm sau buổi hẹn kèm ảnh bìa (ảnh có sortOrder nhỏ nhất), mới nhất trước. */
+  listMemories(roomId: string, limit: number): Promise<MemoryWithCover[]>;
+}
+
 export interface UserRepositories {
   rooms: RoomRepository;
   plans: PlanRepository;
   swipes: SwipeRepository;
   saved: SavedPlaceRepository;
+  memories: MemoryRepository;
 }

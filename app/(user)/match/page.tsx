@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { useApp } from "@/context/AppContext";
-import { Flame, X, Heart, BookOpen, Calendar, Sparkles } from "lucide-react";
+import { Flame, X, Heart, BookOpen, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function MatchPage() {
@@ -30,28 +30,30 @@ export default function MatchPage() {
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Interactive Swipe Card Deck (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-peach-soft shadow-peach space-y-5">
+        <div className="lg:col-span-7 bg-[#FFFDF9] rounded-3xl p-5 sm:p-6 border border-[#E6D7C3] shadow-xs space-y-5 relative">
+          <div className="washi-tape washi-terracotta -top-3.5 left-10" />
+
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-bold text-peach-deep uppercase tracking-wider flex items-center gap-1">
+              <span className="text-[11px] font-bold text-brand-terracotta uppercase tracking-wider flex items-center gap-1">
                 <Flame className="w-3.5 h-3.5" />
-                <span>F07 • Ẩn lựa chọn tới khi trùng khớp</span>
+                <span>F07 • Quẹt thẻ đôi bí mật (Double-Blind Match)</span>
               </span>
-              <h3 className="font-display font-extrabold text-xl text-brown mt-0.5">
-                Quẹt thẻ chọn nơi hẹn cùng Linh
+              <h3 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink mt-0.5">
+                Quẹt thẻ chọn nơi hẹn cùng Linh 💕
               </h3>
             </div>
-            <span className="text-xs font-mono px-3 py-1 rounded-full bg-peach-soft/80 text-brown font-bold">
+            <span className="text-xs font-mono px-3 py-1 rounded-full bg-[#E6D7C3] text-paper-ink font-bold">
               Thẻ {(swipeIndex % places.length) + 1}/{places.length}
             </span>
           </div>
 
-          {/* Active Swipe Card */}
+          {/* Active Swipe Card - Polaroid Card */}
           {currentPlace && (
-            <div className="rounded-3xl overflow-hidden border border-peach-soft bg-cream shadow-sm transition-all duration-300">
+            <div className="rounded-2xl overflow-hidden border border-[#E6D7C3] bg-white p-3 pb-5 shadow-md -rotate-1 hover:rotate-0 transition-transform duration-300">
               <div
                 className={cn(
-                  "h-56 sm:h-64 p-5 flex flex-col justify-between text-white relative overflow-hidden",
+                  "h-60 sm:h-72 p-5 flex flex-col justify-between text-white relative overflow-hidden rounded-xl",
                   currentPlace.coverGradient || "from-[#FF9E8D] to-[#C93F52]"
                 )}
               >
@@ -75,17 +77,17 @@ export default function MatchPage() {
                 />
 
                 <div className="flex items-center justify-between z-10">
-                  <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm text-xs font-bold">
+                  <span className="px-3 py-1 rounded-full bg-black/50 backdrop-blur-xs text-xs font-bold text-white">
                     📍 {currentPlace.area}
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-sage text-white text-xs font-bold">
+                  <span className="px-3 py-1 rounded-full bg-brand-olive text-white text-xs font-bold shadow-xs">
                     {currentPlace.bestTimeText}
                   </span>
                 </div>
 
                 <div className="flex items-end justify-between z-10">
                   <div>
-                    <h4 className="font-display font-extrabold text-2xl sm:text-3xl drop-shadow">
+                    <h4 className="font-serif font-extrabold text-2xl sm:text-3xl text-white drop-shadow">
                       {currentPlace.name}
                     </h4>
                     <p className="text-xs text-white/90 font-medium mt-0.5">
@@ -96,12 +98,12 @@ export default function MatchPage() {
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5 space-y-3.5">
+              <div className="p-3 sm:p-4 space-y-3">
                 <div className="flex flex-wrap gap-1.5">
                   {currentPlace.moodLabels?.map((m, idx) => (
                     <span
                       key={idx}
-                      className="px-2.5 py-0.5 rounded-full bg-peach-soft text-brown text-xs font-bold"
+                      className="px-2.5 py-0.5 rounded-full bg-brand-peach text-brand-terracottaDark text-xs font-bold"
                     >
                       #{m}
                     </span>
@@ -113,13 +115,13 @@ export default function MatchPage() {
                   )}
                 </div>
 
-                <p className="text-xs sm:text-sm text-brown leading-relaxed">
+                <p className="text-xs sm:text-sm text-paper-ink leading-relaxed">
                   {currentPlace.summary}
                 </p>
 
-                <div className="p-3 rounded-2xl bg-white border border-peach-soft text-xs text-brown-muted flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-[#FAF4E8] border border-[#E6D7C3] text-xs text-paper-muted flex items-center justify-between">
                   <span>
-                    👗 <strong>Phối đồ:</strong> {currentPlace.outfit?.tonSurTon}
+                    👗 <strong>Phối đồ đôi gợi ý:</strong> {currentPlace.outfit?.tonSurTon}
                   </span>
                 </div>
               </div>
@@ -130,23 +132,23 @@ export default function MatchPage() {
           <div className="flex items-center justify-center gap-3 pt-1">
             <button
               onClick={() => handleVote("nope")}
-              className="flex-1 py-3 px-4 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-brown font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95"
+              className="flex-1 py-3 px-4 rounded-2xl bg-[#E6D7C3] hover:bg-[#d8c5ad] text-paper-ink font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95"
             >
-              <X className="w-4 h-4 text-zinc-600" />
+              <X className="w-4 h-4 text-paper-ink" />
               <span>Bỏ qua (Nope)</span>
             </button>
 
             <button
               onClick={() => setActiveDetailSlug(currentPlace.slug)}
-              className="py-3 px-4 rounded-2xl bg-peach-soft hover:bg-peach text-brown font-bold text-xs sm:text-sm transition flex items-center gap-1.5"
+              className="py-3 px-4 rounded-2xl bg-brand-peach hover:bg-brand-coral/30 text-brand-terracottaDark font-bold text-xs sm:text-sm transition flex items-center gap-1.5 border border-brand-terracotta/30"
             >
-              <BookOpen className="w-4 h-4 text-peach-deep" />
+              <BookOpen className="w-4 h-4 text-brand-terracotta" />
               <span className="hidden sm:inline">Cẩm nang</span>
             </button>
 
             <button
               onClick={() => handleVote("like")}
-              className="flex-1 py-3 px-4 rounded-2xl bg-peach-deep hover:bg-peach-hover text-white font-bold text-xs sm:text-sm shadow-peach flex items-center justify-center gap-2 transition active:scale-95"
+              className="flex-1 py-3 px-4 rounded-2xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition active:scale-95"
             >
               <Heart className="w-4 h-4 fill-current" />
               <span>Thích (Like)</span>
@@ -155,20 +157,22 @@ export default function MatchPage() {
         </div>
 
         {/* Right Column: Matched List between Dũng & Linh (5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-3xl p-5 sm:p-6 border border-peach-soft shadow-sm space-y-4">
+        <div className="lg:col-span-5 bg-[#FFFDF9] rounded-3xl p-5 sm:p-6 border border-[#E6D7C3] shadow-xs space-y-4 relative">
+          <div className="washi-tape washi-olive -top-3.5 right-10" />
+
           <div className="flex items-center justify-between">
-            <h4 className="font-display font-extrabold text-base sm:text-lg text-brown flex items-center gap-2">
+            <h4 className="font-serif font-extrabold text-base sm:text-lg text-paper-ink flex items-center gap-2">
               <span>💕 Đã Tâm Đầu Ý Hợp</span>
-              <span className="px-2 py-0.5 rounded-full bg-peach-soft text-peach-deep text-xs font-extrabold">
+              <span className="px-2 py-0.5 rounded-full bg-brand-peach text-brand-terracottaDark text-xs font-extrabold">
                 {matchedPlaces.length}
               </span>
             </h4>
-            <span className="text-[10px] font-mono text-sage-dark bg-sage-light px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-mono text-brand-olive bg-brand-olive/10 border border-brand-olive/20 px-2 py-0.5 rounded-full">
               Realtime Sync
             </span>
           </div>
 
-          <p className="text-xs text-brown-muted leading-relaxed">
+          <p className="text-xs text-paper-muted leading-relaxed">
             Những địa điểm cả Dũng và Linh đều quẹt phải. Bấm 1 chạm để lên kế hoạch đi chơi ngay!
           </p>
 
@@ -177,7 +181,7 @@ export default function MatchPage() {
               matchedPlaces.map((m) => (
                 <div
                   key={m.id}
-                  className="p-3.5 rounded-2xl bg-cream border border-peach-soft flex items-center justify-between gap-3 shadow-xs hover:border-peach transition"
+                  className="p-3.5 rounded-2xl bg-[#FAF4E8] border border-[#E6D7C3] flex items-center justify-between gap-3 shadow-2xs hover:border-brand-terracotta/50 transition"
                 >
                   <div
                     onClick={() => setActiveDetailSlug(m.slug)}
@@ -185,10 +189,10 @@ export default function MatchPage() {
                   >
                     <span className="text-2xl shrink-0">{m.emoji}</span>
                     <div className="truncate">
-                      <div className="font-bold text-xs sm:text-sm text-brown truncate">
+                      <div className="font-bold text-xs sm:text-sm text-paper-ink truncate">
                         {m.name}
                       </div>
-                      <div className="text-[11px] text-peach-deep font-semibold truncate">
+                      <div className="text-[11px] text-brand-terracotta font-semibold truncate">
                         {m.bestTimeText}
                       </div>
                     </div>
@@ -196,7 +200,7 @@ export default function MatchPage() {
 
                   <button
                     onClick={() => addStopToPlan(m)}
-                    className="px-3 py-1.5 rounded-xl bg-peach-deep hover:bg-peach-hover text-white text-xs font-bold shrink-0 transition flex items-center gap-1 shadow-sm"
+                    className="px-3 py-1.5 rounded-xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white text-xs font-bold shrink-0 transition flex items-center gap-1 shadow-2xs"
                   >
                     <Calendar className="w-3 h-3" />
                     <span>+ Lên lịch</span>
@@ -204,7 +208,7 @@ export default function MatchPage() {
                 </div>
               ))
             ) : (
-              <div className="p-8 text-center text-brown-muted text-xs space-y-2">
+              <div className="p-8 text-center text-paper-muted text-xs space-y-2">
                 <div className="text-3xl">💌</div>
                 <p>Chưa có địa điểm nào trùng khớp. Hãy tiếp tục quẹt thẻ nhé!</p>
               </div>

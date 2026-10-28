@@ -4,9 +4,11 @@ import { drizzleRoomRepository } from "@/server/db/queries/user/rooms.queries";
 import { drizzlePlanRepository } from "@/server/db/queries/user/plans.queries";
 import { drizzleSwipeRepository } from "@/server/db/queries/user/swipes.queries";
 import { drizzleSavedPlaceRepository } from "@/server/db/queries/user/saved.queries";
+import { drizzleMemoryRepository } from "@/server/db/queries/user/memories.queries";
 import { memoryRoomRepository } from "@/server/db/demo/rooms.memory";
 import { memoryPlanRepository } from "@/server/db/demo/plans.memory";
 import { memorySavedPlaceRepository, memorySwipeRepository } from "@/server/db/demo/interactions.memory";
+import { memoryMemoryRepository } from "@/server/db/demo/memories.memory";
 import type { UserRepositories } from "@/server/db/repositories/types";
 
 const drizzleRepositories: UserRepositories = {
@@ -14,6 +16,7 @@ const drizzleRepositories: UserRepositories = {
   plans: drizzlePlanRepository,
   swipes: drizzleSwipeRepository,
   saved: drizzleSavedPlaceRepository,
+  memories: drizzleMemoryRepository,
 };
 
 const memoryRepositories: UserRepositories = {
@@ -21,6 +24,7 @@ const memoryRepositories: UserRepositories = {
   plans: memoryPlanRepository,
   swipes: memorySwipeRepository,
   saved: memorySavedPlaceRepository,
+  memories: memoryMemoryRepository,
 };
 
 /**

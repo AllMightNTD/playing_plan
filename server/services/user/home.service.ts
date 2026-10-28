@@ -46,7 +46,7 @@ function resolveStopIcon(title: string, category?: string): string {
   if (lower.includes("cầu") || lower.includes("bridge")) return "🌉";
   if (lower.includes("hoàng hôn") || lower.includes("dạo") || lower.includes("hồ")) return "🌅";
   if (lower.includes("chụp") || lower.includes("ảnh") || lower.includes("pose")) return "📸";
-  if (lower.includes("ăn") || lower.includes("bún") || category === "restaurant") return "🍽️";
+  if (lower.includes("ăn") || lower.includes("bún") || category === "food") return "🍽️";
   return "📍";
 }
 
@@ -139,13 +139,6 @@ export async function getHomeSummary(session: MemberSession | null): Promise<Hom
     } catch {
       anniversaryInfo = null;
     }
-  } else {
-    // Giá trị mẫu thân thiện nếu chưa đặt ngày
-    anniversaryInfo = {
-      title: "Kỷ niệm 1 năm",
-      date: null,
-      daysLeft: 12,
-    };
   }
 
   // Tìm buổi hẹn sắp tới gần nhất (chưa hủy, ngày >= hôm nay)
@@ -158,11 +151,14 @@ export async function getHomeSummary(session: MemberSession | null): Promise<Hom
   let upcomingPlanDto: HomeSummaryDto["upcomingPlan"] = null;
 
   if (upcoming) {
-    const detail = await getPlanDetail(session, upcoming.id);
+    const [detail, allPlaces] = await Promise.all([getPlanDetail(session, upcoming.id), getAllPublishedPlaces()]);
+    const placeById = new Map(allPlaces.map((place) => [place.id, place]));
     const stopsPreview: UpcomingPlanStopPreview[] = detail.stops.slice(0, 3).map((s) => {
       const time = s.plannedTime || upcoming.startTime;
-      const title = s.customName || "Điểm hẹn hò";
-      const icon = resolveStopIcon(title);
+      // Điểm dừng tạo kèm kế hoạch chỉ có placeId, lấy tên địa điểm làm tiêu đề
+      const place = s.placeId ? placeById.get(s.placeId) : undefined;
+      const title = s.customName || place?.name || "Điểm hẹn hò";
+      const icon = resolveStopIcon(title, place?.category);
       return { id: s.id, time, title, icon };
     });
 

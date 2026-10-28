@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, Sparkles, Flame, Clock, Film, X, Filter, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Sparkles, Flame, Clock, Film, X, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { VideoCard } from "@/components/user/VideoCard";
 import { VideoPlayerModal } from "@/components/user/VideoPlayerModal";
-import type { VideoCatalogItem, VideoCategory } from "@/server/services/user/videos.service";
+import type { VideoCatalogItem } from "@/server/services/user/videos.service";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_TABS: Array<{ id: string; label: string; icon: string }> = [
@@ -94,26 +94,27 @@ export default function VideosPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-12">
-      {/* 1. Header Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#7F2633] via-[#C93F52] to-[#FF9E8D] text-white p-5 sm:p-7 shadow-peach-lg">
+      {/* 1. Header Hero Banner - Scrapbook Postcard */}
+      <div className="relative overflow-hidden rounded-3xl bg-[#FFFDF9] border border-[#E6D7C3] text-paper-ink p-5 sm:p-7 shadow-xs">
+        <div className="washi-tape washi-terracotta -top-3.5 left-10" />
         <div className="relative z-10 max-w-2xl space-y-3">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-brand-peach text-brand-terracottaDark border border-brand-terracotta/20">
             <Film className="w-3.5 h-3.5" />
-            <span>Video Review Hẹn Hò & Ẩm Thực Hà Nội</span>
+            <span>Cuộn phim 35mm • Review Hẹn Hò & Ẩm Thực Hà Nội</span>
           </span>
 
-          <h2 className="font-display font-extrabold text-2xl sm:text-3xl leading-tight">
-            Xem thực tế trước khi đi,<br />khỏi lo chọn nhầm quán!
+          <h2 className="font-serif font-extrabold text-2xl sm:text-3xl text-paper-ink leading-tight">
+            Xem thước phim thực tế trước khi đi,<br />khỏi lo chọn nhầm quán!
           </h2>
 
-          <p className="text-xs sm:text-sm text-white/90 leading-relaxed max-w-lg">
+          <p className="text-xs sm:text-sm text-paper-muted leading-relaxed max-w-lg">
             Hàng trăm video review chất lượng cao từ các YouTuber, Food Reviewer hàng đầu
             (Ninh Titô, Khoai Lang Thang, Dinology, Ở Hà Nội...). Tự động liên kết thẳng đến bản đồ & cẩm nang DateMate!
           </p>
         </div>
 
         {/* Decorative Video Icon */}
-        <div className="absolute -right-4 -bottom-6 text-[100px] sm:text-[130px] opacity-15 select-none pointer-events-none">
+        <div className="absolute -right-4 -bottom-6 text-[100px] sm:text-[130px] opacity-10 select-none pointer-events-none">
           🎬
         </div>
       </div>
@@ -122,18 +123,18 @@ export default function VideosPage() {
       <div className="space-y-4">
         {/* Search Bar */}
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brown-muted" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-paper-muted" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm theo tiêu đề, món ăn, tên quán hoặc YouTuber (ví dụ: Ninh Tito, Hồ Tây, phở, chill)..."
-            className="w-full pl-11 pr-10 py-3 rounded-2xl bg-white border border-peach-soft text-brown placeholder:text-brown-muted/60 text-xs sm:text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-peach-deep/30 transition"
+            className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[#FFFDF9] border border-[#E6D7C3] text-paper-ink placeholder:text-paper-muted text-xs sm:text-sm font-medium shadow-xs focus:outline-none focus:ring-2 focus:ring-brand-terracotta/30 transition"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-peach-soft/60 hover:bg-peach-soft text-brown flex items-center justify-center transition"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#E6D7C3] hover:bg-brand-peach text-paper-ink flex items-center justify-center transition"
             >
               <X className="w-3 h-3" />
             </button>
@@ -155,16 +156,16 @@ export default function VideosPage() {
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  "px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 shrink-0 shadow-sm",
+                  "px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 shrink-0 shadow-xs",
                   isSelected
-                    ? "bg-peach-deep text-white shadow-peach"
-                    : "bg-white text-brown border border-peach-soft hover:bg-peach-soft/40"
+                    ? "bg-brand-terracotta text-white shadow-sm"
+                    : "bg-[#FFFDF9] text-paper-ink border border-[#E6D7C3] hover:bg-paper-bg"
                 )}
               >
                 <span>{cat.icon}</span>
                 <span>{cat.label}</span>
                 {cat.id !== "all" && countText && (
-                  <span className={cn("text-[10px]", isSelected ? "text-white/80" : "text-brown-muted")}>
+                  <span className={cn("text-[10px]", isSelected ? "text-white/80" : "text-paper-muted")}>
                     {countText}
                   </span>
                 )}
@@ -176,7 +177,7 @@ export default function VideosPage() {
         {/* Sort & Recommendation Tabs + Channel Filter */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
           {/* Recommend Tabs */}
-          <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-peach-soft shadow-sm select-none">
+          <div className="flex items-center gap-1.5 bg-[#FFFDF9] p-1 rounded-2xl border border-[#E6D7C3] shadow-xs select-none">
             {SORT_TABS.map((tab) => {
               const Icon = tab.icon;
               const isSelected = selectedTab === tab.id;
@@ -191,8 +192,8 @@ export default function VideosPage() {
                   className={cn(
                     "px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5",
                     isSelected
-                      ? "bg-peach-soft text-peach-deep"
-                      : "text-brown-muted hover:text-brown"
+                      ? "bg-brand-peach text-brand-terracottaDark"
+                      : "text-paper-muted hover:text-paper-ink"
                   )}
                 >
                   <Icon className={cn("w-3.5 h-3.5", isSelected && "fill-current")} />
@@ -204,7 +205,7 @@ export default function VideosPage() {
 
           {/* Channels Filter Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto max-w-full sm:max-w-md pb-1 scrollbar-none">
-            <span className="text-[11px] font-bold text-brown-muted shrink-0 mr-1">
+            <span className="text-[11px] font-bold text-paper-muted shrink-0 mr-1">
               Kênh:
             </span>
             <button
@@ -215,8 +216,8 @@ export default function VideosPage() {
               className={cn(
                 "px-2.5 py-1 rounded-xl text-[11px] font-bold shrink-0 transition",
                 selectedChannel === "all"
-                  ? "bg-brown text-white"
-                  : "bg-white text-brown-muted border border-peach-soft hover:text-brown"
+                  ? "bg-brand-terracotta text-white"
+                  : "bg-[#FFFDF9] text-paper-muted border border-[#E6D7C3] hover:text-paper-ink"
               )}
             >
               Tất cả
@@ -231,8 +232,8 @@ export default function VideosPage() {
                 className={cn(
                   "px-2.5 py-1 rounded-xl text-[11px] font-bold shrink-0 transition",
                   selectedChannel === ch.title
-                    ? "bg-brown text-white"
-                    : "bg-white text-brown-muted border border-peach-soft hover:text-brown"
+                    ? "bg-brand-terracotta text-white"
+                    : "bg-[#FFFDF9] text-paper-muted border border-[#E6D7C3] hover:text-paper-ink"
                 )}
               >
                 {ch.title} ({ch.count})
@@ -243,9 +244,9 @@ export default function VideosPage() {
       </div>
 
       {/* 3. Results Header & Count */}
-      <div className="flex items-center justify-between text-xs text-brown-muted font-medium pt-1">
+      <div className="flex items-center justify-between text-xs text-paper-muted font-medium pt-1">
         <div>
-          Tìm thấy <strong className="text-brown font-bold">{total}</strong> video review
+          Tìm thấy <strong className="text-paper-ink font-bold">{total}</strong> video review
           {selectedCategory !== "all" && ` trong mục "${CATEGORY_TABS.find((c) => c.id === selectedCategory)?.label}"`}
           {selectedChannel !== "all" && ` của kênh "${selectedChannel}"`}
         </div>
@@ -253,7 +254,7 @@ export default function VideosPage() {
         {(searchQuery || selectedCategory !== "all" || selectedChannel !== "all" || selectedTab !== "recommend") && (
           <button
             onClick={handleResetFilters}
-            className="text-peach-deep hover:underline font-bold flex items-center gap-1"
+            className="text-brand-terracotta hover:underline font-bold flex items-center gap-1"
           >
             <RefreshCw className="w-3 h-3" />
             <span>Đặt lại bộ lọc</span>
@@ -267,37 +268,38 @@ export default function VideosPage() {
           {Array.from({ length: 6 }).map((_, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-3xl overflow-hidden border border-peach-soft shadow-sm p-3 space-y-3 animate-pulse"
+              className="bg-[#FFFDF9] rounded-3xl overflow-hidden border border-[#E6D7C3] shadow-xs p-3 space-y-3 animate-pulse"
             >
-              <div className="aspect-video bg-peach-soft/50 rounded-2xl" />
-              <div className="h-4 bg-peach-soft/50 rounded-md w-3/4" />
-              <div className="h-3 bg-peach-soft/30 rounded-md w-1/2" />
+              <div className="aspect-video bg-[#E6D7C3]/50 rounded-2xl" />
+              <div className="h-4 bg-[#E6D7C3]/50 rounded-md w-3/4" />
+              <div className="h-3 bg-[#E6D7C3]/30 rounded-md w-1/2" />
             </div>
           ))}
         </div>
       ) : videos.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {videos.map((vid) => (
+          {videos.map((vid, idx) => (
             <VideoCard
               key={vid.id}
               video={vid}
+              index={idx}
               onPlay={(selected) => setActiveVideo(selected)}
             />
           ))}
         </div>
       ) : (
         /* Empty State */
-        <div className="bg-white rounded-3xl border border-peach-soft p-10 text-center space-y-3 shadow-sm">
+        <div className="bg-[#FFFDF9] rounded-3xl border border-[#E6D7C3] p-10 text-center space-y-3 shadow-xs">
           <div className="text-4xl">🔍</div>
-          <h4 className="font-display font-extrabold text-lg text-brown">
+          <h4 className="font-serif font-extrabold text-lg text-paper-ink">
             Chưa tìm thấy video review phù hợp
           </h4>
-          <p className="text-xs text-brown-muted max-w-sm mx-auto">
+          <p className="text-xs text-paper-muted max-w-sm mx-auto">
             Thử đổi từ khóa tìm kiếm hoặc chọn mục &quot;Tất cả&quot; để xem toàn bộ cẩm nang video review nhé!
           </p>
           <button
             onClick={handleResetFilters}
-            className="px-4 py-2 rounded-xl bg-peach-deep text-white font-bold text-xs hover:bg-peach-deep/90 transition shadow-sm mt-2"
+            className="px-4 py-2 rounded-xl bg-brand-terracotta text-white font-bold text-xs hover:bg-brand-terracottaDark transition shadow-xs mt-2"
           >
             Xem tất cả video
           </button>
@@ -310,20 +312,20 @@ export default function VideosPage() {
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage <= 1 || isLoading}
-            className="px-3.5 py-2 rounded-xl bg-white border border-peach-soft text-brown text-xs font-bold disabled:opacity-40 hover:bg-peach-soft/30 transition flex items-center gap-1 shadow-sm"
+            className="px-3.5 py-2 rounded-xl bg-[#FFFDF9] border border-[#E6D7C3] text-paper-ink text-xs font-bold disabled:opacity-40 hover:bg-[#FAF4E8] transition flex items-center gap-1 shadow-xs"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Trang trước</span>
           </button>
 
-          <span className="text-xs font-bold text-brown px-3 py-1 bg-peach-soft/60 rounded-lg">
+          <span className="text-xs font-bold text-brand-terracottaDark px-3 py-1 bg-brand-peach/60 rounded-lg">
             {currentPage} / {totalPages}
           </span>
 
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage >= totalPages || isLoading}
-            className="px-3.5 py-2 rounded-xl bg-white border border-peach-soft text-brown text-xs font-bold disabled:opacity-40 hover:bg-peach-soft/30 transition flex items-center gap-1 shadow-sm"
+            className="px-3.5 py-2 rounded-xl bg-[#FFFDF9] border border-[#E6D7C3] text-paper-ink text-xs font-bold disabled:opacity-40 hover:bg-[#FAF4E8] transition flex items-center gap-1 shadow-xs"
           >
             <span>Trang sau</span>
             <ChevronRight className="w-4 h-4" />

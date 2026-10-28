@@ -94,6 +94,8 @@ describe("Home Service & Integration APIs (F12, F13, F08, F01)", () => {
       expect(summary.badges.hasUpcomingPlan).toBe(true);
       expect(summary.upcomingPlan).toBeDefined();
       expect(summary.upcomingPlan?.stops.length).toBeGreaterThanOrEqual(1);
+      // Điểm dừng tạo kèm kế hoạch chỉ có placeId, preview vẫn phải hiện tên địa điểm
+      expect(summary.upcomingPlan?.stops[0].title).toBe(result.placeName);
     });
 
     it("should add stop to existing upcoming plan", async () => {

@@ -1,4 +1,4 @@
-import type { ChecklistItem, DatePlan, PlanStop, Room, RoomMember } from "@/server/db/schema";
+import type { ChecklistItem, DatePlan, MemoryNote, PlanStop, Room, RoomMember } from "@/server/db/schema";
 import type { MatchRecord } from "@/server/db/repositories/types";
 import type { SwipeChoice } from "@/lib/constants/user";
 
@@ -20,6 +20,7 @@ interface MemoryStore {
   /** key = `${roomId}:${placeId}` (khớp unique của bảng matches). */
   matches: Map<string, MatchRecord & { roomId: string }>;
   savedByMember: Map<string, Map<string, Date>>;
+  memoryNotes: Map<string, MemoryNote>;
 }
 
 function createEmptyStore(): MemoryStore {
@@ -32,6 +33,7 @@ function createEmptyStore(): MemoryStore {
     swipes: new Map(),
     matches: new Map(),
     savedByMember: new Map(),
+    memoryNotes: new Map(),
   };
 }
 

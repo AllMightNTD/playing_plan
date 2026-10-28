@@ -1,10 +1,29 @@
 "use client";
 
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
-import { HANOI_PLACES, HanoiPlace } from "@/lib/mock-data";
+import type { HanoiPlace } from "@/lib/mock-data";
 import { normalizeVietnamese } from "@/lib/search";
 import { isTrainStreetQuery, normalizeSearchQuery } from "@/lib/catalog-filter";
 import type { HomePublicDto, HomeSummaryDto } from "@/lib/types/home";
+import type { PlanDetailDto } from "@/server/services/user/plan.mapper";
+
+/** API places giới hạn 24 bản ghi/trang (placeListQuerySchema). */
+const PLACES_PAGE_SIZE = 24;
+
+async function fetchAllPlaces(): Promise<HanoiPlace[]> {
+  const all: HanoiPlace[] = [];
+  let cursor: string | null = null;
+  do {
+    const query = new URLSearchParams({ limit: String(PLACES_PAGE_SIZE) });
+    if (cursor) query.set("cursor", cursor);
+    const res = await fetch(`/api/v1/user/places?${query}`);
+    if (!res.ok) throw new Error(`places API ${res.status}`);
+    const payload = await res.json();
+    all.push(...(payload?.data?.items ?? []));
+    cursor = payload?.data?.nextCursor ?? null;
+  } while (cursor);
+  return all;
+}
 
 export interface PlanStopItem {
   id: string;
@@ -40,11 +59,15 @@ interface AppContextType {
   homeSummary: HomeSummaryDto | null;
   isLoadingHome: boolean;
   refetchHomeSummary: () => Promise<void>;
+  upcomingPlan: PlanDetailDto | null;
+  isPlaceInUpcomingPlan: (placeIdOrSlug: string) => boolean;
+  toggleUpcomingChecklistItem: (itemId: string) => Promise<void>;
   quickAddPlaceToPlan: (placeOrId: HanoiPlace | string) => Promise<boolean>;
   recordPlaceView: (slug: string) => void;
 
   // Places & search
   places: HanoiPlace[];
+  isLoadingPlaces: boolean;
   filteredPlaces: HanoiPlace[];
   searchQuery: string;
   setSearchQuery: (q: string) => void;
@@ -111,8 +134,9 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  // 1. Places & Search (khởi tạo với mock data, sau đó nạp dữ liệu thật kèm ảnh từ TiDB API)
-  const [places, setPlaces] = useState<HanoiPlace[]>(HANOI_PLACES);
+  // 1. Places & Search (nạp toàn bộ địa điểm đã xuất bản từ API)
+  const [places, setPlaces] = useState<HanoiPlace[]>([]);
+  const [isLoadingPlaces, setIsLoadingPlaces] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
@@ -135,17 +159,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/v1/user/places?limit=50")
-      .then((res) => res.json())
-      .then((payload) => {
-        if (!active) return;
-        const items = payload?.data?.items;
-        if (Array.isArray(items) && items.length > 0) {
-          setPlaces(items);
-        }
+    fetchAllPlaces()
+      .then((items) => {
+        if (active) setPlaces(items);
       })
       .catch((err) => {
-        console.warn("Không thể tải danh sách địa điểm từ API, dùng dữ liệu seed:", err);
+        console.warn("Không thể tải danh sách địa điểm từ API:", err);
+      })
+      .finally(() => {
+        if (active) setIsLoadingPlaces(false);
       });
 
     Promise.allSettled([
@@ -197,12 +219,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [places, searchQuery, selectedCategory]);
 
-  // 2. Saved
-  const [savedPlaceSlugs, setSavedPlaceSlugs] = useState<string[]>([
-    "cau-long-bien",
-    "ho-tay-duong-thanh-nien",
-    "ca-phe-view-cau-long-bien",
-  ]);
+  // Chi tiết buổi hẹn sắp tới (điểm dừng + checklist) — tải lại mỗi khi summary đổi
+  const [upcomingPlan, setUpcomingPlan] = useState<PlanDetailDto | null>(null);
+  const upcomingPlanId = homeSummary?.upcomingPlan?.id ?? null;
+
+  const loadUpcomingPlan = useCallback(async (planId: string | null) => {
+    if (!planId) {
+      setUpcomingPlan(null);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/user/plans/${encodeURIComponent(planId)}`, { cache: "no-store" });
+      const json = await res.json();
+      setUpcomingPlan(res.ok ? json.data : null);
+    } catch (err) {
+      console.warn("Không thể tải chi tiết buổi hẹn:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUpcomingPlan(upcomingPlanId);
+  }, [upcomingPlanId, homeSummary, loadUpcomingPlan]);
+
+  // 2. Saved (đồng bộ từ home summary, chưa có phiên thì rỗng)
+  const [savedPlaceSlugs, setSavedPlaceSlugs] = useState<string[]>([]);
 
   const isPlaceSaved = (slugOrId: string) => {
     const target = places.find((p) => p.slug === slugOrId || p.id === slugOrId);
@@ -369,22 +409,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       const json = await res.json();
       if (json?.data?.success) {
-        addToast(`📅 Đã thêm "${placeName}" vào Kế hoạch!`, "success");
-        if (place) {
-          addStopToPlan(place);
-        }
+        addToast(`📅 Đã thêm "${placeName}" vào "${json.data.planTitle}"!`, "success");
         await refetchHomeSummary();
         return true;
       }
+      addToast(json?.error?.message || "Chưa thêm được vào kế hoạch, thử lại nhé.", "error");
     } catch (e) {
       console.warn("Lỗi quick-add trạm:", e);
-    }
-
-    if (place) {
-      addStopToPlan(place);
-      return true;
+      addToast("Mất kết nối, chưa thêm được vào kế hoạch.", "error");
     }
     return false;
+  };
+
+  const isPlaceInUpcomingPlan = (placeIdOrSlug: string) => {
+    if (!upcomingPlan) return false;
+    const target = places.find((p) => p.slug === placeIdOrSlug || p.id === placeIdOrSlug);
+    const placeId = target ? target.id : placeIdOrSlug;
+    return upcomingPlan.stops.some((stop) => stop.placeId === placeId);
+  };
+
+  const toggleUpcomingChecklistItem = async (itemId: string) => {
+    if (!upcomingPlan) return;
+    const item = upcomingPlan.checklist.find((c) => c.id === itemId);
+    if (!item) return;
+    const isDone = !item.isDone;
+
+    // Cập nhật lạc quan, lỗi thì trả lại trạng thái cũ
+    const applyDone = (done: boolean) =>
+      setUpcomingPlan((prev) =>
+        prev && {
+          ...prev,
+          checklist: prev.checklist.map((c) => (c.id === itemId ? { ...c, isDone: done } : c)),
+        }
+      );
+    applyDone(isDone);
+
+    try {
+      const res = await fetch(
+        `/api/v1/user/plans/${encodeURIComponent(upcomingPlan.id)}/checklist/${encodeURIComponent(itemId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isDone }),
+        }
+      );
+      if (!res.ok) throw new Error(`checklist API ${res.status}`);
+    } catch (e) {
+      console.warn("Lỗi cập nhật checklist:", e);
+      applyDone(!isDone);
+      addToast("Chưa lưu được checklist, thử lại nhé.", "error");
+    }
   };
 
   const removeStopFromPlan = (stopId: string) => {
@@ -449,12 +523,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isWheelOpen, setIsWheelOpen] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [recentWheelSlugs, setRecentWheelSlugs] = useState<string[]>([]);
-  const [wheelResult, setWheelResult] = useState<HanoiPlace | null>(HANOI_PLACES[0]);
+  const [wheelResult, setWheelResult] = useState<HanoiPlace | null>(null);
 
   const spinWheel = () => {
-    setIsSpinning(true);
     const candidates = places.filter((p) => !recentWheelSlugs.includes(p.slug));
     const pool = candidates.length > 0 ? candidates : places;
+    if (pool.length === 0) return;
+    setIsSpinning(true);
     const chosen = pool[Math.floor(Math.random() * pool.length)];
 
     setTimeout(() => {
@@ -521,10 +596,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         homeSummary,
         isLoadingHome,
         refetchHomeSummary,
+        upcomingPlan,
+        isPlaceInUpcomingPlan,
+        toggleUpcomingChecklistItem,
         quickAddPlaceToPlan,
         recordPlaceView,
 
         places,
+        isLoadingPlaces,
         filteredPlaces,
         searchQuery,
         setSearchQuery,

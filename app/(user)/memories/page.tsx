@@ -6,7 +6,6 @@ import {
   Camera,
   UploadCloud,
   Calendar,
-  Sparkles,
   ShieldCheck,
   Star,
 } from "lucide-react";
@@ -62,48 +61,57 @@ export default function MemoriesPage() {
 
     setMemories([newMem, ...memories]);
     addToast(
-      "📸 Đã nén ảnh sang WebP (<300KB/ảnh), xóa EXIF GPS và lưu vào Kho kỷ niệm!",
+      "📸 Đã nén ảnh sang WebP (<300KB/ảnh), xóa EXIF GPS và dán vào Nhật ký kỷ niệm!",
       "success"
     );
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Year in Review Banner (F11 + Cloudflare R2 Free) */}
-      <div className="bg-gradient-to-r from-[#3B2A2A] to-[#6B4B4B] text-white rounded-3xl p-5 sm:p-7 flex flex-wrap items-center justify-between gap-4 shadow-peach-lg">
+      {/* Year in Review Banner (F11 Scrapbook Album) */}
+      <div className="relative overflow-hidden rounded-3xl bg-[#FFFDF9] border border-[#E6D7C3] p-5 sm:p-7 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+        <div className="washi-tape washi-terracotta -top-3.5 left-10" />
+
         <div className="space-y-1.5 max-w-xl">
-          <span className="text-[11px] font-mono uppercase text-peach flex items-center gap-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-brand-terracotta flex items-center gap-1.5">
             <Camera className="w-3.5 h-3.5" />
-            <span>F11 • Kho kỷ niệm riêng tư (Cloudflare R2 Free)</span>
+            <span>F11 • Kho kỷ niệm riêng tư (Nén WebP & Xóa EXIF GPS)</span>
           </span>
-          <h3 className="font-display font-extrabold text-2xl sm:text-3xl">
-            Năm 2026 của Dũng & Linh 💕
+          <h3 className="font-serif font-extrabold text-2xl sm:text-3xl text-paper-ink">
+            Nhật Ký Năm 2026 của Dũng & Linh 💕
           </h3>
-          <p className="text-xs sm:text-sm text-white/85 leading-relaxed">
-            Đã đi cùng nhau <strong>14 buổi hẹn</strong> • Khu vực yêu thích nhất:{" "}
-            <strong>Hoàn Kiếm & Tây Hồ</strong>
+          <p className="text-xs sm:text-sm text-paper-muted leading-relaxed">
+            Đã đồng hành qua <strong>14 buổi hẹn hò Hà Nội</strong> • Góc yêu thích nhất:{" "}
+            <strong className="text-paper-ink">Hoàn Kiếm & Tây Hồ</strong>
           </p>
         </div>
 
         <button
           onClick={handleSimulateUpload}
-          className="px-5 py-3 rounded-2xl bg-peach-deep hover:bg-peach-hover text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center gap-2 active:scale-95"
+          className="px-5 py-3 rounded-2xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-2 active:scale-95"
         >
           <UploadCloud className="w-4 h-4" />
-          <span>+ Lưu kỷ niệm mới (Nén WebP)</span>
+          <span>+ Dán kỷ niệm mới (WebP Free)</span>
         </button>
       </div>
 
-      {/* Memory Cards Grid */}
+      {/* Memory Cards Grid - Corkboard style */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {memories.map((m) => (
+        {memories.map((m, idx) => (
           <div
             key={m.id}
-            className="bg-white rounded-3xl p-5 sm:p-6 border border-peach-soft shadow-sm space-y-4 hover:shadow-peach transition flex flex-col justify-between"
+            className="bg-[#FFFDF9] rounded-3xl p-5 sm:p-6 border border-[#E6D7C3] shadow-xs space-y-4 hover:shadow-md transition flex flex-col justify-between relative group"
           >
+            {/* Washi tape on alternating corners */}
+            <div
+              className={`washi-tape ${
+                idx % 2 === 0 ? "washi-olive -top-3.5 left-6" : "washi-terracotta -top-3.5 right-6"
+              }`}
+            />
+
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-peach-deep bg-peach-soft px-3 py-1 rounded-full flex items-center gap-1">
+                <span className="text-xs font-bold text-brand-terracottaDark bg-brand-peach px-3 py-1 rounded-full flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" />
                   <span>{m.date}</span>
                 </span>
@@ -114,20 +122,20 @@ export default function MemoriesPage() {
                 </div>
               </div>
 
-              <h4 className="font-display font-extrabold text-base sm:text-lg text-brown">
+              <h4 className="font-serif font-extrabold text-base sm:text-lg text-paper-ink">
                 {m.title}
               </h4>
 
-              <p className="text-xs sm:text-sm text-brown-muted leading-relaxed italic">
+              <p className="text-xs sm:text-sm text-paper-ink font-hand text-base leading-relaxed italic">
                 &ldquo;{m.journal}&rdquo;
               </p>
 
-              {/* Emoji badges */}
+              {/* Emoji stickers */}
               <div className="flex items-center gap-2 pt-1">
-                {m.emojis.map((e, idx) => (
+                {m.emojis.map((e, eIdx) => (
                   <div
-                    key={idx}
-                    className="w-14 h-14 rounded-2xl bg-cream border border-peach-soft flex items-center justify-center text-2xl shadow-inner"
+                    key={eIdx}
+                    className="w-14 h-14 rounded-2xl bg-[#FAF4E8] border border-[#E6D7C3] flex items-center justify-center text-2xl shadow-inner group-hover:scale-105 transition"
                   >
                     {e}
                   </div>
@@ -136,10 +144,10 @@ export default function MemoriesPage() {
             </div>
 
             {/* Footer with WebP compression and EXIF wipe */}
-            <div className="pt-3 border-t border-peach-soft/70 flex flex-wrap items-center justify-between gap-2 text-[11px] text-sage-dark font-mono">
+            <div className="pt-3 border-t border-[#E6D7C3] flex flex-wrap items-center justify-between gap-2 text-[11px] text-brand-olive font-mono">
               <span className="font-semibold">✅ {m.compressedInfo}</span>
-              <span className="flex items-center gap-1 text-brown-muted">
-                <ShieldCheck className="w-3.5 h-3.5 text-sage" />
+              <span className="flex items-center gap-1 text-paper-muted">
+                <ShieldCheck className="w-3.5 h-3.5 text-brand-olive" />
                 <span>Đã xóa EXIF GPS</span>
               </span>
             </div>

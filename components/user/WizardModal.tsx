@@ -55,26 +55,28 @@ export function WizardModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-cream w-full max-w-lg rounded-3xl shadow-2xl border border-peach-soft overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200 select-none">
+      <div className="bg-[#FAF4E8] w-full max-w-lg rounded-3xl shadow-2xl border-2 border-[#CBB292] overflow-hidden relative">
+        <div className="washi-tape washi-terracotta -top-3.5 left-10" />
+
         {/* Header */}
-        <div className="px-5 py-4 bg-[#FFF2EC] border-b border-peach-soft flex items-center justify-between">
+        <div className="px-5 py-4 bg-[#FFFDF9] border-b border-[#E6D7C3] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-2xl bg-peach-deep text-white flex items-center justify-center shadow-sm">
+            <span className="w-8 h-8 rounded-2xl bg-brand-terracotta text-white flex items-center justify-center shadow-xs">
               <Wand2 className="w-4 h-4" />
             </span>
             <div>
-              <h3 className="font-display font-extrabold text-base text-brown">
-                Hôm nay đi đâu? (Wizard 4 bước)
+              <h3 className="font-serif font-extrabold text-base text-paper-ink">
+                Hôm nay đi đâu? (Gợi ý 4 bước)
               </h3>
-              <p className="text-[11px] text-brown-muted">
-                Chấm điểm Mood (35đ) + Ngân sách (20đ) + Giờ vàng (15đ)
+              <p className="text-[11px] text-paper-muted">
+                Khớp Mood (35đ) + Ngân sách (20đ) + Giờ vàng SunCalc (15đ)
               </p>
             </div>
           </div>
           <button
             onClick={() => setIsWizardOpen(false)}
-            className="w-8 h-8 rounded-full bg-white hover:bg-peach-soft flex items-center justify-center text-brown transition"
+            className="w-8 h-8 rounded-full bg-[#E6D7C3] hover:bg-brand-peach flex items-center justify-center text-paper-ink transition"
             aria-label="Đóng"
           >
             <X className="w-4 h-4" />
@@ -86,11 +88,11 @@ export function WizardModal() {
           {/* Step 1: Budget */}
           {wizardStep === 1 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-brown-muted">
-                <span className="font-bold text-peach-deep">Bước 1 / 4</span>
-                <span>Chạm là qua bước tiếp</span>
+              <div className="flex items-center justify-between text-xs text-paper-muted">
+                <span className="font-bold text-brand-terracotta">Bước 1 / 4</span>
+                <span>Chạm để sang bước tiếp theo</span>
               </div>
-              <h4 className="font-display font-extrabold text-lg text-brown">
+              <h4 className="font-serif font-extrabold text-lg text-paper-ink">
                 1. Ngân sách hôm nay cho 2 người khoảng bao nhiêu?
               </h4>
               <div className="space-y-2.5">
@@ -118,19 +120,19 @@ export function WizardModal() {
                       setWizardStep(2);
                     }}
                     className={cn(
-                      "w-full p-4 rounded-2xl bg-white hover:bg-peach-soft/60 border text-left flex items-center justify-between transition group",
+                      "w-full p-4 rounded-2xl bg-[#FFFDF9] hover:bg-brand-peach/40 border text-left flex items-center justify-between transition group shadow-2xs",
                       wizardAnswers.budget === item.level
-                        ? "border-peach-deep bg-peach-soft/30"
-                        : "border-peach-soft"
+                        ? "border-brand-terracotta bg-brand-peach/50"
+                        : "border-[#E6D7C3]"
                     )}
                   >
                     <div>
-                      <div className="font-bold text-sm text-brown group-hover:text-peach-deep transition">
+                      <div className="font-bold text-sm text-paper-ink group-hover:text-brand-terracotta transition">
                         {item.title}
                       </div>
-                      <div className="text-xs text-brown-muted mt-0.5">{item.desc}</div>
+                      <div className="text-xs text-paper-muted mt-0.5">{item.desc}</div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-peach-deep group-hover:translate-x-1 transition" />
+                    <ChevronRight className="w-4 h-4 text-brand-terracotta group-hover:translate-x-1 transition" />
                   </button>
                 ))}
               </div>
@@ -140,16 +142,16 @@ export function WizardModal() {
           {/* Step 2: Mood */}
           {wizardStep === 2 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-brown-muted">
+              <div className="flex items-center justify-between text-xs text-paper-muted">
                 <button
                   onClick={() => setWizardStep(1)}
-                  className="font-bold text-brown hover:underline"
+                  className="font-bold text-paper-ink hover:underline"
                 >
                   ← Quay lại
                 </button>
-                <span className="font-bold text-peach-deep">Bước 2 / 4 (Chọn tối đa 2)</span>
+                <span className="font-bold text-brand-terracotta">Bước 2 / 4 (Chọn tối đa 2)</span>
               </div>
-              <h4 className="font-display font-extrabold text-lg text-brown">
+              <h4 className="font-serif font-extrabold text-lg text-paper-ink">
                 2. Mood của hai bạn hôm nay là gì?
               </h4>
               <div className="grid grid-cols-1 gap-2">
@@ -160,15 +162,15 @@ export function WizardModal() {
                       key={m.key}
                       onClick={() => toggleMood(m.key)}
                       className={cn(
-                        "p-3.5 rounded-2xl border text-left font-bold text-xs flex items-center justify-between transition",
+                        "p-3.5 rounded-2xl border text-left font-bold text-xs flex items-center justify-between transition shadow-2xs",
                         active
-                          ? "bg-peach-soft border-peach-deep text-peach-deep"
-                          : "bg-white border-peach-soft text-brown hover:bg-peach-soft/40"
+                          ? "bg-brand-peach border-brand-terracotta text-brand-terracottaDark"
+                          : "bg-[#FFFDF9] border-[#E6D7C3] text-paper-ink hover:bg-brand-peach/30"
                       )}
                     >
                       <span>{m.label}</span>
                       {active && (
-                        <span className="px-2 py-0.5 rounded-full bg-peach-deep text-white text-[10px] flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-full bg-brand-terracotta text-white text-[10px] flex items-center gap-1">
                           <Check className="w-3 h-3" />
                           Đã chọn
                         </span>
@@ -179,7 +181,7 @@ export function WizardModal() {
               </div>
               <button
                 onClick={() => setWizardStep(3)}
-                className="w-full py-3 rounded-2xl bg-peach-deep text-white font-bold text-xs shadow hover:bg-peach-hover transition"
+                className="w-full py-3 rounded-2xl bg-brand-terracotta text-white font-bold text-xs shadow-xs hover:bg-brand-terracottaDark transition"
               >
                 Tiếp tục →
               </button>
@@ -189,16 +191,16 @@ export function WizardModal() {
           {/* Step 3: Time Slot */}
           {wizardStep === 3 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-brown-muted">
+              <div className="flex items-center justify-between text-xs text-paper-muted">
                 <button
                   onClick={() => setWizardStep(2)}
-                  className="font-bold text-brown hover:underline"
+                  className="font-bold text-paper-ink hover:underline"
                 >
                   ← Quay lại
                 </button>
-                <span className="font-bold text-peach-deep">Bước 3 / 4</span>
+                <span className="font-bold text-brand-terracotta">Bước 3 / 4</span>
               </div>
-              <h4 className="font-display font-extrabold text-lg text-brown">
+              <h4 className="font-serif font-extrabold text-lg text-paper-ink">
                 3. Hai bạn định đi vào khung giờ nào?
               </h4>
               <div className="space-y-2.5 text-xs">
@@ -230,19 +232,19 @@ export function WizardModal() {
                       setWizardStep(4);
                     }}
                     className={cn(
-                      "w-full p-4 rounded-2xl border text-left font-bold transition flex items-center justify-between",
+                      "w-full p-4 rounded-2xl border text-left font-bold transition flex items-center justify-between shadow-2xs",
                       item.featured
-                        ? "bg-peach-soft/50 hover:bg-peach-soft border-peach text-peach-deep"
-                        : "bg-white hover:bg-peach-soft/60 border-peach-soft text-brown"
+                        ? "bg-brand-peach/50 hover:bg-brand-peach border-brand-terracotta/40 text-brand-terracottaDark"
+                        : "bg-[#FFFDF9] hover:bg-brand-peach/30 border-[#E6D7C3] text-paper-ink"
                     )}
                   >
                     <div>
                       <div className="text-sm">{item.title}</div>
-                      <div className="text-xs font-normal text-brown-muted mt-0.5">
+                      <div className="text-xs font-normal text-paper-muted mt-0.5">
                         {item.desc}
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-peach-deep" />
+                    <ChevronRight className="w-4 h-4 text-brand-terracotta" />
                   </button>
                 ))}
               </div>
@@ -252,16 +254,16 @@ export function WizardModal() {
           {/* Step 4: Transport */}
           {wizardStep === 4 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-brown-muted">
+              <div className="flex items-center justify-between text-xs text-paper-muted">
                 <button
                   onClick={() => setWizardStep(3)}
-                  className="font-bold text-brown hover:underline"
+                  className="font-bold text-paper-ink hover:underline"
                 >
                   ← Quay lại
                 </button>
-                <span className="font-bold text-peach-deep">Bước 4 / 4</span>
+                <span className="font-bold text-brand-terracotta">Bước 4 / 4</span>
               </div>
-              <h4 className="font-display font-extrabold text-lg text-brown">
+              <h4 className="font-serif font-extrabold text-lg text-paper-ink">
                 4. Hai bạn di chuyển bằng phương tiện gì?
               </h4>
               <div className="space-y-2.5 text-xs">
@@ -291,15 +293,15 @@ export function WizardModal() {
                       });
                       setWizardStep(5);
                     }}
-                    className="w-full p-4 rounded-2xl bg-white hover:bg-peach-soft/60 border border-peach-soft text-left font-bold text-brown transition flex items-center justify-between"
+                    className="w-full p-4 rounded-2xl bg-[#FFFDF9] hover:bg-brand-peach/40 border border-[#E6D7C3] text-left font-bold text-paper-ink transition flex items-center justify-between shadow-2xs"
                   >
                     <div>
                       <div className="text-sm">{item.title}</div>
-                      <div className="text-xs font-normal text-brown-muted mt-0.5">
+                      <div className="text-xs font-normal text-paper-muted mt-0.5">
                         {item.desc}
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-peach-deep" />
+                    <ChevronRight className="w-4 h-4 text-brand-terracotta" />
                   </button>
                 ))}
               </div>
@@ -310,18 +312,18 @@ export function WizardModal() {
           {wizardStep === 5 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded-full bg-sage-light text-sage-dark text-xs font-bold">
-                  ✅ Đã chọn lọc đa dạng danh mục
+                <span className="px-2.5 py-0.5 rounded-full bg-brand-olive/15 text-brand-olive text-xs font-bold border border-brand-olive/20">
+                  ✅ Đã chọn lọc qua Scoring Engine F05
                 </span>
                 <button
                   onClick={() => setWizardStep(1)}
-                  className="text-xs font-bold text-peach-deep hover:underline"
+                  className="text-xs font-bold text-brand-terracotta hover:underline"
                 >
                   Chọn lại
                 </button>
               </div>
 
-              <h4 className="font-display font-extrabold text-base text-brown">
+              <h4 className="font-serif font-extrabold text-base text-paper-ink">
                 3 Gợi ý hợp gu nhất cho hai bạn hôm nay:
               </h4>
 
@@ -329,26 +331,26 @@ export function WizardModal() {
                 {scoredPlaces.map((item) => (
                   <div
                     key={item.place.id}
-                    className="p-3.5 rounded-2xl bg-white border border-peach-soft space-y-2 shadow-sm"
+                    className="p-3.5 rounded-2xl bg-[#FFFDF9] border border-[#E6D7C3] space-y-2 shadow-2xs"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{item.place.emoji}</span>
                         <div>
-                          <h5 className="font-display font-extrabold text-sm text-brown">
+                          <h5 className="font-serif font-extrabold text-sm text-paper-ink">
                             {item.place.name}
                           </h5>
-                          <span className="text-[11px] text-brown-muted">
+                          <span className="text-[11px] text-paper-muted">
                             📍 {item.place.area}
                           </span>
                         </div>
                       </div>
-                      <span className="px-2.5 py-1 rounded-full bg-peach-deep text-white font-bold text-xs shrink-0">
+                      <span className="px-2.5 py-1 rounded-full bg-brand-terracotta text-white font-bold text-xs shrink-0 shadow-2xs">
                         {item.score}% Hợp gu
                       </span>
                     </div>
 
-                    <p className="text-xs text-sage-dark font-semibold">
+                    <p className="text-xs text-brand-olive font-semibold">
                       💡 Hợp vì: {item.reasons.join(" • ")}
                     </p>
 
@@ -358,7 +360,7 @@ export function WizardModal() {
                           setIsWizardOpen(false);
                           setActiveDetailSlug(item.place.slug);
                         }}
-                        className="flex-1 py-2 rounded-xl bg-peach-soft hover:bg-peach text-brown font-bold text-xs transition"
+                        className="flex-1 py-2 rounded-xl bg-brand-peach hover:bg-brand-coral/30 text-brand-terracottaDark font-bold text-xs transition border border-brand-terracotta/20"
                       >
                         Xem cẩm nang
                       </button>
@@ -367,7 +369,7 @@ export function WizardModal() {
                           setIsWizardOpen(false);
                           addStopToPlan(item.place);
                         }}
-                        className="flex-1 py-2 rounded-xl bg-peach-deep hover:bg-peach-hover text-white font-bold text-xs shadow-sm transition"
+                        className="flex-1 py-2 rounded-xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs shadow-2xs transition"
                       >
                         + Thêm vào lịch
                       </button>

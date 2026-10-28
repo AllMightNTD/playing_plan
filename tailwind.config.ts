@@ -14,6 +14,25 @@ export default {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        paper: {
+          bg: "#FAF4E8",
+          card: "#FFFDF9",
+          kraft: "#E5D1B8",
+          kraftDark: "#CBB292",
+          yellow: "#F9EFC7",
+          ink: "#362721",
+          muted: "#7A665C",
+        },
+        brand: {
+          terracotta: "#C84B31",
+          terracottaDark: "#A6361F",
+          coral: "#F29B7E",
+          peach: "#FADCD2",
+          olive: "#6E8361",
+          oliveLight: "#DCE6D5",
+          mustard: "#D99B26",
+          airmailBlue: "#3E5C76",
+        },
         cream: "#FFF7F3",
         peach: {
           soft: "#FFE3DA",
@@ -43,8 +62,10 @@ export default {
         },
       },
       fontFamily: {
+        serif: ["Fraunces", "Georgia", "serif"],
         sans: ['"Be Vietnam Pro"', "Nunito", "sans-serif"],
-        display: ["Nunito", '"Be Vietnam Pro"', "sans-serif"],
+        hand: ['"Patrick Hand"', "cursive"],
+        display: ["Fraunces", "Nunito", '"Be Vietnam Pro"', "sans-serif"],
         mono: ['"JetBrains Mono"', "monospace"],
       },
       borderRadius: {

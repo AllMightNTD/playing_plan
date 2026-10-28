@@ -18,5 +18,11 @@ export const MAX_PLAN_STOPS = 20;
 export const MAX_CHECKLIST_ITEMS = 50;
 export const MAX_PLANS_LISTED = 100;
 export const DEFAULT_STOP_DURATION_MIN = 60;
+export const MEMORY_NOTE_COLORS = ["peach", "yellow", "olive"] as const;
+export type MemoryNoteColor = (typeof MEMORY_NOTE_COLORS)[number];
+export const MEMORY_NOTE_MAX_LENGTH = 280;
+export const MAX_MEMORY_NOTES = 100;
+export const MAX_MEMORIES_LISTED = 30;
+
 /** F19: mặc định mở khóa kế hoạch bất ngờ 2 giờ trước giờ hẹn. */
 export const SECRET_REVEAL_LEAD_MS = 2 * 60 * 60 * 1000;

@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Nunito:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #FFF7F3;
+    --foreground: #3B2A2A;
+    --card: #FFFFFF;
+    --card-foreground: #3B2A2A;
+    --popover: #FFFFFF;
+    --popover-foreground: #3B2A2A;
+    --primary: #C93F52;
+    --primary-foreground: #FFFFFF;
+    --secondary: #FFE3DA;
+    --secondary-foreground: #3B2A2A;
+    --muted: #FFF0EB;
+    --muted-foreground: #7D6B6B;
+    --accent: #FF9E8D;
+    --accent-foreground: #FFFFFF;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --border: #F3DDD6;
+    --input: #F3DDD6;
+    --ring: #FF9E8D;
+    --radius: 1rem;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Thao tác cảm ứng mượt mà trên điện thoại */
+.touch-pan-y {
+  touch-action: pan-y;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+.animate-float {
+  animation: floatSlow 3.5s ease-in-out infinite;
+}
+
+@keyframes spinWheel {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(1080deg); }
+}
+
+.wheel-spinning {
+  animation: spinWheel 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 227, 218, 0.3);
+}
+::-webkit-scrollbar-thumb {
+  background: #FF9E8D;
+  border-radius: 9999px;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

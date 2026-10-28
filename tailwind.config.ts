@@ -1,0 +1,66 @@
+import type { Config } from "tailwindcss";
+
+export default {
+  darkMode: ["class"],
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
+    "./context/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        cream: "#FFF7F3",
+        peach: {
+          soft: "#FFE3DA",
+          DEFAULT: "#FF9E8D",
+          deep: "#C93F52",
+          hover: "#B23244",
+          50: "#FFF7F3",
+          100: "#FFE3DA",
+          200: "#FFC5B5",
+          300: "#FFA895",
+          400: "#FF9E8D",
+          500: "#F06B62",
+          600: "#DB4A57",
+          700: "#C93F52",
+          800: "#A22F40",
+          900: "#3B2A2A",
+        },
+        brown: {
+          DEFAULT: "#3B2A2A",
+          muted: "#6E5656",
+          light: "#9A8282",
+        },
+        sage: {
+          light: "#EBF3EE",
+          DEFAULT: "#7A9E87",
+          dark: "#52735E",
+        },
+      },
+      fontFamily: {
+        sans: ['"Be Vietnam Pro"', "Nunito", "sans-serif"],
+        display: ["Nunito", '"Be Vietnam Pro"', "sans-serif"],
+        mono: ['"JetBrains Mono"', "monospace"],
+      },
+      borderRadius: {
+        "2xl": "16px",
+        "3xl": "24px",
+        "4xl": "32px",
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        peach: "0 10px 30px -5px rgba(201, 63, 82, 0.12), 0 4px 12px -2px rgba(59, 42, 42, 0.05)",
+        "peach-lg": "0 20px 40px -10px rgba(201, 63, 82, 0.22)",
+        phone: "0 25px 60px -15px rgba(25, 15, 15, 0.45), 0 0 0 10px #231F20, 0 0 0 12px #4A4244",
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+} satisfies Config;

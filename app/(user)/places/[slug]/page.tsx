@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { HANOI_PLACES, HIDDEN_SAFETY_PLACE } from "@/lib/mock-data";
+import { HIDDEN_SAFETY_PLACE } from "@/lib/constants/catalog";
+import type { HanoiPlace } from "@/lib/types/catalog";
 import { getAllPublishedPlaces, findPlaceBySlug } from "@/server/services/user/places.service";
 import { getBestTimes } from "@/lib/sun";
+import { calculateHaversineDistanceKm } from "@/lib/travel-time";
 import { Sun, Sparkles, AlertTriangle, ArrowLeft, Heart, CalendarPlus, MapPin, Camera, Shirt, Compass, Images } from "lucide-react";
 import { PlaceDetailActions } from "./PlaceDetailActions";
 import { PlaceMediaGallery } from "@/components/user/PlaceMediaGallery";
@@ -14,7 +16,8 @@ import { filterAiSummary } from "@/server/services/admin/governance.policy";
 export const revalidate = 3600; // ISR 1 giờ
 
 export async function generateStaticParams() {
-  const places = await getAllPublishedPlaces();
+  // Build không có DB thì bỏ qua prerender, trang sẽ render theo yêu cầu (ISR)
+  const places = await getAllPublishedPlaces().catch(() => []);
   return places.map((p) => ({ slug: p.slug }));
 }
 
@@ -60,7 +63,7 @@ export default async function PlaceDetailPage({
 
   // Xử lý địa điểm cảnh báo an toàn đường sắt (Mục 14.2)
   if (slug === HIDDEN_SAFETY_PLACE.slug) {
-    const alternativePlaces = HANOI_PLACES.filter((p) =>
+    const alternativePlaces = (await getAllPublishedPlaces()).filter((p) =>
       HIDDEN_SAFETY_PLACE.alternatives.includes(p.slug)
     );
 
@@ -132,9 +135,20 @@ export default async function PlaceDetailPage({
   const lng = place.lng ?? 105.8542;
   const sunTimes = getBestTimes(lat, lng);
 
-  const nearbyPlaces = (place.nearbyIds || [])
-    .map((id) => HANOI_PLACES.find((p) => p.id === id || p.slug === id))
-    .filter((p): p is typeof HANOI_PLACES[0] => Boolean(p));
+  // Ưu tiên danh sách gần đây do admin chọn; DB chưa có thì lấy 3 địa điểm gần nhất theo tọa độ
+  const allPlaces = await getAllPublishedPlaces();
+  const curatedNearby = (place.nearbyIds || [])
+    .map((id) => allPlaces.find((p) => p.id === id || p.slug === id))
+    .filter((p): p is HanoiPlace => Boolean(p));
+  const nearbyPlaces =
+    curatedNearby.length > 0
+      ? curatedNearby
+      : allPlaces
+          .filter((p) => p.id !== place.id && p.lat != null && p.lng != null)
+          .map((p) => ({ p, km: calculateHaversineDistanceKm({ lat, lng }, { lat: p.lat!, lng: p.lng! }) }))
+          .sort((a, b) => a.km - b.km)
+          .slice(0, 3)
+          .map(({ p }) => p);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 py-2 sm:py-6">

@@ -6,14 +6,14 @@ import { z } from "zod";
 
 const gradeSampleBodySchema = z.object({
   itemId: z.string().min(1),
-  type: z.enum(["place", "video"]),
+  type: z.enum(["place", "video", "hotspot"]),
   isCorrect: z.boolean(),
   feedback: z.string().optional(),
 });
 
 export const POST = handleRoute(async (req: NextRequest) => {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const body = await parseJsonBody(req, gradeSampleBodySchema);
-  const result = await gradeSampleItem(body);
+  const result = await gradeSampleItem(body, admin.email);
   return jsonData(result);
 });

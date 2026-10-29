@@ -1,3 +1,4 @@
+import { assertPublishNotPaused } from "@/server/services/pipeline/pipeline-control.service";
 import { db } from "@/server/db/client";
 import { places, placeMedia, Place } from "@/server/db/schema/places";
 import { placeVideos, candidatePlaces } from "@/server/db/schema/governance";
@@ -5,8 +6,7 @@ import { matchVideosWithPlaces, VideoForMatching, PlaceForMatching } from "@/ser
 import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
 import { nanoid } from "nanoid";
 import { eq, and, sql } from "drizzle-orm";
-import fs from "fs";
-import path from "path";
+import { loadCatalogVideos, readLocalRawVideos } from "@/server/services/videos/video-catalog.service";
 
 export interface AutoPublishOptions {
   executor?: any;
@@ -30,46 +30,11 @@ export interface AutoPublishResult {
   }>;
 }
 
-export interface RawVideoItem {
-  videoId: string;
-  title: string;
-  description: string;
-  channelId: string;
-  channelTitle: string;
-  viewCount: number;
-  likeCount?: number;
-  commentCount?: number;
-  publishedAt: string;
-  isEmbeddable: boolean;
-  searchCategory?: string;
-  searchLocation?: string;
-  searchFocus?: string;
-}
-
-/**
- * Tải danh sách video đã cào từ file raw_videos.json
- */
-export function loadRawVideos(customPath?: string): RawVideoItem[] {
-  const filePath = customPath || path.resolve(process.cwd(), "scripts/output/youtube/raw_videos.json");
-  if (!fs.existsSync(filePath)) {
-    console.warn(`[AutoPublish] Không tìm thấy file video tại: ${filePath}`);
-    return [];
-  }
-  try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    const parsed = JSON.parse(content);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (err) {
-    console.error(`[AutoPublish] Lỗi parse file video:`, err);
-    return [];
-  }
-}
-
 /**
  * Tự động xuất bản các video review YouTube đã match vào bảng place_media và place_videos
  * Quy trình:
  * 1. Lấy toàn bộ địa điểm chính thức (places) từ DB.
- * 2. Lấy video đầu vào (từ raw_videos.json hoặc truyền vào).
+ * 2. Lấy video đầu vào từ bảng video_catalog (hoặc file chỉ định khi chạy tay).
  * 3. Chạy thuật toán so khớp địa danh & ngữ cảnh (place-video matcher).
  * 4. Với các video đạt ngưỡng điểm tự động (mặc định >= 60 điểm):
  *    - Kiểm tra xem đã có trong place_media chưa.
@@ -83,6 +48,9 @@ export async function autoPublishMatchedVideos(
   const executor = options.executor || db;
   const minConfidence = options.minConfidence ?? 60;
   const revalidate = options.revalidate ?? true;
+
+  // Phanh publish đang bật (circuit breaker/admin/env) thì không xuất bản video nào
+  await assertPublishNotPaused();
 
   // 1. Tải danh sách places chính thức
   const allPlaces: Place[] = await executor
@@ -101,7 +69,7 @@ export async function autoPublishMatchedVideos(
   }
 
   // 2. Tải raw videos
-  const rawVideos = loadRawVideos(options.rawVideosPath);
+  const rawVideos = options.rawVideosPath ? readLocalRawVideos(options.rawVideosPath) : await loadCatalogVideos();
   if (rawVideos.length === 0) {
     return {
       totalProcessedVideos: 0,

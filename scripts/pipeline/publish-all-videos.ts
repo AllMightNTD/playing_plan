@@ -1,3 +1,4 @@
+import { runTrackedPipeline } from "@/server/services/pipeline/pipeline-run.service";
 import { autoPublishMatchedVideos } from "@/server/services/pipeline/auto-publish-videos.service";
 
 async function main() {
@@ -26,9 +27,13 @@ async function main() {
     );
   });
   console.log("=====================================================\n");
+  return { summary: { publishedToMediaCount: result.publishedToMediaCount, matched: result.matchedWithPlacesCount } };
 }
 
-main().catch((err) => {
+runTrackedPipeline("video_match", async () => {
+  const { summary } = await main();
+  return { result: undefined, summary };
+}).catch((err) => {
   console.error("❌ Lỗi khi xuất bản video:", err);
   process.exit(1);
 });

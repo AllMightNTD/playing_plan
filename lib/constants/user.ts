@@ -26,3 +26,6 @@ export const MAX_MEMORIES_LISTED = 30;
 
 /** F19: mặc định mở khóa kế hoạch bất ngờ 2 giờ trước giờ hẹn. */
 export const SECRET_REVEAL_LEAD_MS = 2 * 60 * 60 * 1000;
+
+/** Phòng chờ giải tán được giữ 14 ngày rồi mới xóa vĩnh viễn (Nghị định 13/2023). */
+export const SOFT_DELETE_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;

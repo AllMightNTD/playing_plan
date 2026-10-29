@@ -11,7 +11,8 @@ export interface PurgeResultDto {
   purgedRoomIds: string[];
 }
 
-export const SOFT_DELETE_RETENTION_MS = 14 * 24 * 60 * 60 * 1000; // 14 ngày theo Nghị định 13/2023
+export { SOFT_DELETE_RETENTION_MS } from "@/lib/constants/user";
+import { SOFT_DELETE_RETENTION_MS } from "@/lib/constants/user";
 
 /**
  * Xóa sạch thư mục lưu trữ ảnh của phòng trên đĩa

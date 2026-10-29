@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { LayoutDashboard, MapPin, PlusCircle, Image, History, ArrowLeft, Radio } from "lucide-react";
+import { AdminHealthBadge } from "./_shared/AdminHealthBadge";
+import { LayoutDashboard, MapPin, ArrowLeft, Radio, Video } from "lucide-react";
 
 const ADMIN_NAV = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Radar Tự Động", href: "/admin/pipeline", icon: Radio },
   { label: "Quản lý địa điểm", href: "/admin/places", icon: MapPin },
-  { label: "Thêm địa điểm", href: "/admin/places/new", icon: PlusCircle },
-  { label: "Kho Media & Bản quyền", href: "/admin/media", icon: Image },
-  { label: "Nhật ký hệ thống", href: "/admin/audit-logs", icon: History },
+  { label: "Mốc địa điểm trong video", href: "/admin/videos", icon: Video },
 ];
 
 export default function AdminLayout({
@@ -57,10 +56,7 @@ export default function AdminLayout({
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 border-b border-slate-200 bg-white px-6 flex items-center justify-between shrink-0">
           <span className="text-sm font-semibold text-slate-700">Quản trị viên DateMate</span>
-          <div className="flex items-center gap-2 text-xs bg-peach-50 text-peach-700 px-3 py-1 rounded-full border border-peach-100 font-medium">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span>Hệ thống hoạt động ổn định</span>
-          </div>
+          <AdminHealthBadge />
         </header>
 
         <main className="p-6 flex-1 max-w-6xl w-full mx-auto">{children}</main>

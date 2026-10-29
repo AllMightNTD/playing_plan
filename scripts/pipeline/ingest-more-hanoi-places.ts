@@ -1,3 +1,6 @@
+import { runTrackedPipeline } from "@/server/services/pipeline/pipeline-run.service";
+import { loadCatalogVideos } from "@/server/services/videos/video-catalog.service";
+import { assertPublishNotPaused } from "@/server/services/pipeline/pipeline-control.service";
 import { db } from "@/server/db/client";
 import { places, placeGuides, placeMedia, Place } from "@/server/db/schema/places";
 import {
@@ -160,6 +163,8 @@ function slugify(name: string): string {
 }
 
 async function main() {
+  // Phanh publish (circuit breaker/admin/env) đang bật thì không chạy script xuất bản hàng loạt
+  await assertPublishNotPaused();
   console.log("==================================================================");
   console.log("🌍 [DateMate Expansion Engine] CÀO & MỞ RỘNG ĐỊA ĐIỂM TOÀN DIỆN HÀ NỘI");
   console.log("==================================================================");
@@ -407,9 +412,8 @@ async function main() {
 
   // 4. TỰ ĐỘNG SO KHỚP VỚI KHO VIDEO ĐANG CÓ
   console.log("\n--- [Giai đoạn 3] So khớp video review với các địa điểm mới ---");
-  const rawVideosPath = path.resolve(process.cwd(), "scripts/output/youtube/raw_videos.json");
-  if (fs.existsSync(rawVideosPath)) {
-    const rawVideos = JSON.parse(fs.readFileSync(rawVideosPath, "utf-8"));
+  const rawVideos = await loadCatalogVideos();
+  if (rawVideos.length > 0) {
     const allPublished: Place[] = await db.select().from(places).where(eq(places.status, "published"));
 
     const targets: PlaceForMatching[] = allPublished.map((p) => ({
@@ -419,7 +423,7 @@ async function main() {
       district: p.area || p.city,
     }));
 
-    const vidsForMatch: VideoForMatching[] = rawVideos.map((v: any) => ({
+    const vidsForMatch: VideoForMatching[] = rawVideos.map((v) => ({
       videoId: v.videoId,
       title: v.title,
       description: v.description,
@@ -479,9 +483,13 @@ async function main() {
   console.log(`   - Địa điểm thăng hạng mới: ${promotedCount}`);
   console.log(`   - TỔNG SỐ TỌA ĐỘ HẸN HÒ HIỆN TẠI: ${totalPlaces[0]?.count || 0}`);
   console.log("==================================================================");
+  return { promotedCount, summary: { promotedCount, durationSec: Number(durationSec) } };
 }
 
-main().catch((err) => {
+runTrackedPipeline("osm_ingest", async () => {
+  const { promotedCount, summary } = await main();
+  return { result: undefined, promotedCount, summary };
+}).catch((err) => {
   console.error("❌ Fatal Error in Expansion:", err);
   process.exit(1);
 });

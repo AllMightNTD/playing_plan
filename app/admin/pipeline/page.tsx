@@ -5,6 +5,7 @@ import { QuotaGaugeCard } from "./QuotaGaugeCard";
 import { DailySampleGrader } from "./DailySampleGrader";
 import { LiveEventsFeed } from "./LiveEventsFeed";
 import { BatchRollbackDialog } from "./BatchRollbackDialog";
+import { PublishPauseControl, type PublishPauseStateData } from "./PublishPauseControl";
 import {
   Radio,
   MapPin,
@@ -32,8 +33,10 @@ interface PipelineStatsData {
     autoLinkedCount: number;
     pendingReviewCount: number;
   };
-  rolling7DayAccuracy: number;
+  rolling7DayAccuracy: number | null;
+  gradedSampleCount: number;
   autoPause: boolean;
+  pause: PublishPauseStateData;
 }
 
 export default function PipelineRadarPage() {
@@ -82,7 +85,7 @@ export default function PipelineRadarPage() {
               )}
             </div>
             <p className="text-xs text-slate-500">
-              Giám sát chất lượng 85% địa điểm, 90% video review và kiểm toán 3 phút hàng ngày
+              Chấm mẫu hằng ngày; accuracy 7 ngày dưới 85% (tối thiểu 10 mẫu) sẽ tự bật phanh publish
             </p>
           </div>
         </div>
@@ -99,6 +102,8 @@ export default function PipelineRadarPage() {
         </div>
       </div>
 
+      <PublishPauseControl pause={stats?.pause ?? null} onChanged={fetchStats} />
+
       {/* Grid thống kê KPI */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Card 1: YouTube API Quota Gauge */}
@@ -106,7 +111,7 @@ export default function PipelineRadarPage() {
           used={stats?.quota.used ?? 0}
           max={stats?.quota.max ?? 8000}
           isHalted={stats?.quota.isHalted ?? false}
-          quotaDate={stats?.quota.quotaDate ?? "2026-10-28"}
+          quotaDate={stats?.quota.quotaDate ?? ""}
         />
 
         {/* Card 2: Rolling 7-day Accuracy */}
@@ -120,9 +125,11 @@ export default function PipelineRadarPage() {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-slate-900">
-                {stats?.rolling7DayAccuracy ?? 90}%
+                {stats?.rolling7DayAccuracy != null ? `${stats.rolling7DayAccuracy}%` : "—"}
               </span>
-              <span className="text-xs font-medium text-slate-500">Mục tiêu: ≥ 85%</span>
+              <span className="text-xs font-medium text-slate-500">
+                {stats ? `${stats.gradedSampleCount} mẫu • ` : ""}Mục tiêu: ≥ 85%
+              </span>
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import type { ScratchMapDto } from "@/server/services/user/gamification.service";
+import { HANOI_7_DISTRICTS } from "@/lib/districts";
 
 interface ScratchMapHanoiProps {
   onToast?: (message: string, type?: "success" | "error" | "info") => void;
@@ -10,7 +11,6 @@ interface ScratchMapHanoiProps {
 
 export function ScratchMapHanoi({ onToast, refreshTrigger = 0 }: ScratchMapHanoiProps) {
   const [scratchMap, setScratchMap] = useState<ScratchMapDto | null>(null);
-  const [localScratched, setLocalScratched] = useState<Record<string, boolean>>({});
 
   const toast = useCallback(
     (msg: string, type: "success" | "error" | "info" = "info") => {
@@ -35,59 +35,46 @@ export function ScratchMapHanoi({ onToast, refreshTrigger = 0 }: ScratchMapHanoi
     fetchScratchMap();
   }, [fetchScratchMap, refreshTrigger]);
 
-  const handleScratchTile = (districtKey: string, districtName: string) => {
-    setLocalScratched((prev) => {
-      const nextState = !prev[districtKey];
-      if (nextState) {
-        toast(`🪙 Đã cào mở khóa ${districtName} trên Bản đồ Hà Nội!`, "success");
-      }
-      return { ...prev, [districtKey]: nextState };
-    });
+  // Ô chỉ được cào khi phòng đã check-in tại quận đó; trạng thái lấy từ server (place_checkins)
+  const handleScratchTile = (districtName: string, scratched: boolean) => {
+    if (!scratched) {
+      toast(`🪙 Check-in tại một địa điểm ở ${districtName} để cào mở ô này nhé!`, "info");
+    }
   };
 
-  const districts = scratchMap?.districts || [
-    { key: "tay_ho", name: "Tây Hồ", count: 0, scratched: false },
-    { key: "hoan_kiem", name: "Hoàn Kiếm", count: 0, scratched: false },
-    { key: "ba_dinh", name: "Ba Đình", count: 0, scratched: false },
-    { key: "dong_da", name: "Đống Đa", count: 0, scratched: false },
-    { key: "thanh_xuan", name: "Thanh Xuân", count: 0, scratched: false },
-    { key: "hai_ba_trung", name: "Hai Bà Trưng", count: 0, scratched: false },
-    { key: "cau_giay", name: "Cầu Giấy", count: 0, scratched: false },
-  ];
-
-  const effectiveScratchedCount = districts.filter(
-    (d) => d.scratched || localScratched[d.key]
-  ).length;
-  const pct = Math.round((effectiveScratchedCount / districts.length) * 100);
+  const districts =
+    scratchMap?.districts ?? HANOI_7_DISTRICTS.map((d) => ({ key: d.key, name: d.name, count: 0, scratched: false }));
+  const scratchedCount = districts.filter((d) => d.scratched).length;
+  const pct = Math.round((scratchedCount / districts.length) * 100);
 
   return (
-    <div className="bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col justify-between space-y-4">
+    <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4">
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-brand-olive text-white">
-            🗺️ Scratch Map Hà Nội
+          <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-brand-olive text-white">
+            🗺️ Bản Đồ Kỷ Niệm
           </span>
           <span id="scratchPercentBadge" className="text-xs font-extrabold text-brand-terracotta">
-            Đã mở: {pct}% ({effectiveScratchedCount}/7 quận)
+            Đã mở: {pct}% ({scratchedCount}/{districts.length} quận)
           </span>
         </div>
 
         <h3 className="font-serif font-extrabold text-base text-paper-ink">
-          Cào Nhũ Bạc Mở Khóa 7 Khu Vực
+          Chinh Phục 7 Quận Hà Nội
         </h3>
         <p className="text-xs text-paper-muted mt-0.5">
-          Chạm vào từng ô nhũ bạc bên dưới để cào mở khóa kỷ niệm tại quận đó:
+          Mỗi lần hai bạn check-in tại một quận, ô nhũ bạc của quận đó sẽ được cào mở:
         </p>
 
         {/* Lưới 7 quận cào */}
         <div id="scratchDistrictsGrid" className="grid grid-cols-2 gap-2 my-4">
           {districts.map((d) => {
-            const isScratched = d.scratched || localScratched[d.key];
+            const isScratched = d.scratched;
             return (
               <button
                 key={d.key}
                 type="button"
-                onClick={() => handleScratchTile(d.key, d.name)}
+                onClick={() => handleScratchTile(d.name, isScratched)}
                 className={`p-2.5 rounded-xl border text-left transition ${
                   isScratched
                     ? "bg-[#FAF4E8] border-brand-olive text-paper-ink shadow-xs"
@@ -96,12 +83,12 @@ export function ScratchMapHanoi({ onToast, refreshTrigger = 0 }: ScratchMapHanoi
               >
                 <div className="flex items-center justify-between text-xs font-extrabold">
                   <span>{d.name}</span>
-                  <span>{isScratched ? "✅" : "🪙 Cào"}</span>
+                  <span>{isScratched ? "✅" : "🪙"}</span>
                 </div>
                 <span className="text-[10px] block mt-0.5">
                   {isScratched
-                    ? `Check-in: ${Math.max(1, d.count)}`
-                    : "Chạm để cào lớp nhũ bạc"}
+                    ? `Check-in: ${d.count}`
+                    : "Check-in để cào lớp nhũ bạc"}
                 </span>
               </button>
             );

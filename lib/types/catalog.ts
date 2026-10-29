@@ -54,6 +54,8 @@ export interface HanoiPlace {
   slug: string;
   name: string;
   area: string;
+  /** Địa chỉ đầy đủ (chỉ có với địa điểm từ DB; bộ seed demo không có) */
+  address?: string;
   category: PlaceCategory;
   categoryLabel: string;
   priceLevel: number;

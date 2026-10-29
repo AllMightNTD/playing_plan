@@ -154,6 +154,8 @@ export const pipelineRuns = mysqlTable(
       "shadow_eval",
       "auto_promote",
       "maintenance",
+      "video_import",
+      "ai_video_hotspots",
     ]).notNull(),
     startedAt: datetime("started_at").notNull(),
     finishedAt: datetime("finished_at"),
@@ -196,6 +198,38 @@ export const placeReports = mysqlTable(
   ]
 );
 
+/**
+ * Lượt admin chấm mẫu ngẫu nhiên của pipeline (địa điểm thăng hạng, video tự liên kết).
+ * Nguồn tính accuracy rolling 7 ngày cho circuit breaker.
+ */
+export const pipelineSampleGrades = mysqlTable(
+  "pipeline_sample_grades",
+  {
+    id: varchar("id", { length: 21 }).primaryKey(),
+    itemId: varchar("item_id", { length: 100 }).notNull(),
+    itemType: mysqlEnum("item_type", ["place", "video", "hotspot"]).notNull(),
+    isCorrect: boolean("is_correct").notNull(),
+    feedback: text("feedback"),
+    gradedBy: varchar("graded_by", { length: 255 }).notNull(),
+    gradedAt: datetime("graded_at").notNull(),
+  },
+  (table) => [
+    index("idx_sample_grades_graded_at").on(table.gradedAt),
+    index("idx_sample_grades_item").on(table.itemType, table.itemId),
+  ]
+);
+
+/**
+ * Cờ điều khiển pipeline dùng chung giữa web admin và cron (vd: publish_paused do circuit breaker bật).
+ */
+export const pipelineControls = mysqlTable("pipeline_controls", {
+  key: varchar("key", { length: 50 }).primaryKey(),
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  reason: text("reason"),
+  updatedBy: varchar("updated_by", { length: 255 }).notNull(),
+  updatedAt: datetime("updated_at").notNull(),
+});
+
 export type PlaceBlocklist = typeof placeBlocklist.$inferSelect;
 export type NewPlaceBlocklist = typeof placeBlocklist.$inferInsert;
 export type FieldProvenance = typeof fieldProvenance.$inferSelect;
@@ -209,3 +243,5 @@ export type PipelineRun = typeof pipelineRuns.$inferSelect;
 export type NewPipelineRun = typeof pipelineRuns.$inferInsert;
 export type PlaceReport = typeof placeReports.$inferSelect;
 export type NewPlaceReport = typeof placeReports.$inferInsert;
+export type PipelineSampleGrade = typeof pipelineSampleGrades.$inferSelect;
+export type PipelineControl = typeof pipelineControls.$inferSelect;

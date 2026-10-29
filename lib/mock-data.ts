@@ -2422,15 +2422,4 @@ export const HANOI_PLACES: HanoiPlace[] = [
   }
 ];
 
-export const HIDDEN_SAFETY_PLACE = {
-  id: 'p-hidden-train',
-  slug: 'pho-ca-phe-duong-tau',
-  name: 'Phố cà phê đường tàu (ĐÃ CHẶN AN TOÀN)',
-  area: 'Hoàn Kiếm / Điện Biên Phủ',
-  category: 'cafe',
-  costText: 'Cấm hoạt động',
-  status: 'hidden',
-  warningMessage:
-    'Chính quyền đã dựng rào chắn từ tháng 9/2022 và Sở Du lịch Hà Nội (3/2025) yêu cầu không đưa khách tới khu vực hành lang an toàn đường sắt vì nguy hiểm khi tàu chạy qua.',
-  alternatives: ['ca-phe-view-cau-long-bien', 'cau-long-bien'],
-};
+export { HIDDEN_SAFETY_PLACE } from "./constants/catalog";

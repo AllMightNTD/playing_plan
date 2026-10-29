@@ -2,6 +2,22 @@ import { nanoid } from "nanoid";
 import { getMemoryStore } from "@/server/db/demo/memory-store";
 import type { SavedPlaceRepository, SwipeRepository } from "@/server/db/repositories/types";
 
+/**
+ * Ngưỡng cần để match:
+ * - Couple: cần 2 lượt like (cả 2 người)
+ * - Group: cần >= 50% số thành viên active (tối thiểu 2)
+ */
+function hasEnoughLikes(roomId: string, placeId: string): boolean {
+  const { swipes, members, rooms } = getMemoryStore();
+  const roomType = rooms.get(roomId)?.roomType ?? "couple";
+  const totalActive = [...members.values()].filter((m) => m.roomId === roomId && !m.revokedAt).length;
+  const likesCount = [...swipes.values()].filter(
+    (s) => s.roomId === roomId && s.placeId === placeId && s.choice === "like" && !members.get(s.memberId)?.revokedAt
+  ).length;
+  const threshold = roomType === "group" ? Math.max(2, Math.ceil(totalActive * 0.5)) : 2;
+  return likesCount >= threshold;
+}
+
 export const memorySwipeRepository: SwipeRepository = {
   async listSwipedPlaceIds(roomId, memberId) {
     return [...getMemoryStore().swipes.values()]
@@ -9,8 +25,37 @@ export const memorySwipeRepository: SwipeRepository = {
       .map((swipe) => swipe.placeId);
   },
 
+  async undoSwipe({ roomId, memberId, placeId }) {
+    const { swipes, matches } = getMemoryStore();
+    const swipeKey = `${memberId}:${placeId}`;
+    const swipe = swipes.get(swipeKey);
+    if (!swipe || swipe.roomId !== roomId) return { status: "not_found" as const };
+
+    const matchKey = `${roomId}:${placeId}`;
+    const match = matches.get(matchKey);
+    if (swipe.choice === "like" && match?.status === "planned") return { status: "match_planned" as const };
+
+    swipes.delete(swipeKey);
+    if (swipe.choice === "like" && match?.status === "open" && !hasEnoughLikes(roomId, placeId)) {
+      matches.delete(matchKey);
+      return { status: "undone" as const, removedMatchId: match.id };
+    }
+    return { status: "undone" as const, removedMatchId: null };
+  },
+
+  async syncPlannedMatches(roomId) {
+    const { matches, stopsByPlan } = getMemoryStore();
+    const plannedPlaceIds = new Set(
+      [...stopsByPlan.values()].flat().filter((stop) => stop.roomId === roomId && stop.placeId).map((stop) => stop.placeId)
+    );
+    for (const match of matches.values()) {
+      if (match.roomId !== roomId || match.status === "dismissed") continue;
+      match.status = plannedPlaceIds.has(match.placeId) ? "planned" : "open";
+    }
+  },
+
   async saveSwipeAndSyncMatch({ roomId, memberId, placeId, choice, now }) {
-    const { swipes, matches, members, rooms } = getMemoryStore();
+    const { swipes, matches } = getMemoryStore();
     swipes.set(`${memberId}:${placeId}`, { roomId, memberId, placeId, choice });
 
     const matchKey = `${roomId}:${placeId}`;
@@ -21,28 +66,7 @@ export const memorySwipeRepository: SwipeRepository = {
       return { matchId: null, isNewMatch: false };
     }
 
-    const room = rooms.get(roomId);
-    const roomType = room?.roomType ?? "couple";
-    const activeMembers = [...members.values()].filter(
-      (m) => m.roomId === roomId && !m.revokedAt
-    );
-    const totalActive = activeMembers.length;
-
-    // Đếm số lượt like của thành viên active cho địa điểm này
-    const likesCount = [...swipes.values()].filter(
-      (s) =>
-        s.roomId === roomId &&
-        s.placeId === placeId &&
-        s.choice === "like" &&
-        !members.get(s.memberId)?.revokedAt
-    ).length;
-
-    // Ngưỡng cần để match:
-    // - Couple: cần 2 lượt like (cả 2 người)
-    // - Group: cần >= 50% số thành viên active (tối thiểu 2)
-    const threshold = roomType === "group" ? Math.max(2, Math.ceil(totalActive * 0.5)) : 2;
-
-    if (likesCount < threshold) {
+    if (!hasEnoughLikes(roomId, placeId)) {
       return { matchId: null, isNewMatch: false };
     }
 

@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { X, MapPin, Youtube, ExternalLink, Calendar, Eye, ThumbsUp } from "lucide-react";
+import { X, MapPin, Youtube, ExternalLink, Calendar, Eye, ThumbsUp, Play, CalendarPlus } from "lucide-react";
 import type { VideoCatalogItem } from "@/server/services/user/videos.service";
+import type { VideoHotspot } from "@/server/services/user/video-hotspots.service";
+import { useApp } from "@/context/AppContext";
 import { formatViews } from "./VideoCard";
 
 interface VideoPlayerModalProps {
@@ -12,6 +14,33 @@ interface VideoPlayerModalProps {
 }
 
 export function VideoPlayerModal({ video, onClose }: VideoPlayerModalProps) {
+  const { quickAddPlaceToPlan } = useApp();
+  // Mốc địa điểm đã được admin duyệt; bấm mốc thì tua video tới đúng giây
+  const [hotspots, setHotspots] = useState<VideoHotspot[]>([]);
+  const [startSec, setStartSec] = useState(0);
+  const [seekKey, setSeekKey] = useState(0);
+
+  useEffect(() => {
+    setHotspots([]);
+    setStartSec(0);
+    if (!video) return;
+    let active = true;
+    fetch(`/api/v1/user/videos/${encodeURIComponent(video.embedId)}/hotspots`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (active && Array.isArray(json?.data?.hotspots)) setHotspots(json.data.hotspots);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [video]);
+
+  const seekTo = (seconds: number) => {
+    setStartSec(seconds);
+    setSeekKey((key) => key + 1);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -69,7 +98,8 @@ export function VideoPlayerModal({ video, onClose }: VideoPlayerModalProps) {
         {/* Video Player */}
         <div className="relative aspect-video w-full bg-black">
           <iframe
-            src={`https://www.youtube.com/embed/${video.embedId}?autoplay=1&rel=0`}
+            key={seekKey}
+            src={`https://www.youtube.com/embed/${video.embedId}?autoplay=1&rel=0${startSec > 0 ? `&start=${startSec}` : ""}`}
             title={video.title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
@@ -115,6 +145,56 @@ export function VideoPlayerModal({ video, onClose }: VideoPlayerModalProps) {
               </a>
             </div>
           </div>
+
+          {/* Mốc địa điểm trong video (đã duyệt) */}
+          {hotspots.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-brand-terracotta font-bold text-xs uppercase tracking-wide">
+                <MapPin className="w-3.5 h-3.5" />
+                <span>{hotspots.length} địa điểm trong video</span>
+              </div>
+              <div className="space-y-1.5">
+                {hotspots.map((spot) => (
+                  <div
+                    key={spot.id}
+                    className="flex items-center gap-2 p-2 rounded-xl bg-[#FAF4E8] border border-[#E6D7C3]"
+                  >
+                    <button
+                      onClick={() => seekTo(spot.timestampSeconds)}
+                      className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-paper-ink text-white font-mono text-[11px] font-bold hover:bg-brand-terracotta transition"
+                      title="Tua tới đoạn này"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      {spot.timeFormatted}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs text-paper-ink truncate">
+                        {spot.emoji} {spot.placeName}
+                      </div>
+                      <div className="text-[11px] text-paper-muted truncate">
+                        📍 {spot.area} • {spot.categoryLabel}
+                      </div>
+                    </div>
+                    <Link
+                      href={`/places/${spot.placeSlug}`}
+                      onClick={onClose}
+                      className="shrink-0 px-2 py-1 rounded-lg border border-brand-terracotta/40 text-brand-terracotta text-[11px] font-bold hover:bg-brand-peach/40"
+                    >
+                      Xem
+                    </Link>
+                    <button
+                      onClick={() => quickAddPlaceToPlan(spot.placeId)}
+                      className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-brand-terracotta hover:bg-brand-terracottaDark text-white text-[11px] font-bold"
+                      title="Thêm vào kế hoạch"
+                    >
+                      <CalendarPlus className="w-3 h-3" />
+                      Lịch
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Linked Place CTA Box (if matched with an official place) */}
           {video.place && (

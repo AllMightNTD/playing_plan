@@ -1,24 +1,27 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import type { SecretNoteDto } from "@/server/services/user/gamification.service";
+import { useApp } from "@/context/AppContext";
 
 interface SecretNotesBoardProps {
   onToast?: (message: string, type?: "success" | "error" | "info") => void;
   onCheckInSuccess?: () => void;
 }
 
-const PRESET_PLACES = [
-  { name: "Serein Café Cầu Long Biên", district: "hoan_kiem" },
-  { name: "Bãi đá sông Hồng", district: "tay_ho" },
-  { name: "Bảo Tàng Mỹ Thuật", district: "ba_dinh" },
-  { name: "Sunset Bar InterContinental", district: "tay_ho" },
-  { name: "Café Giảng - 39 Nguyễn Hữu Huân", district: "hoan_kiem" },
-];
-
 export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoardProps) {
   const [notes, setNotes] = useState<SecretNoteDto[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState(PRESET_PLACES[0].name);
+  const { places, upcomingPlan, isPlaceSaved } = useApp();
+  const [selectedPlaceId, setSelectedPlaceId] = useState("");
+
+  // Quán giấu thư: ưu tiên các trạm của buổi hẹn sắp tới, rồi địa điểm đã lưu, rồi phần còn lại
+  const placeOptions = useMemo(() => {
+    const planPlaceIds = new Set((upcomingPlan?.stops ?? []).map((s) => s.placeId));
+    const rank = (id: string, slug: string) => (planPlaceIds.has(id) ? 0 : isPlaceSaved(slug) ? 1 : 2);
+    return [...places].sort((a, b) => rank(a.id, a.slug) - rank(b.id, b.slug));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [places, upcomingPlan]);
+  const selectedPlace = places.find((p) => p.id === selectedPlaceId) ?? placeOptions[0];
   const [contentInput, setContentInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,8 +49,8 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
   }, [fetchNotes]);
 
   const handleCreateNote = async () => {
-    const text = contentInput.trim() || "Mãi bên nhau như chiều thu Hà Nội hôm nay nhé! ❤️";
-    const foundPlace = PRESET_PLACES.find((p) => p.name === selectedPlace) || PRESET_PLACES[0];
+    const text = contentInput.trim();
+    if (!text || !selectedPlace) return;
 
     setIsSubmitting(true);
     try {
@@ -55,16 +58,15 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          placeName: foundPlace.name,
-          district: foundPlace.district,
-          hint: `Check-in tại ${foundPlace.name} để đọc lời nhắn ngọt ngào`,
+          placeId: selectedPlace.id,
+          hint: `Check-in tại ${selectedPlace.name} để đọc lời nhắn ngọt ngào`,
           content: text,
         }),
       });
 
       if (res.ok) {
         setContentInput("");
-        toast(`🔒 Đã giấu bức thư tình bí mật tại "${foundPlace.name}"!`, "success");
+        toast(`🔒 Đã giấu bức thư tình bí mật tại "${selectedPlace.name}"!`, "success");
         await fetchNotes();
       } else {
         toast("Không thể gửi thư tình, vui lòng thử lại.", "error");
@@ -83,14 +85,13 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          placeName: note.placeName,
-          district: note.district || "hoan_kiem",
-          method: "gps_auto",
+          placeId: note.placeId,
+          method: "manual_confirm",
         }),
       });
 
       if (res.ok) {
-        toast("💌 Đã xác thực Check-in tại quán và mở khóa Hộp thư tình bí mật!", "success");
+        toast(`💌 Đã check-in tại "${note.placeName}" và mở khóa thư tình bí mật!`, "success");
         await fetchNotes();
         if (onCheckInSuccess) onCheckInSuccess();
       } else {
@@ -104,17 +105,17 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
   };
 
   return (
-    <div className="bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col justify-between space-y-4">
+    <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4">
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-brand-airmailBlue text-white">
-            💌 Secret Notes
+          <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-brand-airmailBlue text-white">
+            💌 Thư Tình Ẩn Giấu
           </span>
-          <span className="text-xs font-bold text-paper-muted">Mở khi tới quán</span>
+          <span className="text-xs font-bold text-paper-muted">Bất ngờ tại quán</span>
         </div>
 
         <h3 className="font-serif font-extrabold text-base text-paper-ink">
-          Gửi Thư Tình Ẩn Tại Tọa Độ Hẹn
+          Nhắn Lời Yêu Thương Tại Điểm Hẹn
         </h3>
         <p className="text-xs text-paper-muted mt-0.5">
           Lời nhắn được khóa tọa độ, chỉ bung mở khi người ấy Check-in tại quán.
@@ -171,13 +172,14 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
       {/* Form tạo nhanh thư tình ẩn */}
       <div className="bg-[#FAF4E8] p-2.5 rounded-xl border border-[#D8CBB8] space-y-2">
         <select
-          value={selectedPlace}
-          onChange={(e) => setSelectedPlace(e.target.value)}
+          value={selectedPlace?.id ?? ""}
+          onChange={(e) => setSelectedPlaceId(e.target.value)}
           className="w-full text-xs font-bold bg-[#FFFDF9] border border-[#CBB292] rounded-lg px-2.5 py-1.5 text-paper-ink focus:outline-none"
         >
-          {PRESET_PLACES.map((p) => (
-            <option key={p.name} value={p.name}>
-              📍 {p.name}
+          {placeOptions.length === 0 && <option value="">Đang tải địa điểm...</option>}
+          {placeOptions.map((p) => (
+            <option key={p.id} value={p.id}>
+              📍 {p.name} • {p.area}
             </option>
           ))}
         </select>
@@ -190,7 +192,7 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
         />
         <button
           onClick={handleCreateNote}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !contentInput.trim() || !selectedPlace}
           className="w-full bg-brand-airmailBlue hover:bg-slate-700 text-white font-bold text-xs py-2 rounded-lg transition active:scale-98 disabled:opacity-50"
         >
           🔒 Giấu thư tình tại quán này

@@ -11,6 +11,7 @@ export function LuckyWheelModal() {
     wheelResult,
     isSpinning,
     setActiveDetailSlug,
+    quickAddPlaceToPlan,
   } = useApp();
 
   if (!isWheelOpen) return null;
@@ -27,89 +28,69 @@ export function LuckyWheelModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-[#FAF4E8] border-2 border-[#CBB292] rounded-xl max-w-md w-full p-6 relative shadow-2xl text-center select-none">
-        {/* Băng dính Washi đào góc trên */}
-        <div className="washi-tape washi-gingham-peach" />
+    <div
+      onClick={() => setIsWheelOpen(false)}
+      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Rút quẻ hẹn hò"
+        className="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-sm w-full p-5 text-center space-y-3 select-none"
+      >
+        <h3 className="font-serif font-extrabold text-lg text-paper-ink">🎯 Rút Quẻ Hẹn Hò Hôm Nay</h3>
 
-        <button
-          onClick={() => setIsWheelOpen(false)}
-          className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-[#E5D1B8] hover:bg-brand-terracotta hover:text-white text-paper-ink font-bold transition flex items-center justify-center shadow-xs"
-          aria-label="Đóng"
-        >
-          ✕
-        </button>
-
-        <span className="inline-block bg-brand-peach text-brand-terracottaDark text-xs font-bold px-3 py-1 rounded-full">
-          🎲 Máy rút vé hẹn hò ngẫu nhiên
-        </span>
-        <h3 className="font-serif font-extrabold text-2xl text-paper-ink mt-2">
-          Hôm nay số phận đưa ta đi đâu?
-        </h3>
-        <p className="text-xs text-paper-muted mt-1">
-          Bấm nút bên dưới để DateMate chọn giúp hai bạn một lịch trình hợp thời tiết nhất!
-        </p>
-
-        {/* Ô hiển thị kết quả quay số */}
-        <div
-          id="wheelResultBox"
-          className="my-5 bg-[#FFFDF9] border-2 border-dashed border-brand-terracotta rounded-xl p-5 min-h-[150px] flex flex-col items-center justify-center shadow-inner"
-        >
+        <div className="bg-[#FFFDF9] border-2 border-dashed border-brand-terracotta rounded-xl p-4 min-h-[140px] flex flex-col items-center justify-center">
           {isSpinning ? (
-            <div className="space-y-2">
-              <span className="text-4xl inline-block animate-bounce">🎲</span>
-              <p className="font-serif font-bold text-lg text-brand-terracotta animate-pulse">
-                Đang rút quẻ hẹn hò...
-              </p>
-              <p className="text-xs text-paper-muted">Vũ trụ đang tính toán theo nắng thu Hà Nội...</p>
-            </div>
+            <p className="font-serif font-bold text-base text-brand-terracotta animate-pulse">🎲 Đang rút quẻ...</p>
           ) : wheelResult ? (
             <div className="space-y-1.5 animate-in zoom-in-95 duration-200">
-              <span className="bg-brand-olive text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-block">
-                🎉 QUẺ HẸN HÒ HÔM NAY
-              </span>
-              <h4 className="font-serif font-extrabold text-xl text-brand-terracotta mt-1">
+              <h4 className="font-serif font-extrabold text-lg text-brand-terracotta">
                 {wheelResult.emoji} {wheelResult.name}
               </h4>
               <p className="text-xs text-paper-ink font-semibold">
-                📍 {wheelResult.area} • 💰 {wheelResult.costText}
+                📍 {wheelResult.area}
+                {wheelResult.costText ? ` • 💰 ${wheelResult.costText}` : ""}
               </p>
-              <p className="text-xs text-paper-muted line-clamp-2 leading-relaxed">
-                {wheelResult.summary}
-              </p>
-              <button
-                onClick={handleOpenDetail}
-                className="mt-2.5 bg-brand-peach hover:bg-brand-coral text-paper-ink font-bold text-xs px-4 py-1.5 rounded-md border border-brand-terracotta/40 transition active:scale-95 shadow-2xs"
-              >
-                📖 Xem cẩm nang & phối đồ ngay →
-              </button>
+              <p className="text-xs text-paper-muted line-clamp-2 leading-relaxed">{wheelResult.summary}</p>
+              <div className="flex justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleOpenDetail}
+                  className="bg-brand-peach hover:bg-brand-coral text-paper-ink font-bold text-xs px-3 py-1.5 rounded-lg border border-brand-terracotta/40"
+                >
+                  📖 Xem cẩm nang
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickAddPlaceToPlan(wheelResult)}
+                  className="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs px-3 py-1.5 rounded-lg"
+                >
+                  + Vào lịch
+                </button>
+              </div>
             </div>
           ) : (
-            <>
-              <span className="text-4xl mb-2">🎟️</span>
-              <p className="font-serif font-bold text-lg text-paper-ink">
-                Sẵn sàng rút quẻ hẹn hò!
-              </p>
-              <p className="text-xs text-paper-muted mt-1">
-                Chạm &quot;Quay số ngay&quot; để khám phá bất ngờ
-              </p>
-            </>
+            <p className="font-serif font-bold text-base text-brand-terracotta">Bấm nút bên dưới để chọn ngẫu nhiên!</p>
           )}
         </div>
 
-        <div className="flex items-center gap-3 justify-center">
+        <div className="flex gap-2">
           <button
+            type="button"
             onClick={handleSpin}
             disabled={isSpinning}
-            className="ticket-btn bg-brand-terracotta text-white px-6 py-3 font-bold text-sm disabled:opacity-50"
+            className="flex-1 bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2.5 rounded-xl disabled:opacity-50"
           >
-            🎯 {isSpinning ? "Đang quay..." : "Quay số ngay!"}
+            🎲 {isSpinning ? "Đang quay..." : wheelResult ? "Quay lại" : "Quay ngay!"}
           </button>
           <button
+            type="button"
             onClick={() => setIsWheelOpen(false)}
-            className="paper-btn px-4 py-2.5 text-xs font-bold"
+            className="bg-[#E5D1B8] text-paper-ink font-bold text-xs px-4 py-2.5 rounded-xl"
           >
-            Đóng lại
+            Đóng
           </button>
         </div>
       </div>

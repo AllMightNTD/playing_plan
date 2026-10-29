@@ -6,3 +6,4 @@ export * from "./audit";
 export * from "./governance";
 export * from "./uploads";
 export * from "./gamification";
+export * from "./videos";

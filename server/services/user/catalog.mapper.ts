@@ -65,6 +65,7 @@ export function toCatalogPlace(
     slug: place.slug,
     name: place.name,
     area: place.area,
+    address: place.address,
     category: place.category,
     categoryLabel: CATEGORY_LABELS[place.category],
     priceLevel: place.priceLevel,

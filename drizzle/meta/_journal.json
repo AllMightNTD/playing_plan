@@ -64,6 +64,20 @@
       "when": 1793257224841,
       "tag": "0008_daily_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1793267076617,
+      "tag": "0009_pipeline_grades_video_hotspots",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1793268097324,
+      "tag": "0010_ai_video_hotspots",
+      "breakpoints": true
     }
   ]
 }

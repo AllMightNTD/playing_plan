@@ -1,40 +1,92 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Clock,
-  Pin,
-  PinOff,
-  Plus,
-  Minus,
-  Sparkles,
-  CloudRain,
-  Share2,
-  ListChecks,
-  AlertTriangle,
-  RotateCw,
-  Navigation,
-} from "lucide-react";
+import { Navigation, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 import type { PlanDetailDto, PlanStopDto } from "@/server/services/user/plan.mapper";
+import type { HanoiPlace } from "@/lib/types/catalog";
+import { calculateHaversineDistanceKm } from "@/lib/travel-time";
+
+/** Hệ số uốn lượn đường phố Hà Nội, cùng hệ số với lib/travel-time khi tính phút di chuyển. */
+const ROAD_FACTOR = 1.35;
 
 interface InteractiveTimelineProps {
   plan: PlanDetailDto;
   onRefresh: () => Promise<void>;
-  onOpenChecklist?: () => void;
-  onOpenShareModal?: () => void;
+  /** Catalog để hiện tên/emoji/khoảng cách cho các trạm chỉ lưu placeId */
+  places?: HanoiPlace[];
+  onOpenDetail?: (slug: string) => void;
+  onError?: (message: string) => void;
+  /** Giờ bắt đầu giờ vàng hôm nay, hiện trên nút tự xếp lịch (vd "16:24") */
+  goldenHourStart?: string;
+  /** Hiện nút đổi thứ tự / xóa chặng (trang Kế hoạch); trang chủ chỉ chỉnh giờ */
+  allowEditStops?: boolean;
 }
 
+function toMinutes(time: string | null): number | null {
+  if (!time) return null;
+  const [h, m] = time.split(":").map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+}
+
+function formatMinutes(total: number): string {
+  const normalized = ((total % 1440) + 1440) % 1440;
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+}
+
+/** Lộ trình các chặng của một kế hoạch: tự xếp giờ, Plan B trời mưa, dời giờ dây chuyền ±15p, ghim giờ. */
 export function InteractiveTimeline({
   plan,
   onRefresh,
-  onOpenChecklist,
-  onOpenShareModal,
+  places = [],
+  onOpenDetail,
+  onError,
+  goldenHourStart,
+  allowEditStops = false,
 }: InteractiveTimelineProps) {
   const [loadingStopId, setLoadingStopId] = useState<string | null>(null);
   const [isAutoScheduling, setIsAutoScheduling] = useState(false);
   const [isApplyingPlanB, setIsApplyingPlanB] = useState(false);
   const [conflictError, setConflictError] = useState<{ message: string; version: number } | null>(null);
-  const [isRushHourSpeed, setIsRushHourSpeed] = useState(false);
+
+  const findPlace = (stop: PlanStopDto) =>
+    stop.placeId ? places.find((place) => place.id === stop.placeId) : undefined;
+
+  // Đổi thứ tự trạm: gửi toàn bộ danh sách id theo thứ tự mới
+  const handleMoveStop = async (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= plan.stops.length) return;
+    const stopIds = plan.stops.map((s) => s.id);
+    [stopIds[idx], stopIds[target]] = [stopIds[target], stopIds[idx]];
+    try {
+      setLoadingStopId(plan.stops[idx].id);
+      const res = await fetch(`/api/v1/user/plans/${plan.id}/stops/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stopIds }),
+      });
+      if (!res.ok) throw new Error("Không thể đổi thứ tự chặng.");
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      onError?.("Chưa đổi được thứ tự chặng, thử lại nhé.");
+    } finally {
+      setLoadingStopId(null);
+    }
+  };
+
+  const handleDeleteStop = async (stopId: string) => {
+    try {
+      setLoadingStopId(stopId);
+      const res = await fetch(`/api/v1/user/plans/${plan.id}/stops/${stopId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Không thể xóa chặng.");
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      onError?.("Chưa xóa được chặng, thử lại nhé.");
+    } finally {
+      setLoadingStopId(null);
+    }
+  };
 
   // Kéo giờ dây chuyền (Auto-Ripple ±15p)
   const handleRippleShift = async (stopId: string, shiftMinutes: number) => {
@@ -140,206 +192,168 @@ export function InteractiveTimeline({
   };
 
   return (
-    <div className="w-full bg-[#FFFDF9] border border-[#E6D3B8] rounded-2xl p-5 shadow-sm font-sans">
-      {/* Banner cảnh báo xung đột 409 CONFLICT */}
+    <div className="font-sans">
+      {/* Người ấy vừa sửa lịch trên máy khác (409) */}
       {conflictError && (
-        <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-amber-900 text-sm animate-pulse">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>{conflictError.message}</span>
+        <div className="mb-4 bg-[#FADCD2] border-2 border-brand-terracotta rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs text-paper-ink">
+            <strong className="text-brand-terracottaDark block">🔔 Người thương vừa cập nhật lịch hẹn!</strong>
+            <span>Bấm cập nhật để xem mốc giờ mới nhất mà người ấy vừa chỉnh nhé.</span>
           </div>
           <button
+            type="button"
             onClick={async () => {
               setConflictError(null);
               await onRefresh();
             }}
-            className="flex items-center gap-1 px-3 py-1 bg-amber-600 text-white text-xs font-semibold rounded-lg hover:bg-amber-700 transition"
+            className="bg-brand-terracotta text-white text-xs font-bold px-3 py-1.5 rounded-lg shrink-0"
           >
-            <RotateCw className="w-3 h-3" />
-            Tải bản mới nhất
+            🔄 Cập nhật ngay
           </button>
         </div>
       )}
 
-      {/* Header lịch trình */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6D3B8]/60 pb-4 mb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-xl font-serif font-bold text-[#362721]">{plan.title}</h3>
-            <span className="text-xs bg-[#E6D3B8]/50 text-[#362721] font-mono px-2 py-0.5 rounded-full">
-              v{plan.version ?? 1}
-            </span>
-          </div>
-          <p className="text-xs text-[#362721]/70 mt-1">
-            Ngày {plan.planDate} • Bắt đầu {plan.startTime} • Tổng {(plan.stops.reduce((acc, s) => acc + s.durationMin + (s.travelMinutes ?? 0), 0) / 60).toFixed(1)}h
-          </p>
-        </div>
-
-        {/* Nút hành động nhanh */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Nút chuyển đổi vận tốc */}
-          <button
-            type="button"
-            onClick={() => setIsRushHourSpeed(!isRushHourSpeed)}
-            title="Chuyển đổi vận tốc tính thời gian di chuyển nội đô Hà Nội"
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-xl font-medium border transition ${
-              isRushHourSpeed
-                ? "bg-red-50 text-red-700 border-red-300"
-                : "bg-emerald-50 text-emerald-700 border-emerald-300"
-            }`}
-          >
-            <Navigation className="w-3 h-3" />
-            {isRushHourSpeed ? "Cao điểm (15km/h)" : "Giờ thường (25km/h)"}
-          </button>
-
-          {/* Nút Xếp lịch SunCalc */}
-          <button
-            type="button"
-            onClick={handleAutoSchedule}
-            disabled={isAutoScheduling}
-            className="flex items-center gap-1 px-3 py-1.5 bg-[#C84B31]/10 text-[#C84B31] border border-[#C84B31]/30 rounded-xl text-xs font-semibold hover:bg-[#C84B31] hover:text-white transition disabled:opacity-50"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            {isAutoScheduling ? "Đang tính..." : "SunCalc Hoàng Hôn"}
-          </button>
-
-          {/* Nút Plan B Trời Mưa */}
-          <button
-            type="button"
-            onClick={handleApplyPlanB}
-            disabled={isApplyingPlanB}
-            className="flex items-center gap-1 px-3 py-1.5 bg-sky-50 text-sky-700 border border-sky-300 rounded-xl text-xs font-semibold hover:bg-sky-600 hover:text-white transition disabled:opacity-50"
-          >
-            <CloudRain className="w-3.5 h-3.5" />
-            {isApplyingPlanB ? "Đang đổi..." : "Plan B (Mưa)"}
-          </button>
-
-          {/* Nút Checklist */}
-          {onOpenChecklist && (
-            <button
-              type="button"
-              onClick={onOpenChecklist}
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#F7F1E5] text-[#362721] border border-[#E6D3B8] rounded-xl text-xs font-semibold hover:bg-[#E6D3B8] transition"
-            >
-              <ListChecks className="w-3.5 h-3.5" />
-              Chuẩn bị ({plan.checklist.filter((i) => i.isDone).length}/{plan.checklist.length})
-            </button>
-          )}
-
-          {/* Nút Xuất Thiệp / Poster */}
-          {onOpenShareModal && (
-            <button
-              type="button"
-              onClick={onOpenShareModal}
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#C84B31] text-white rounded-xl text-xs font-semibold hover:bg-[#9E331E] shadow-sm transition"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              Thiệp & Poster
-            </button>
-          )}
-        </div>
+      {/* Thanh công cụ */}
+      <div className="flex flex-wrap items-center gap-2 p-2 bg-[#FAF4E8] rounded-xl border border-[#E5D8C5] text-xs">
+        <button
+          type="button"
+          onClick={handleAutoSchedule}
+          disabled={isAutoScheduling}
+          className="px-2.5 py-1.5 rounded-lg font-bold bg-[#F9EFC7] border border-[#D5BE7E] text-paper-ink hover:bg-[#F5E39E] transition disabled:opacity-50"
+        >
+          {isAutoScheduling
+            ? "Đang xếp giờ..."
+            : `🌅 Tự xếp giờ khớp Hoàng hôn${goldenHourStart ? ` (${goldenHourStart})` : ""}`}
+        </button>
+        <button
+          type="button"
+          onClick={handleApplyPlanB}
+          disabled={isApplyingPlanB}
+          className="px-2.5 py-1.5 rounded-lg font-bold bg-[#FFFDF9] border border-[#CBB292] text-paper-ink hover:border-brand-terracotta transition disabled:opacity-50"
+        >
+          {isApplyingPlanB ? "Đang đổi quán..." : "☔ Đổi sang quán Trong nhà (Phòng mưa)"}
+        </button>
       </div>
 
-      {/* Danh sách chặng Timeline dạng Scrapbook */}
-      <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#E6D3B8]">
+      {/* Các chặng */}
+      <div className="space-y-2.5 my-4">
         {plan.stops.map((stop, idx) => {
           const isLoading = loadingStopId === stop.id;
+          const place = findPlace(stop);
+          const stopName = stop.customName || place?.name || "Địa điểm hẹn hò";
+          const start = toMinutes(stop.plannedTime);
+          const prevPlace = idx > 0 ? findPlace(plan.stops[idx - 1]) : undefined;
+          const roadKm =
+            prevPlace?.lat != null && prevPlace?.lng != null && place?.lat != null && place?.lng != null
+              ? calculateHaversineDistanceKm({ lat: prevPlace.lat, lng: prevPlace.lng }, { lat: place.lat, lng: place.lng }) *
+                ROAD_FACTOR
+              : null;
 
           return (
-            <div key={stop.id} className="relative group">
-              {/* Vòng tròn mốc số chặng */}
-              <div
-                className={`absolute -left-6 top-1.5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 transition ${
-                  stop.isPinnedTime
-                    ? "bg-[#C84B31] text-white border-[#C84B31]"
-                    : "bg-[#FFFDF9] text-[#362721] border-[#C84B31]"
-                }`}
-              >
-                {idx + 1}
+            <div
+              key={stop.id}
+              className="bg-[#FAF4E8] border border-[#D8CBB8] rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+            >
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="bg-brand-terracotta text-white text-[11px] font-extrabold px-2 py-0.5 rounded">
+                    {start !== null ? `${formatMinutes(start)} - ${formatMinutes(start + stop.durationMin)}` : "Chưa xếp giờ"}
+                  </span>
+                  <strong
+                    onClick={() => place && onOpenDetail?.(place.slug)}
+                    className={`text-xs sm:text-sm font-bold text-paper-ink ${place && onOpenDetail ? "cursor-pointer hover:text-brand-terracotta" : ""}`}
+                  >
+                    {place?.emoji ? `${place.emoji} ` : ""}
+                    {stopName}
+                  </strong>
+                  {stop.isPinnedTime && (
+                    <span className="text-[10px] font-bold bg-[#F9EFC7] border border-[#D5BE7E] px-1.5 py-0.5 rounded">
+                      📌 Cố định giờ
+                    </span>
+                  )}
+                </div>
+                {idx > 0 ? (
+                  <p className="text-[11px] text-paper-muted">
+                    🛵 Di chuyển từ chặng trước: <strong>~{stop.travelMinutes} phút</strong>
+                    {roadKm !== null ? ` (${roadKm.toFixed(1)} km, đã tính 10p gửi xe)` : ""}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-paper-muted">📍 Điểm hẹn mở đầu hành trình</p>
+                )}
+                {stop.note && <p className="text-[11px] text-paper-ink/80 italic">✍️ {stop.note}</p>}
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    place?.lat != null && place?.lng != null ? `${place.lat},${place.lng}` : `${stopName} Hà Nội`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-terracotta hover:underline"
+                >
+                  <Navigation className="w-3 h-3" />
+                  Chỉ đường
+                </a>
               </div>
 
-              {/* Thẻ chặng */}
-              <div className="bg-[#F7F1E5]/50 border border-[#E6D3B8] rounded-xl p-3.5 hover:bg-[#F7F1E5] transition">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-[#C84B31] flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-[#C84B31]" />
-                      {stop.plannedTime || "Chưa set"}
-                    </span>
-                    <span className="text-xs text-[#362721]/50">({stop.durationMin} phút)</span>
-
-                    {/* Huy hiệu đã ghim */}
-                    {stop.isPinnedTime && (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
-                        <Pin className="w-2.5 h-2.5" /> Giờ cố định
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Nút điều khiển Auto-Ripple (±15p) & Ghim giờ */}
-                  <div className="flex items-center gap-1.5">
-                    {/* Nút lùi 15 phút */}
+              <div className="flex items-center gap-1 self-end sm:self-center shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleRippleShift(stop.id, -15)}
+                  disabled={isLoading}
+                  className="px-2 py-1 rounded bg-[#FFFDF9] hover:bg-[#EFE5D4] border border-[#CBB292] text-[11px] font-bold disabled:opacity-40"
+                  title="Lùi 15 phút và đẩy các chặng sau"
+                >
+                  -15p
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRippleShift(stop.id, 15)}
+                  disabled={isLoading}
+                  className="px-2 py-1 rounded bg-[#FFFDF9] hover:bg-[#EFE5D4] border border-[#CBB292] text-[11px] font-bold disabled:opacity-40"
+                  title="Tăng 15 phút và đẩy các chặng sau"
+                >
+                  +15p
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTogglePin(stop)}
+                  disabled={isLoading}
+                  className={`px-2 py-1 rounded border border-[#CBB292] text-[11px] font-bold disabled:opacity-40 ${
+                    stop.isPinnedTime ? "bg-brand-terracotta text-white" : "bg-[#FFFDF9] text-paper-muted"
+                  }`}
+                  title={stop.isPinnedTime ? "Bỏ ghim giờ" : "Ghim cố định mốc giờ"}
+                >
+                  📌
+                </button>
+                {allowEditStops && (
+                  <>
                     <button
                       type="button"
-                      onClick={() => handleRippleShift(stop.id, -15)}
-                      disabled={isLoading}
-                      title="Lùi 15 phút và đẩy các chặng sau"
-                      className="p-1 rounded bg-[#FFFDF9] border border-[#E6D3B8] text-[#362721] hover:bg-[#E6D3B8] text-xs transition disabled:opacity-50"
+                      onClick={() => handleMoveStop(idx, -1)}
+                      disabled={isLoading || idx === 0}
+                      className="p-1 rounded bg-[#FFFDF9] border border-[#CBB292] disabled:opacity-30"
+                      title="Đưa chặng lên trước"
                     >
-                      <Minus className="w-3 h-3" />
+                      <ChevronUp className="w-3.5 h-3.5" />
                     </button>
-
-                    <span className="text-[11px] font-mono font-medium text-[#362721]/70 px-1">
-                      ±15p
-                    </span>
-
-                    {/* Nút tăng 15 phút */}
                     <button
                       type="button"
-                      onClick={() => handleRippleShift(stop.id, 15)}
-                      disabled={isLoading}
-                      title="Tiến 15 phút và đẩy các chặng sau"
-                      className="p-1 rounded bg-[#FFFDF9] border border-[#E6D3B8] text-[#362721] hover:bg-[#E6D3B8] text-xs transition disabled:opacity-50"
+                      onClick={() => handleMoveStop(idx, 1)}
+                      disabled={isLoading || idx === plan.stops.length - 1}
+                      className="p-1 rounded bg-[#FFFDF9] border border-[#CBB292] disabled:opacity-30"
+                      title="Đưa chặng xuống sau"
                     >
-                      <Plus className="w-3 h-3" />
+                      <ChevronDown className="w-3.5 h-3.5" />
                     </button>
-
-                    {/* Nút Ghim/Thả giờ */}
                     <button
                       type="button"
-                      onClick={() => handleTogglePin(stop)}
+                      onClick={() => handleDeleteStop(stop.id)}
                       disabled={isLoading}
-                      title={stop.isPinnedTime ? "Thả trôi giờ dây chuyền" : "Ghim giờ cố định không bị đẩy"}
-                      className={`p-1 rounded border text-xs transition ${
-                        stop.isPinnedTime
-                          ? "bg-[#C84B31] text-white border-[#C84B31]"
-                          : "bg-[#FFFDF9] text-[#362721]/70 border-[#E6D3B8] hover:bg-[#E6D3B8]"
-                      }`}
+                      className="p-1 rounded bg-[#FFFDF9] border border-[#CBB292] text-red-600 disabled:opacity-30"
+                      title="Xóa chặng"
                     >
-                      {stop.isPinnedTime ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  </div>
-                </div>
-
-                {/* Tên địa điểm & ghi chú */}
-                <h4 className="text-base font-semibold text-[#362721] mt-1.5">
-                  {stop.customName || "Địa điểm hẹn hò"}
-                </h4>
-
-                {stop.note && (
-                  <p className="text-xs text-[#362721]/80 mt-1 italic font-hand text-sm bg-white/60 p-1.5 rounded border border-[#E6D3B8]/40">
-                    ✍️ {stop.note}
-                  </p>
-                )}
-
-                {/* Thông tin di chuyển tới chặng sau */}
-                {idx < plan.stops.length - 1 && (
-                  <div className="mt-2 pt-1.5 border-t border-dashed border-[#E6D3B8]/60 flex items-center gap-1.5 text-[11px] text-[#362721]/60">
-                    <Navigation className="w-3 h-3 text-[#C84B31]" />
-                    <span>
-                      Di chuyển tới chặng {idx + 2}: ~{stop.travelMinutes ?? 15} phút ({isRushHourSpeed ? "15 km/h + 10p gửi xe" : "25 km/h + 10p gửi xe"})
-                    </span>
-                  </div>
+                  </>
                 )}
               </div>
             </div>

@@ -1,3 +1,4 @@
+import { runTrackedPipeline } from "@/server/services/pipeline/pipeline-run.service";
 import { db } from "@/server/db/client";
 import {
   candidatePlaces,
@@ -248,9 +249,21 @@ async function main() {
   console.log(`   - Video mới xuất bản vào place_media: ${publishMediaResult.publishedToMediaCount}`);
   console.log(`   - Địa điểm thăng hạng xuất bản mới: ${promotedCount}`);
   console.log("==================================================================");
+  return {
+    promotedCount,
+    summary: {
+      crawledVideos: crawledVideos.length,
+      osmCandidates: osmResult.qualifyingCandidatesCount,
+      publishedToMediaCount: publishMediaResult.publishedToMediaCount,
+      promotedCount,
+    },
+  };
 }
 
-main().catch((err) => {
+runTrackedPipeline("auto_promote", async () => {
+  const { promotedCount, summary } = await main();
+  return { result: undefined, promotedCount, summary };
+}).catch((err) => {
   console.error("❌ [CRON FATAL ERROR]:", err);
   process.exit(1);
 });

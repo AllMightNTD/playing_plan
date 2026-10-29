@@ -73,7 +73,7 @@ export function VirtualVideoCanvas({
 
   // 2. Tải hoặc sinh kịch bản Video Kỷ Niệm Ảo
   const loadVirtualVideoScript = useCallback(
-    async (simulate429 = false, silent = false) => {
+    async (silent = false) => {
       setIsLoadingScript(true);
       try {
         const res = await fetch(`/api/v1/user/memories/${memoryId}/virtual-video`, {
@@ -81,7 +81,6 @@ export function VirtualVideoCanvas({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             trackId: selectedTrackId,
-            simulate429,
           }),
         });
 
@@ -92,11 +91,7 @@ export function VirtualVideoCanvas({
           slideStartTimeRef.current = performance.now();
 
           if (!silent) {
-            if (simulate429) {
-              toast("🛡️ Gemini gặp HTTP 429 Rate Limit ➔ Đã tự động kích hoạt Fallback Heuristic Template thành công!", "info");
-            } else {
-              toast("✨ Gemini SDK đã sinh kịch bản kỷ niệm mới từ metadata ẩn danh (Zero PII)!", "success");
-            }
+            toast("✨ Đã viết lời bình mới cho thước phim kỷ niệm!", "success");
           }
         } else {
           if (!silent) {
@@ -116,7 +111,7 @@ export function VirtualVideoCanvas({
 
   // Tải hoặc cập nhật kịch bản video khi mount hoặc khi refreshTrigger thay đổi
   useEffect(() => {
-    loadVirtualVideoScript(false, true);
+    loadVirtualVideoScript(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoryId, refreshTrigger]);
 
@@ -224,7 +219,7 @@ export function VirtualVideoCanvas({
     if (nextState) {
       startWebAudio();
       slideStartTimeRef.current = performance.now();
-      toast("🎵 Đang phát Phim Kỷ Niệm Ảo Ken Burns 60fps & Nhạc Lo-Fi!", "success");
+      toast("🎵 Đang phát phim kỷ niệm & nhạc nền!", "success");
     } else {
       stopWebAudio();
     }
@@ -371,37 +366,31 @@ export function VirtualVideoCanvas({
   const currentSlide: VirtualVideoSlideDto | undefined = videoPayload?.slides[currentSlideIndex];
 
   return (
-    <div className="bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-4 sm:p-5 shadow-md space-y-4">
+    <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
       {/* Header Điều Khiển & Accessibility */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="bg-brand-terracotta text-white text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
-            Canvas 60fps
-          </span>
-          <span id="canvasModeLabel" className="text-xs font-bold text-paper-muted">
-            {isReducedMotion ? "Hiệu ứng: Crossfade tĩnh (Reduced Motion)" : "Hiệu ứng: Ken Burns Pan/Zoom 60fps"}
+          <span className="bg-brand-terracotta text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">🎞️ Phim Kỷ Niệm</span>
+          <span className="text-xs font-semibold text-paper-muted">
+            {isReducedMotion ? "Chuyển ảnh nhẹ nhàng" : "Chuyển cảnh mượt mà"}
           </span>
         </div>
-        <label className="flex items-center gap-1.5 text-xs font-bold text-paper-ink cursor-pointer">
+        <label className="flex items-center gap-1.5 text-xs font-semibold text-paper-muted cursor-pointer">
           <input
             type="checkbox"
             checked={isReducedMotion}
             onChange={(e) => {
               setIsReducedMotion(e.target.checked);
-              toast(
-                e.target.checked
-                  ? "♿ Đã chuyển Canvas sang chế độ Crossfade tĩnh (prefers-reduced-motion)."
-                  : "🎞️ Đã bật lại chuyển động Ken Burns 60fps."
-              );
+              toast(e.target.checked ? "Đã chuyển sang hiệu ứng chuyển ảnh nhẹ nhàng." : "Đã bật lại chuyển cảnh mượt mà.");
             }}
             className="accent-brand-terracotta"
           />
-          <span>♿ prefers-reduced-motion (Crossfade tĩnh)</span>
+          <span>Chuyển ảnh nhẹ nhàng</span>
         </label>
       </div>
 
       {/* Khung HTML5 Canvas + Đĩa Than Xoay Tròn Beat-Sync */}
-      <div className="relative rounded-2xl overflow-hidden border-2 border-paper-ink bg-[#181210]">
+      <div className="relative rounded-2xl overflow-hidden border-2 border-[#CBB292] bg-[#181210]">
         <canvas
           ref={canvasRef}
           width={640}
@@ -414,25 +403,17 @@ export function VirtualVideoCanvas({
           <div
             id="vinylRecordIcon"
             className={`w-7 h-7 rounded-full bg-gradient-to-tr from-stone-900 via-stone-700 to-stone-900 border-2 border-brand-coral flex items-center justify-center ${
-              isPlaying ? "animate-[spin_4s_linear_infinite]" : ""
+              isPlaying ? "vinyl-spin" : ""
             }`}
           >
             <div className="w-2 h-2 rounded-full bg-brand-terracotta" />
           </div>
           <div className="text-[10px] leading-tight pr-1">
             <span className="font-bold block">{activeTrack.title}</span>
-            <span className={isPlaying ? "text-amber-300 font-bold" : "text-stone-400"}>
-              {isPlaying ? `Beatmap: ${activeTrack.bpm} BPM Sync` : "Beatmap: Chờ Click"}
-            </span>
+            <span className="text-amber-300">{isPlaying ? "Đang phát" : "Bấm Phát để nghe"}</span>
           </div>
         </div>
 
-        {/* Badge Slide & Direction góc trái */}
-        {currentSlide && (
-          <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-xs text-white text-[10px] font-mono px-2 py-1 rounded-md border border-white/10">
-            Slide {currentSlideIndex + 1}/{videoPayload?.slides.length || 1} • {currentSlide.panDirection}
-          </div>
-        )}
       </div>
 
       {/* Thanh Điều Khiển Play/Pause + Dropdown Bài Nhạc Lo-Fi */}
@@ -444,14 +425,14 @@ export function VirtualVideoCanvas({
             className="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow flex items-center gap-1.5 transition active:scale-95"
           >
             <span>{isPlaying ? "⏸️" : "▶️"}</span>
-            <span>{isPlaying ? "Tạm dừng Video & Nhạc" : "Phát Video & Nhạc Beat-Sync"}</span>
+            <span>{isPlaying ? "Tạm dừng" : "Phát Phim & Nhạc Nền"}</span>
           </button>
 
           <button
             onClick={handleNextSlide}
             className="bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs px-3 py-2.5 rounded-xl transition"
           >
-            ⏭️ Chuyển ảnh
+            ⏭️ Ảnh kế tiếp
           </button>
 
           {tracks.length > 0 && (
@@ -466,22 +447,30 @@ export function VirtualVideoCanvas({
             >
               {tracks.map((t) => (
                 <option key={t.id} value={t.id}>
-                  🎵 {t.title} ({t.bpm} BPM)
+                  🎵 {t.title}
                 </option>
               ))}
             </select>
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={() => loadVirtualVideoScript(false)}
+          disabled={isLoadingScript}
+          className="bg-[#F9EFC7] hover:bg-[#F5E39E] border border-[#D5BE7E] text-paper-ink font-bold text-xs px-3 py-2 rounded-xl transition disabled:opacity-50"
+        >
+          {isLoadingScript ? "Đang viết..." : "✨ Viết lời bình lãng mạn mới"}
+        </button>
       </div>
 
       {/* Lời dẫn slide hiện tại */}
-      <div className="bg-[#FAF4E8] border border-[#D8CBB8] rounded-xl p-3.5 space-y-1">
-        <span className="text-[11px] font-bold text-paper-muted uppercase block tracking-wider">
-          Lời dẫn khoảnh khắc:
-        </span>
-        <p id="aiGeneratedCaptionText" className="font-hand text-lg sm:text-xl font-bold text-brand-terracotta pt-0.5 leading-snug">
-          &ldquo;{currentSlide?.caption || "Chiều thu Hà Nội dịu dàng, hai tâm hồn lặng ngắm nắng vàng buông xuống nhịp cầu Long Biên..."}&rdquo;
-        </p>
+      <div className="bg-[#FAF4E8] border border-[#E2D5C1] rounded-xl p-3.5 text-xs space-y-1">
+        {currentSlide?.caption ? (
+          <p className="font-hand text-base sm:text-lg font-bold text-brand-terracotta">&ldquo;{currentSlide.caption}&rdquo;</p>
+        ) : (
+          <p className="text-paper-muted">Thêm ảnh kỷ niệm để DateMate dựng thước phim và viết lời dẫn cho hai bạn.</p>
+        )}
       </div>
     </div>
   );

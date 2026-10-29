@@ -2,6 +2,16 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import type { BlindDateTicketDto } from "@/server/services/user/gamification.service";
+import { useApp } from "@/context/AppContext";
+import { calculateHaversineDistanceKm } from "@/lib/travel-time";
+
+const GPS_CHECKIN_RADIUS_KM = 0.3;
+
+function getCurrentPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+  );
+}
 
 interface BlindDateTicketProps {
   onCheckInSuccess?: () => void;
@@ -12,6 +22,7 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
   const [ticket, setTicket] = useState<BlindDateTicketDto | null>(null);
   const [budgetTier, setBudgetTier] = useState<"budget" | "medium" | "luxury">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { places } = useApp();
 
   const toast = useCallback(
     (msg: string, type: "success" | "error" | "info" = "info") => {
@@ -49,7 +60,7 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
       if (res.ok) {
         const json = (await res.json()) as { data: BlindDateTicketDto };
         setTicket(json.data);
-        toast(`🎫 Đã tạo Vé Mù Hẹn Hò mới (${tier}) và mã hóa các trạm tiếp theo trên Server!`, "success");
+        toast(`🎫 Đã tạo Vé Mù Hẹn Hò mới (${tier}) các chặng sau được giữ kín tới lúc hai bạn tới nơi!`, "success");
       }
     } catch {
       toast("Không thể đổi mức ngân sách vé mù.", "error");
@@ -67,10 +78,30 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
     }
 
     const currentStepData = ticket.steps.find((s) => s.step === ticket.currentStep);
-    const placeName = currentStepData?.placeName && currentStepData.placeName !== "🔒 Server Locked"
-      ? currentStepData.placeName
-      : "Điểm hẹn bí mật";
-    const district = currentStepData?.district || "hoan_kiem";
+    if (!currentStepData?.placeId) return;
+
+    // Check-in GPS: đo khoảng cách thật từ vị trí thiết bị tới địa điểm của chặng
+    if (method === "gps_auto") {
+      const place = places.find((p) => p.id === currentStepData.placeId);
+      if (place?.lat == null || place?.lng == null || !navigator.geolocation) {
+        toast("Không xác định được tọa độ để check-in GPS, hãy dùng xác nhận thủ công nhé.", "info");
+        return;
+      }
+      try {
+        const { coords } = await getCurrentPosition();
+        const km = calculateHaversineDistanceKm(
+          { lat: coords.latitude, lng: coords.longitude },
+          { lat: place.lat, lng: place.lng }
+        );
+        if (km > GPS_CHECKIN_RADIUS_KM) {
+          toast(`📍 Bạn đang cách "${place.name}" khoảng ${km.toFixed(1)} km, lại gần hơn để check-in nhé!`, "info");
+          return;
+        }
+      } catch {
+        toast("Chưa lấy được vị trí. Hãy cho phép truy cập vị trí hoặc dùng xác nhận thủ công.", "error");
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     try {
@@ -78,14 +109,13 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          placeName,
-          district,
+          placeId: currentStepData.placeId,
           method,
         }),
       });
 
       if (res.ok) {
-        toast(`🔓 Check-in (${method === "gps_auto" ? "GPS <300m" : "Xác nhận thủ công"}) thành công! Server đã mở khóa chặng tiếp theo.`, "success");
+        toast(`🔓 Check-in tại "${currentStepData.placeName}" thành công! Đã mở khóa chặng tiếp theo.`, "success");
         await fetchTicket();
         if (onCheckInSuccess) onCheckInSuccess();
       } else {
@@ -99,11 +129,11 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
   };
 
   return (
-    <div className="bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col justify-between space-y-4">
+    <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4">
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-brand-terracotta text-white">
-            🎫 Blind Date Ticket
+          <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-brand-terracotta text-white">
+            🎫 Vé Mù Hẹn Hò
           </span>
           <select
             value={budgetTier}
@@ -117,9 +147,9 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
           </select>
         </div>
 
-        <h3 className="font-serif font-extrabold text-base text-paper-ink">Hành trình Bí Mật 3 Chặng</h3>
+        <h3 className="font-serif font-extrabold text-base text-paper-ink">Hành Trình Bí Mật 3 Chặng</h3>
         <p className="text-xs text-paper-muted mt-0.5">
-          Server ẩn hoàn toàn các trạm sau. Phải Check-in trạm hiện tại mới mở khóa trạm kế tiếp!
+          Các điểm đến tiếp theo sẽ được giữ bí mật cho tới khi hai bạn đặt chân tới điểm hẹn hiện tại!
         </p>
 
         {/* Danh sách 3 chặng */}
@@ -144,7 +174,7 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
                         : "text-stone-600 font-bold text-[11px] bg-stone-300/80 px-1.5 py-0.5 rounded"
                     }
                   >
-                    {unlocked ? "🔓 Đã mở" : "🔒 Server Locked"}
+                    {unlocked ? "🔓 Đã mở" : "🔒 Bí mật"}
                   </span>
                 </div>
                 <p className="text-[11px] text-paper-muted mt-0.5 leading-snug">{s.hint}</p>
@@ -166,14 +196,14 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
           disabled={isSubmitting || ticket?.status === "completed"}
           className="w-full bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2.5 rounded-xl shadow transition active:scale-98 disabled:opacity-50"
         >
-          📍 Check-in GPS (&lt;300m) Mở Chặng Tiếp
+          📍 Tụi mình đã tới nơi! Mở chặng tiếp theo
         </button>
         <button
           onClick={() => handleCheckIn("manual_confirm")}
           disabled={isSubmitting || ticket?.status === "completed"}
           className="w-full bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs py-2 rounded-xl transition active:scale-98 disabled:opacity-50"
         >
-          ✍️ Xác nhận thủ công (Manual Confirm)
+          ✍️ Xác nhận thủ công (đã tới nơi)
         </button>
       </div>
     </div>

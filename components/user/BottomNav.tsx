@@ -1,73 +1,59 @@
 "use client";
 
 import React from "react";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useApp } from "@/context/AppContext";
+import { MAIN_NAV, isNavActive } from "./ScrapbookNavbar";
+import { cn } from "@/lib/utils";
+
+const [PLAN_NAV, EXPLORE_NAV, MATCH_NAV, MEMORY_NAV] = MAIN_NAV;
 
 export function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { setIsWheelOpen } = useApp();
+  const { setIsSearchDrawerOpen } = useApp();
 
-  // Hide BottomNav on admin
-  if (pathname.startsWith("/admin")) {
-    return null;
-  }
-
-  const handleNavClick = (sectionId: string) => {
-    if (pathname !== "/") {
-      router.push(`/#${sectionId}`);
-      return;
-    }
-    const el = document.getElementById(sectionId);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
+  const linkClass = (match: readonly string[]) =>
+    cn(
+      "flex flex-col items-center text-[11px] font-bold transition active:scale-95",
+      isNavActive(pathname, match) ? "text-brand-terracotta" : "text-paper-ink"
+    );
 
   return (
     <nav className="mobile-bottom-nav hidden fixed bottom-0 left-0 right-0 z-40 kraft-texture border-t-2 border-[#CBB292] px-2 py-1.5 justify-around items-center shadow-2xl select-none">
+      <Link href={PLAN_NAV.href} className={linkClass(PLAN_NAV.match)}>
+        <span>{PLAN_NAV.emoji}</span>
+        <span>{PLAN_NAV.short}</span>
+      </Link>
       <button
-        onClick={() => handleNavClick("section-home")}
-        className="mobile-bottom-link flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg bg-brand-terracotta text-white font-semibold text-[11px] transition active:scale-95"
+        type="button"
+        onClick={() => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          setIsSearchDrawerOpen(true);
+        }}
+        className="flex flex-col items-center text-[11px] font-bold text-paper-ink transition active:scale-95"
       >
-        <span>🏠</span>
-        <span>Trang chủ</span>
+        <span>🔍</span>
+        <span>Tìm quán</span>
       </button>
-
-      <button
-        onClick={() => handleNavClick("section-explore")}
-        className="mobile-bottom-link flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-paper-ink font-medium text-[11px] transition active:scale-95"
+      <Link
+        href={MATCH_NAV.href}
+        aria-label={MATCH_NAV.label}
+        className={cn(
+          "flex flex-col items-center -mt-4 text-white w-11 h-11 rounded-full justify-center shadow-lg transition active:scale-90",
+          isNavActive(pathname, MATCH_NAV.match) ? "bg-brand-terracottaDark" : "bg-brand-terracotta"
+        )}
       >
-        <span>🧭</span>
-        <span>Khám phá</span>
-      </button>
-
-      {/* Floating Center Dice Button */}
-      <button
-        onClick={() => setIsWheelOpen(true)}
-        className="flex flex-col items-center -mt-5 bg-brand-terracotta border-2 border-[#FAF4E8] text-white w-12 h-12 rounded-full justify-center shadow-lg active:scale-90 transition hover:scale-105"
-        title="Quay số ngẫu nhiên"
-      >
-        <span className="text-lg">🎲</span>
-      </button>
-
-      <button
-        onClick={() => handleNavClick("section-video")}
-        className="mobile-bottom-link flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-paper-ink font-medium text-[11px] transition active:scale-95"
-      >
-        <span>🎞️</span>
-        <span>Video</span>
-      </button>
-
-      <button
-        onClick={() => handleNavClick("section-memory")}
-        className="mobile-bottom-link flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-paper-ink font-medium text-[11px] transition active:scale-95"
-      >
-        <span>📸</span>
-        <span>Kỷ niệm</span>
-      </button>
+        <span>{MATCH_NAV.emoji}</span>
+      </Link>
+      <Link href={EXPLORE_NAV.href} className={linkClass(EXPLORE_NAV.match)}>
+        <span>{EXPLORE_NAV.emoji}</span>
+        <span>{EXPLORE_NAV.short}</span>
+      </Link>
+      <Link href={MEMORY_NAV.href} className={linkClass(MEMORY_NAV.match)}>
+        <span>{MEMORY_NAV.emoji}</span>
+        <span>{MEMORY_NAV.short}</span>
+      </Link>
     </nav>
   );
 }
-

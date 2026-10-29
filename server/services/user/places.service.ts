@@ -1,7 +1,8 @@
 import { isDatabaseConfigured } from "@/server/db/client";
 import { listMediaByPlaceIds, listPublishedPlacesWithGuides } from "@/server/db/queries/user/places.queries";
 import { toCatalogPlace } from "@/server/services/user/catalog.mapper";
-import { HANOI_PLACES, HIDDEN_SAFETY_PLACE } from "@/lib/mock-data";
+import { HANOI_PLACES } from "@/lib/mock-data";
+import { HIDDEN_SAFETY_PLACE } from "@/lib/constants/catalog";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { PlaceMedia } from "@/server/db/schema";
 import {
@@ -18,15 +19,24 @@ function getSeedPlaces(): HanoiPlace[] {
   return HANOI_PLACES.filter((place) => place.status === "published");
 }
 
+/** Bộ seed chỉ dành cho chế độ demo khi dev; production không được che lỗi DB bằng dữ liệu giả. */
+function isProduction(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
 /**
- * Catalog đã xuất bản. Chưa có DB, hoặc DB chưa seed địa điểm nào, thì dùng bộ seed 36 địa điểm (mục 14).
+ * Catalog đã xuất bản. Khi dev: chưa có DB, DB chưa seed, hoặc DB lỗi thì dùng bộ seed 36 địa điểm (mục 14).
+ * Production: DB rỗng trả rỗng, DB lỗi thì ném lỗi để giám sát phát hiện.
  */
 export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
-  if (!isDatabaseConfigured()) return getSeedPlaces();
+  if (!isDatabaseConfigured()) {
+    if (isProduction()) throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
+    return getSeedPlaces();
+  }
 
   try {
     const rows = await listPublishedPlacesWithGuides();
-    if (rows.length === 0) return getSeedPlaces();
+    if (rows.length === 0) return isProduction() ? [] : getSeedPlaces();
 
     const placeIds = rows.map((r) => r.place.id);
     const mediaRows = await listMediaByPlaceIds(placeIds);
@@ -43,6 +53,7 @@ export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
       toCatalogPlace(place, guide, mediaByPlaceId.get(place.id) ?? [], now)
     );
   } catch (err) {
+    if (isProduction()) throw err;
     console.warn("Không thể truy vấn TiDB Cloud, fallback dùng seed data:", err);
     return getSeedPlaces();
   }

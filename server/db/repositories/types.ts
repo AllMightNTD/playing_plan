@@ -169,8 +169,23 @@ export interface SwipeSyncResult {
   isNewMatch: boolean;
 }
 
+export type UndoSwipeResult =
+  | { status: "not_found" }
+  | { status: "match_planned" }
+  | { status: "undone"; removedMatchId: string | null };
+
 export interface SwipeRepository {
   listSwipedPlaceIds(roomId: string, memberId: string): Promise<string[]>;
+  /**
+   * Hoàn tác lượt quẹt trong cùng transaction: xóa lượt quẹt, và gỡ Match đang mở nếu số like
+   * còn lại không đủ ngưỡng. Match đã lên kế hoạch thì chặn, không xóa gì.
+   */
+  undoSwipe(input: { roomId: string; memberId: string; placeId: string }): Promise<UndoSwipeResult>;
+  /**
+   * Đồng bộ trạng thái Match theo kế hoạch thực tế của phòng: địa điểm đang có trong một điểm dừng
+   * thì Match chuyển `planned`, không còn điểm dừng nào thì trả về `open`.
+   */
+  syncPlannedMatches(roomId: string): Promise<void>;
   /**
    * Lưu lựa chọn và đồng bộ Match trong cùng transaction: cả hai cùng thích thì tạo Match,
    * bỏ thích thì gỡ Match chưa lên kế hoạch. Trả về { matchId, isNewMatch }.

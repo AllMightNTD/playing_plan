@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React from "react";
 import { AppProvider } from "@/context/AppContext";
-import { DeviceSwitcherBar, ViewportMode } from "@/components/user/DeviceSwitcherBar";
 import { ScrapbookNavbar } from "@/components/user/ScrapbookNavbar";
+import { RoomDeletionBanner } from "@/components/user/RoomDeletionBanner";
 import { BottomNav } from "@/components/user/BottomNav";
 import { ToastContainer } from "@/components/user/Toast";
 import { PlaceDetailModal } from "@/components/user/PlaceDetailModal";
@@ -16,54 +16,27 @@ export default function UserLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [viewportMode, setViewportMode] = useState<ViewportMode>("auto");
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-
-  const modeClass =
-    viewportMode === "tablet"
-      ? "mode-tablet"
-      : viewportMode === "mobile"
-      ? "mode-mobile"
-      : "";
-
   return (
     <AppProvider>
-      <div className="min-h-screen bg-[#26201D] text-paper-ink flex flex-col font-sans selection:bg-brand-terracotta selection:text-white">
-        {/* TOP FLOATING DEVICE SWITCHER BAR */}
-        <DeviceSwitcherBar currentMode={viewportMode} onModeChange={setViewportMode} />
+      <div className="viewport-wrapper flex-1">
+        <div className="scrapbook-paper min-h-screen flex flex-col relative shadow-2xl text-paper-ink">
+          <ScrapbookNavbar />
+          <RoomDeletionBanner />
 
-        {/* VIEWPORT CONTAINER */}
-        <div id="viewportWrapper" className={`viewport-wrapper ${modeClass}`}>
-          <div
-            id="appScrollFrame"
-            ref={scrollContainerRef}
-            className="app-frame scrapbook-canvas min-h-screen flex flex-col relative"
-          >
-            {/* 1. STICKY SCRAPBOOK TOP NAVBAR */}
-            <ScrapbookNavbar scrollContainerRef={scrollContainerRef} />
+          <main className="main-content-area flex-1 p-4 sm:p-6 lg:p-8">
+            <div className="max-w-[1140px] mx-auto">{children}</div>
+          </main>
 
-            {/* 2. MAIN SCRAPBOOK CONTENT AREA */}
-            <main className="main-content-area flex-1 p-5 sm:p-7 lg:p-9 overflow-x-hidden">
-              <div className="max-w-[1140px] mx-auto">
-                {children}
-              </div>
-            </main>
-
-            {/* 3. MOBILE FLOATING BOTTOM NAVIGATION BAR */}
-            <BottomNav />
-          </div>
+          <BottomNav />
         </div>
-
-        {/* Global Floating Toasts */}
-        <ToastContainer />
-
-        {/* Global Modals */}
-        <PlaceDetailModal />
-        <WizardModal />
-        <LuckyWheelModal />
-        <RoomModal />
       </div>
+
+      {/* Toast & modal dùng chung */}
+      <ToastContainer />
+      <PlaceDetailModal />
+      <WizardModal />
+      <LuckyWheelModal />
+      <RoomModal />
     </AppProvider>
   );
 }
-

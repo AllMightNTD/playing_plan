@@ -157,6 +157,36 @@ export const extractedGuideSchema = z.object({
 export type PlaceGuideInput = z.infer<typeof placeGuideInputSchema>;
 export type CreatePlaceBody = z.infer<typeof createPlaceBodySchema>;
 export type UpdatePlaceBody = z.infer<typeof updatePlaceBodySchema>;
+/** Mốc hotspot tối đa 6 giờ: đủ cho video dài nhất trong catalog. */
+const MAX_HOTSPOT_SECONDS = 6 * 60 * 60;
+
+export const adminVideoListQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  filter: z.enum(["all", "pending", "verified", "none"]).default("all"),
+  cursor: cursorSchema,
+  limit: z.coerce.number().int().min(1).max(MAX_ADMIN_PAGE_SIZE).default(DEFAULT_ADMIN_PAGE_SIZE),
+});
+
+export const createHotspotBodySchema = z
+  .object({
+    placeId: z.string().trim().min(1).max(21),
+    timestampSec: z.number().int().min(0).max(MAX_HOTSPOT_SECONDS),
+    label: z.string().trim().max(200).optional(),
+  })
+  .strict();
+
+export const reviewHotspotBodySchema = z
+  .object({
+    status: z.enum(["verified", "rejected"]).optional(),
+    placeId: z.string().trim().min(1).max(21).optional(),
+    timestampSec: z.number().int().min(0).max(MAX_HOTSPOT_SECONDS).optional(),
+  })
+  .strict()
+  .refine((body) => Object.values(body).some((value) => value !== undefined), { message: "EMPTY_UPDATE" });
+
+export type AdminVideoListQuery = z.infer<typeof adminVideoListQuerySchema>;
+export type CreateHotspotBody = z.infer<typeof createHotspotBodySchema>;
+export type ReviewHotspotBody = z.infer<typeof reviewHotspotBodySchema>;
 export type AdminPlaceListQuery = z.infer<typeof adminPlaceListQuerySchema>;
 export type AiExtractBody = z.infer<typeof aiExtractBodySchema>;
 export type ExtractedGuide = z.infer<typeof extractedGuideSchema>;

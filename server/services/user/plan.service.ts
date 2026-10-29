@@ -108,6 +108,7 @@ export async function createPlan(session: MemberSession, input: CreatePlanBody):
     : null;
 
   await getUserRepositories().plans.insertPlan(plan, firstStop);
+  if (firstStop) await getUserRepositories().swipes.syncPlannedMatches(session.roomId);
   return getPlanDetail(session, plan.id);
 }
 
@@ -125,6 +126,7 @@ export async function updatePlan(session: MemberSession, planId: string, input: 
 export async function deletePlan(session: MemberSession, planId: string): Promise<void> {
   await loadEditablePlan(session, planId);
   await getUserRepositories().plans.deletePlanCascade(toPlanScope(session, planId));
+  await getUserRepositories().swipes.syncPlannedMatches(session.roomId);
 }
 
 async function describeFirstStopLocation(stops: PlanStop[]): Promise<string | null> {

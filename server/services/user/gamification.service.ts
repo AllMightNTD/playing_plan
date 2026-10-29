@@ -9,11 +9,16 @@ import type {
   SecretNoteRecord,
 } from "@/server/db/repositories/types";
 import { createRoomNotice } from "@/server/services/user/room-notice.service";
+import { getAllPublishedPlaces, requirePublishedPlace } from "@/server/services/user/places.service";
+import { HANOI_7_DISTRICTS, resolveDistrictKey } from "@/lib/districts";
+import type { HanoiPlace } from "@/lib/types/catalog";
+import type { PlaceCategory } from "@/lib/constants/catalog";
 
 export interface BlindDateStepDto {
   step: number;
   title: string;
   hint: string;
+  placeId: string;
   placeName: string;
   district: string;
   isUnlocked: boolean;
@@ -31,6 +36,7 @@ export interface BlindDateTicketDto {
 
 export interface SecretNoteDto {
   id: string;
+  placeId: string;
   placeName: string;
   district: string;
   hint: string;
@@ -56,10 +62,14 @@ export interface ScratchMapDto {
 }
 
 export interface CheckInInput {
-  placeId?: string;
-  placeName: string;
-  district: string;
+  placeId: string;
   method: "gps_auto" | "manual_confirm";
+}
+
+export interface CreateSecretNoteInput {
+  placeId: string;
+  hint?: string;
+  content: string;
 }
 
 export interface CheckInResultDto {
@@ -69,105 +79,61 @@ export interface CheckInResultDto {
   scratchMap: ScratchMapDto;
 }
 
-export const HANOI_7_DISTRICTS = [
-  { key: "tay_ho", name: "Tây Hồ" },
-  { key: "hoan_kiem", name: "Hoàn Kiếm" },
-  { key: "ba_dinh", name: "Ba Đình" },
-  { key: "dong_da", name: "Đống Đa" },
-  { key: "thanh_xuan", name: "Thanh Xuân" },
-  { key: "hai_ba_trung", name: "Hai Bà Trưng" },
-  { key: "cau_giay", name: "Cầu Giấy" },
+type BudgetTier = BlindDateTicketRecord["budgetTier"];
+
+/** Mỗi tier lọc theo priceLevel (1 rẻ → 3 sang) của catalog. */
+const PRICE_LEVELS_BY_TIER: Record<BudgetTier, number[]> = {
+  budget: [1],
+  medium: [1, 2],
+  luxury: [2, 3],
+};
+
+/** 3 chặng: khởi động bằng đồ uống, đi dạo/chơi, kết thúc bằng bữa tối. */
+const BLIND_STEP_SLOTS: { title: string; categories: PlaceCategory[] }[] = [
+  { title: "Chặng 1: Khởi động nhẹ nhàng", categories: ["cafe"] },
+  { title: "Chặng 2: Dạo chơi tay trong tay", categories: ["walk", "photo", "nature", "fun", "indoor"] },
+  { title: "Chặng 3: Bữa tối khép lại ngày hẹn", categories: ["food"] },
 ];
 
-const PRESET_BLIND_STEPS: Record<"budget" | "medium" | "luxury", BlindDateStep[]> = {
-  budget: [
-    {
-      step: 1,
-      title: "Chặng 1: Thơm nồng cà phê phố cổ",
-      hint: "Quán cà phê gia truyền nổi tiếng với món cà phê trứng thơm bùi ngắm phố cổ",
-      placeId: "cafe-giang",
-      placeName: "Café Giảng - 39 Nguyễn Hữu Huân",
-      district: "hoan_kiem",
-      isUnlocked: true,
-    },
-    {
-      step: 2,
-      title: "Chặng 2: Nắng rọi tán sấu ven hồ",
-      hint: "Tản bộ tay trong tay dưới tán liễu và hàng sấu cổ thụ ven hồ nước biểu tượng",
-      placeId: "ho-guom-walk",
-      placeName: "Đường đôi Đinh Tiên Hoàng - Hồ Gươm",
-      district: "hoan_kiem",
-      isUnlocked: false,
-    },
-    {
-      step: 3,
-      title: "Chặng 3: Que kem cốm ngọt ngào",
-      hint: "Thưởng thức que kem cốm sữa thơm ngọt ven bờ hồ chiều thu gió mát",
-      placeId: "kem-thuy-ta",
-      placeName: "Kem Thủy Tạ - Bờ Hồ",
-      district: "hoan_kiem",
-      isUnlocked: false,
-    },
-  ],
-  medium: [
-    {
-      step: 1,
-      title: "Chặng 1: Ngắm đoàn tàu qua nhịp cầu sắt",
-      hint: "Quán cà phê tầng thượng view trọn vẹn nhịp cầu Long Biên thế kỷ",
-      placeId: "serein-cafe",
-      placeName: "Serein Café Cầu Long Biên",
-      district: "hoan_kiem",
-      isUnlocked: true,
-    },
-    {
-      step: 2,
-      title: "Chặng 2: Hoàng hôn cỏ lau ven sông",
-      hint: "Bãi cỏ lau lãng mạn ven triền đê sông Hồng, đón hoàng hôn rực rỡ",
-      placeId: "bai-da-song-hong",
-      placeName: "Bãi đá sông Hồng",
-      district: "tay_ho",
-      isUnlocked: false,
-    },
-    {
-      step: 3,
-      title: "Chặng 3: Không gian nghệ thuật & tĩnh lặng",
-      hint: "Tòa biệt thự Pháp cổ trưng bày những tác phẩm mỹ thuật quý giá",
-      placeId: "bao-tang-my-thuat",
-      placeName: "Bảo Tàng Mỹ Thuật Việt Nam",
-      district: "ba_dinh",
-      isUnlocked: false,
-    },
-  ],
-  luxury: [
-    {
-      step: 1,
-      title: "Chặng 1: Afternoon Tea hoàng gia",
-      hint: "Tiệc trà chiều lãng mạn trên mặt nước Hồ Tây mênh mông",
-      placeId: "sunset-bar-intercon",
-      placeName: "Sunset Bar InterContinental Hồ Tây",
-      district: "tay_ho",
-      isUnlocked: true,
-    },
-    {
-      step: 2,
-      title: "Chặng 2: Thưởng lãm kiến trúc di sản",
-      hint: "Dạo bước dưới mái vòm phong cách tân cổ điển và quảng trường lộng gió",
-      placeId: "nha-hat-lon",
-      placeName: "Nhà hát Lớn Hà Nội",
-      district: "hoan_kiem",
-      isUnlocked: false,
-    },
-    {
-      step: 3,
-      title: "Chặng 3: Bữa tối nến thơm & rượu vang",
-      hint: "Không gian ẩm thực Pháp tinh tế và ấm cúng cùng những giai điệu jazz",
-      placeId: "la-badiane",
-      placeName: "La Badiane Hà Nội",
-      district: "hoan_kiem",
-      isUnlocked: false,
-    },
-  ],
-};
+function pickRandom<T>(items: T[]): T | undefined {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+/** Gợi ý chỉ lộ loại hình và không khí, không lộ tên hay khu vực của chặng còn khóa. */
+function toBlindHint(place: HanoiPlace): string {
+  return [place.categoryLabel, ...place.moodLabels.slice(0, 2), place.costText].filter(Boolean).join(" • ");
+}
+
+/**
+ * Dựng 3 chặng vé mù từ catalog đã xuất bản: ưu tiên đúng tier giá, đúng loại chặng,
+ * và cùng quận với chặng 1 để đi lại gần; thiếu thì nới dần điều kiện.
+ */
+export function buildBlindDateSteps(places: HanoiPlace[], budgetTier: BudgetTier): BlindDateStep[] {
+  const inTier = places.filter((p) => PRICE_LEVELS_BY_TIER[budgetTier].includes(p.priceLevel));
+  const pool = inTier.length >= BLIND_STEP_SLOTS.length ? inTier : places;
+  const chosen: HanoiPlace[] = [];
+
+  for (const slot of BLIND_STEP_SLOTS) {
+    const unused = pool.filter((p) => !chosen.includes(p));
+    const bySlot = unused.filter((p) => slot.categories.includes(p.category));
+    const firstDistrict = chosen[0] ? resolveDistrictKey(chosen[0].area) : null;
+    const nearby = bySlot.filter((p) => firstDistrict && resolveDistrictKey(p.area) === firstDistrict);
+    const place = pickRandom(nearby.length > 0 ? nearby : bySlot.length > 0 ? bySlot : unused);
+    if (place) chosen.push(place);
+  }
+
+  if (chosen.length < BLIND_STEP_SLOTS.length) throw new AppError(ERRORS.PLACE.NO_CANDIDATE);
+
+  return chosen.map((place, idx) => ({
+    step: idx + 1,
+    title: BLIND_STEP_SLOTS[idx].title,
+    hint: toBlindHint(place),
+    placeId: place.id,
+    placeName: place.name,
+    district: resolveDistrictKey(place.area),
+    isUnlocked: idx === 0,
+  }));
+}
 
 function toBlindDateTicketDto(ticket: BlindDateTicketRecord): BlindDateTicketDto {
   return {
@@ -183,6 +149,7 @@ function toBlindDateTicketDto(ticket: BlindDateTicketRecord): BlindDateTicketDto
         title: s.title,
         hint: s.hint,
         // Server-Side Masking: Giấu hoàn toàn tọa độ và tên quán nếu chưa mở khóa!
+        placeId: isUnlocked ? s.placeId : "",
         placeName: isUnlocked ? s.placeName : "🔒 Server Locked",
         district: isUnlocked ? s.district : "",
         isUnlocked,
@@ -198,7 +165,7 @@ export async function getBlindDateTicket(session: MemberSession): Promise<BlindD
   let ticket = await repo.getActiveBlindDateTicket(session.roomId);
 
   if (!ticket) {
-    const defaultSteps = PRESET_BLIND_STEPS.medium.map((s) => ({ ...s }));
+    const defaultSteps = buildBlindDateSteps(await getAllPublishedPlaces(), "medium");
     ticket = {
       id: "bdt_" + nanoid(16),
       roomId: session.roomId,
@@ -222,8 +189,7 @@ export async function createBlindDateTicket(
   budgetTier: "budget" | "medium" | "luxury"
 ): Promise<BlindDateTicketDto> {
   const repo = getUserRepositories().gamification;
-  const presets = PRESET_BLIND_STEPS[budgetTier] || PRESET_BLIND_STEPS.medium;
-  const steps = presets.map((s) => ({ ...s, isUnlocked: s.step === 1 }));
+  const steps = buildBlindDateSteps(await getAllPublishedPlaces(), budgetTier);
 
   const ticket: BlindDateTicketRecord = {
     id: "bdt_" + nanoid(16),
@@ -279,10 +245,8 @@ export async function checkInPlace(
   session: MemberSession,
   input: CheckInInput
 ): Promise<CheckInResultDto> {
-  if (!input.placeName || !input.district) {
-    throw new AppError(ERRORS.COMMON.VALIDATION_FAILED);
-  }
-
+  // Tên quán và quận lấy từ catalog, không tin dữ liệu client gửi lên
+  const place = await requirePublishedPlace(input.placeId);
   const repo = getUserRepositories().gamification;
   const now = new Date();
 
@@ -291,18 +255,24 @@ export async function checkInPlace(
     id: "chk_" + nanoid(16),
     roomId: session.roomId,
     memberId: session.memberId,
-    placeId: input.placeId || "plc_" + nanoid(12),
-    placeName: input.placeName,
-    district: input.district,
+    placeId: place.id,
+    placeName: place.name,
+    district: resolveDistrictKey(place.area),
     method: input.method,
     checkedInAt: now,
   };
   await repo.recordCheckin(checkin);
 
-  // 2. Tự động mở chặng tiếp theo của Vé Mù (nếu còn chặng)
+  // 2. Mở chặng tiếp theo của Vé Mù khi check-in đúng địa điểm của chặng đang mở
   let advancedBlindStep = false;
   const ticket = await repo.getActiveBlindDateTicket(session.roomId);
-  if (ticket && ticket.status === "in_progress" && ticket.currentStep < ticket.totalSteps) {
+  const currentStepPlaceId = ticket?.steps.find((s) => s.step === ticket.currentStep)?.placeId;
+  if (
+    ticket &&
+    ticket.status === "in_progress" &&
+    ticket.currentStep < ticket.totalSteps &&
+    currentStepPlaceId === place.id
+  ) {
     const nextStep = ticket.currentStep + 1;
     const isCompleted = nextStep >= ticket.totalSteps;
     await repo.updateBlindDateTicket(
@@ -317,7 +287,7 @@ export async function checkInPlace(
   // 3. Mở khóa Thư tình ẩn giấu tại quán & bắn notice vào room_notices
   const unlockedNotes = await repo.unlockSecretNotesForPlace(
     session.roomId,
-    input.placeId || input.placeName,
+    place.id,
     now
   );
 
@@ -326,9 +296,9 @@ export async function checkInPlace(
       await createRoomNotice(session.roomId, {
         noticeType: "secret_note_unlocked",
         title: "💌 Thư tình bí mật đã mở khóa!",
-        content: `Một thành viên vừa check-in tại "${input.placeName}" và đã mở khóa bức thư tình cất giấu!`,
+        content: `Một thành viên vừa check-in tại "${place.name}" và đã mở khóa bức thư tình cất giấu!`,
         metadata: {
-          placeName: input.placeName,
+          placeName: place.name,
           notesCount: unlockedNotes.length,
           checkedInAt: now.toISOString(),
         },
@@ -352,21 +322,22 @@ export async function checkInPlace(
 /** Tạo thư tình bí mật cất giấu tại quán */
 export async function createSecretNote(
   session: MemberSession,
-  input: { placeId?: string; placeName: string; district?: string; hint?: string; content: string }
+  input: CreateSecretNoteInput
 ): Promise<SecretNoteDto> {
-  if (!input.placeName || !input.content || input.content.trim().length === 0) {
+  if (!input.content || input.content.trim().length === 0) {
     throw new AppError(ERRORS.COMMON.VALIDATION_FAILED);
   }
 
+  const place = await requirePublishedPlace(input.placeId);
   const repo = getUserRepositories().gamification;
   const note: SecretNoteRecord = {
     id: "sn_" + nanoid(16),
     roomId: session.roomId,
     authorMemberId: session.memberId,
-    placeId: input.placeId || "plc_" + nanoid(12),
-    placeName: input.placeName,
-    district: input.district || "hoan_kiem",
-    hint: input.hint || "Check-in tại quán để mở bức thư tình này",
+    placeId: place.id,
+    placeName: place.name,
+    district: resolveDistrictKey(place.area),
+    hint: input.hint || `Check-in tại ${place.name} để mở bức thư tình này`,
     content: input.content.trim(),
     isUnlocked: false,
     unlockedAt: null,
@@ -377,6 +348,7 @@ export async function createSecretNote(
 
   return {
     id: note.id,
+    placeId: note.placeId,
     placeName: note.placeName,
     district: note.district,
     hint: note.hint,
@@ -395,6 +367,7 @@ export async function listSecretNotes(session: MemberSession): Promise<SecretNot
 
   return notes.map((n) => ({
     id: n.id,
+    placeId: n.placeId,
     placeName: n.placeName,
     district: n.district,
     hint: n.hint,

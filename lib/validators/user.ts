@@ -205,7 +205,11 @@ export const joinRoomBodySchema = z
     token: base64UrlSecretSchema.optional(),
     code: z
       .string()
-      .transform((value) => value.replace(/[\s-]/g, "").toUpperCase())
+      .transform((value) => {
+        // Mã hiển thị dạng DM-XXXX-XXXX: bỏ tiền tố DM nếu người dùng gõ kèm
+        const cleaned = value.replace(/[\s-]/g, "").toUpperCase();
+        return cleaned.length === INVITE_CODE_LENGTH + 2 && cleaned.startsWith("DM") ? cleaned.slice(2) : cleaned;
+      })
       .pipe(z.string().regex(new RegExp(`^[A-Z0-9]{${INVITE_CODE_LENGTH}}$`)))
       .optional(),
     nickname: nicknameSchema.optional(),

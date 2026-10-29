@@ -1,33 +1,47 @@
-import { describe, expect, it } from "vitest";
-import {
-  getVideoHotspots,
-  listFeaturedVideosWithHotspots,
-  CURATED_FEATURED_VIDEOS,
-} from "./video-hotspots.service";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getVideoHotspots } from "./video-hotspots.service";
+import { isDatabaseConfigured } from "@/server/db/client";
+import { listHotspotsByVideo } from "@/server/db/queries/videos/video-hotspots.queries";
+import { HANOI_PLACES } from "@/lib/mock-data";
 
-describe("Video Hotspots & Pin Tags Service (Phase 3)", () => {
-  it("should list 3 curated featured videos with pinCount", async () => {
-    const list = await listFeaturedVideosWithHotspots();
-    expect(list).toHaveLength(3);
-    expect(list[0]).toHaveProperty("pinCount");
-    expect(list[0].pinCount).toBeGreaterThan(0);
-    expect(list[0]).toHaveProperty("primaryPlaceName");
+vi.mock("@/server/db/client", () => ({ isDatabaseConfigured: vi.fn() }));
+vi.mock("@/server/db/queries/videos/video-hotspots.queries", () => ({ listHotspotsByVideo: vi.fn() }));
+vi.mock("@/server/services/user/places.service", () => ({
+  getAllPublishedPlaces: vi.fn(async () => HANOI_PLACES.filter((p) => p.status === "published")),
+}));
+
+const AT = new Date("2026-10-29T03:00:00.000Z");
+const row = (id: string, placeId: string, timestampSec: number) => ({
+  id, videoId: "yt1", placeId, timestampSec, label: null, source: "admin" as const, confidence: null, evidence: null, status: "verified" as const,
+  createdBy: "a@x.vn", verifiedBy: "a@x.vn", createdAt: AT, updatedAt: AT,
+  placeName: null, placeSlug: null, placeArea: null, placeStatus: null,
+});
+
+describe("getVideoHotspots", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isDatabaseConfigured).mockReturnValue(true);
   });
 
-  it("should get hotspots detail for a curated video", async () => {
-    const detail = await getVideoHotspots("vid-long-bien");
-    expect(detail.videoId).toBe("vid-long-bien");
-    expect(detail.hotspots.length).toBeGreaterThan(0);
-    expect(detail.hotspots[0]).toMatchObject({
-      id: "spot-1",
-      timestampSeconds: 42,
-      timeFormatted: "00:42",
-      position: { x: expect.any(Number), y: expect.any(Number) },
-    });
-    expect(Array.isArray(detail.nearbyPlaces)).toBe(true);
+  it("chỉ đọc mốc đã duyệt và gắn thông tin địa điểm thật", async () => {
+    vi.mocked(listHotspotsByVideo).mockResolvedValue([row("h1", "p3", 1225)]);
+    const detail = await getVideoHotspots("yt1");
+
+    expect(listHotspotsByVideo).toHaveBeenCalledWith("yt1", "verified");
+    expect(detail.hotspots).toEqual([
+      expect.objectContaining({ id: "h1", placeId: "p3", timestampSeconds: 1225, timeFormatted: "20:25" }),
+    ]);
+    expect(detail.hotspots[0].placeName).toBe(HANOI_PLACES.find((p) => p.id === "p3")!.name);
   });
 
-  it("should reject getting hotspots for an unknown video", async () => {
-    await expect(getVideoHotspots("unknown-non-existent-video")).rejects.toThrow();
+  it("bỏ mốc trỏ tới địa điểm đã ẩn hoặc không còn tồn tại", async () => {
+    vi.mocked(listHotspotsByVideo).mockResolvedValue([row("h2", "p-khong-ton-tai", 10)]);
+    expect((await getVideoHotspots("yt1")).hotspots).toEqual([]);
+  });
+
+  it("không có DB thì trả rỗng, không tự sinh mốc", async () => {
+    vi.mocked(isDatabaseConfigured).mockReturnValue(false);
+    expect(await getVideoHotspots("yt1")).toEqual({ videoId: "yt1", hotspots: [] });
+    expect(listHotspotsByVideo).not.toHaveBeenCalled();
   });
 });

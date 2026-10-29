@@ -32,7 +32,7 @@ export type AdminPlaceRow = Pick<Place, "id" | "slug" | "name" | "area" | "categ
 export type PlaceGuideFields = Omit<NewPlaceGuide, "placeId">;
 
 /** Thoát ký tự đại diện của LIKE để chuỗi người dùng gõ luôn được so khớp nguyên văn. */
-function escapeLikePattern(value: string): string {
+export function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 

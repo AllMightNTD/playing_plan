@@ -26,7 +26,7 @@ export function WizardModal() {
     setWizardAnswers,
     places,
     setActiveDetailSlug,
-    addStopToPlan,
+    quickAddPlaceToPlan,
   } = useApp();
 
   // Scored places for step 5 qua scoring engine chuẩn F05
@@ -313,7 +313,7 @@ export function WizardModal() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="px-2.5 py-0.5 rounded-full bg-brand-olive/15 text-brand-olive text-xs font-bold border border-brand-olive/20">
-                  ✅ Đã chọn lọc qua Scoring Engine F05
+                  ✅ Chấm điểm theo đúng lựa chọn của hai bạn
                 </span>
                 <button
                   onClick={() => setWizardStep(1)}
@@ -367,7 +367,7 @@ export function WizardModal() {
                       <button
                         onClick={() => {
                           setIsWizardOpen(false);
-                          addStopToPlan(item.place);
+                          quickAddPlaceToPlan(item.place);
                         }}
                         className="flex-1 py-2 rounded-xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs shadow-2xs transition"
                       >

@@ -2,13 +2,17 @@
 
 import React, { useState, useRef } from "react";
 import { Share2, Copy, Check, X, Trash2, ExternalLink, Download, ShieldCheck, Eye, EyeOff } from "lucide-react";
-import type { PlanDetailDto } from "@/server/services/user/plan.mapper";
+import QRCode from "qrcode";
+import type { PlanDetailDto, PlanStopDto } from "@/server/services/user/plan.mapper";
+import type { HanoiPlace } from "@/lib/types/catalog";
 
 interface PosterShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   plan: PlanDetailDto;
   onRefresh: () => Promise<void>;
+  /** Catalog để lấy tên địa điểm cho các trạm chỉ lưu placeId */
+  places?: HanoiPlace[];
 }
 
 export function PosterShareModal({
@@ -16,6 +20,7 @@ export function PosterShareModal({
   onClose,
   plan,
   onRefresh,
+  places = [],
 }: PosterShareModalProps) {
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -32,6 +37,11 @@ export function PosterShareModal({
   const shareUrl = shareToken
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/p/share/${shareToken}`
     : null;
+
+  const stopName = (stop: PlanStopDto, idx: number) =>
+    stop.customName ||
+    (stop.placeId && places.find((place) => place.id === stop.placeId)?.name) ||
+    `Điểm hẹn #${idx + 1}`;
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -64,7 +74,7 @@ export function PosterShareModal({
       });
       if (!res.ok) throw new Error("Không thể thu hồi link chia sẻ.");
       await onRefresh();
-      showToast("🚫 Đã thu hồi shareToken! Mọi truy cập vào link cũ sẽ hiện thiệp báo hết hạn.");
+      showToast("🚫 Đã thu hồi link! Ai mở link cũ sẽ thấy thiệp đã hết hạn.");
     } catch (err) {
       console.error(err);
     } finally {
@@ -81,7 +91,7 @@ export function PosterShareModal({
   };
 
   // Kết xuất Canvas thành ảnh Story .png (Tỷ lệ 9:16 chuẩn Story)
-  const handleDownloadPosterPng = () => {
+  const handleDownloadPosterPng = async () => {
     setIsDownloading(true);
     try {
       const canvas = document.createElement("canvas");
@@ -217,7 +227,7 @@ export function PosterShareModal({
         ctx.font = "bold 34px serif";
         const stopTitle = privacyMode
           ? `Trạm dừng bí mật #${idx + 1}`
-          : stop.customName || `Địa điểm #${idx + 1}`;
+          : stopName(stop, idx);
         ctx.fillText(stopTitle, 250, curY - 10);
 
         ctx.fillStyle = "#7A685D";
@@ -236,16 +246,16 @@ export function PosterShareModal({
       ctx.fillRect(100, footerY, canvas.width - 200, 200);
       ctx.strokeRect(100, footerY, canvas.width - 200, 200);
 
-      // Mockup QR Code
-      ctx.fillStyle = "#362721";
-      ctx.fillRect(130, footerY + 25, 150, 150);
-      ctx.fillStyle = "#FFF";
-      ctx.fillRect(145, footerY + 40, 120, 120);
-      ctx.fillStyle = "#362721";
-      ctx.fillRect(160, footerY + 55, 40, 40);
-      ctx.fillRect(215, footerY + 55, 35, 35);
-      ctx.fillRect(160, footerY + 110, 35, 35);
-      ctx.fillRect(210, footerY + 110, 40, 40);
+      // QR thật trỏ về trang thiệp công khai
+      if (shareUrl) {
+        const qrCanvas = document.createElement("canvas");
+        await QRCode.toCanvas(qrCanvas, shareUrl, {
+          width: 150,
+          margin: 1,
+          color: { dark: "#362721", light: "#FFFFFF" },
+        });
+        ctx.drawImage(qrCanvas, 130, footerY + 25, 150, 150);
+      }
 
       ctx.textAlign = "left";
       ctx.fillStyle = "#C84B31";
@@ -254,8 +264,8 @@ export function PosterShareModal({
 
       ctx.fillStyle = "#362721";
       ctx.font = "bold 24px monospace";
-      const displayLink = shareToken ? `/p/share/${shareToken}` : "datemate.vn/p/share";
-      ctx.fillText(`Link công khai: ${displayLink}`, 320, footerY + 125);
+      const displayLink = shareUrl ? shareUrl.replace(/^https?:\/\//, "") : "";
+      ctx.fillText(`Link: ${displayLink}`, 320, footerY + 125, 640);
 
       ctx.fillStyle = "#6E8361";
       ctx.font = "20px sans-serif";
@@ -268,7 +278,7 @@ export function PosterShareModal({
       a.download = `datemate-story-${plan.id}.png`;
       a.click();
 
-      showToast("📸 Đã kết xuất ảnh Poster .png (Font tiếng Việt nhúng Base64 sắc nét)!");
+      showToast("📸 Đã xuất ảnh Poster .png kèm mã QR!");
     } catch (err) {
       console.error(err);
       showToast("Có lỗi xảy ra khi tạo ảnh poster.");
@@ -290,8 +300,8 @@ export function PosterShareModal({
         {/* Header Modal */}
         <div className="flex items-center justify-between border-b border-[#E6D3B8] pb-3">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded bg-[#3E5C76] text-white">
-              GET /p/share/[shareToken]
+            <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#3E5C76] text-white">
+              💌 Thiệp hẹn
             </span>
             <span className="text-xs font-serif font-bold text-[#362721]">
               Scrapbook Story Poster
@@ -318,8 +328,8 @@ export function PosterShareModal({
                   <span className="font-hand text-lg font-bold text-[#C84B31]">
                     DateMate Scrapbook Story
                   </span>
-                  <span className="text-[10px] font-mono bg-[#EFE5D4] text-[#362721] px-2 py-0.5 rounded">
-                    no-referrer • noindex
+                  <span className="text-[10px] font-bold bg-[#EFE5D4] text-[#362721] px-2 py-0.5 rounded">
+                    🔒 Riêng tư
                   </span>
                 </div>
 
@@ -342,7 +352,7 @@ export function PosterShareModal({
                       —{" "}
                       {privacyMode
                         ? `Trạm dừng bí mật #${idx + 1}`
-                        : s.customName || `Điểm hẹn #${idx + 1}`}
+                        : stopName(s, idx)}
                     </p>
                   ))}
                   {plan.stops.length > 4 && (
@@ -355,10 +365,10 @@ export function PosterShareModal({
                 <div className="pt-2 border-t border-dashed border-[#D8CBB8] flex items-center justify-between text-[11px]">
                   <span className="text-[#362721]/70 flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    Link tĩnh không chứa <code>roomId</code>
+                    Link không lộ thông tin phòng đôi
                   </span>
                   <span className="font-mono font-bold text-[#C84B31]">
-                    /p/share/{shareToken?.slice(0, 8)}...
+                    Hiệu lực 72 giờ
                   </span>
                 </div>
               </div>

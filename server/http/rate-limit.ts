@@ -26,6 +26,8 @@ export const RATE_LIMITS = {
   GLOBAL_INVITE_GUESS: { name: "global_invite_guess", limit: 100, windowMs: MINUTE_MS },
   SEARCH: { name: "search", limit: 60, windowMs: MINUTE_MS },
   AI_EXTRACT: { name: "ai_extract", limit: 20, windowMs: HOUR_MS },
+  /** Tra vị trí theo IP: tốn quota API ngoài nên giới hạn mỗi IP */
+  GEO_LOOKUP: { name: "geo_lookup", limit: 20, windowMs: MINUTE_MS },
 } as const satisfies Record<string, RateLimitRule>;
 
 interface FixedWindow {

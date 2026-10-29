@@ -1,3 +1,4 @@
+import { runTrackedPipeline } from "@/server/services/pipeline/pipeline-run.service";
 import { YouTubeCoupleReviewCrawler, CoupleCrawlInput } from "@/server/services/youtube/youtube-couple-crawler";
 import { getQuotaStatus } from "@/server/services/youtube/quota-ledger";
 import { db } from "@/server/db/client";
@@ -362,9 +363,20 @@ async function main() {
   console.log(`   - Hình ảnh bổ sung mới: ${imagesAdded}`);
   console.log(`   - Địa điểm cập nhật ảnh bìa: ${coversUpdated}`);
   console.log("==================================================================");
+  return {
+    summary: {
+      crawledVideos: allCrawledVideos.length,
+      publishedToMediaCount: publishRes.publishedToMediaCount,
+      imagesAdded,
+      coversUpdated,
+    },
+  };
 }
 
-main().catch((err) => {
+runTrackedPipeline("youtube_scrape", async () => {
+  const { summary } = await main();
+  return { result: undefined, summary };
+}).catch((err) => {
   console.error("❌ Fatal Error:", err);
   process.exit(1);
 });

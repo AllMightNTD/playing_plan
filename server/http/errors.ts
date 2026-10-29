@@ -138,6 +138,23 @@ export const ERRORS = {
     QUOTA_EXCEEDED: { code: "UPLOAD_QUOTA_EXCEEDED", status: 413, message: "Phòng của bạn đã đạt giới hạn dung lượng 25MB hoặc tối đa 50 ảnh." },
     CONSENT_REQUIRED: { code: "UPLOAD_CONSENT_REQUIRED", status: 403, message: "Bạn cần đồng thuận chính sách bảo vệ dữ liệu cá nhân (Nghị định 13/2023) trước khi tải ảnh." },
   },
+  VIDEO: {
+    NOT_FOUND: { code: "VIDEO_NOT_FOUND", status: 404, message: "Không tìm thấy video này." },
+    HOTSPOT_NOT_FOUND: { code: "VIDEO_HOTSPOT_NOT_FOUND", status: 404, message: "Không tìm thấy mốc địa điểm này." },
+    HOTSPOT_DUPLICATE: {
+      code: "VIDEO_HOTSPOT_DUPLICATE",
+      status: 409,
+      message: "Địa điểm này đã được ghim ở đúng giây đó rồi.",
+    },
+  },
+  SWIPE: {
+    NOT_FOUND: { code: "SWIPE_NOT_FOUND", status: 404, message: "Không có lượt quẹt nào để hoàn tác." },
+    MATCH_PLANNED: {
+      code: "SWIPE_MATCH_PLANNED",
+      status: 409,
+      message: "Địa điểm này đã được lên lịch hẹn, không hoàn tác lượt quẹt được nữa.",
+    },
+  },
   NOTICE: {
     NOT_FOUND: { code: "NOTICE_NOT_FOUND", status: 404, message: "Không tìm thấy thông báo này." },
   },

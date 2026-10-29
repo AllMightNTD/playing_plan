@@ -1,3 +1,6 @@
+import { loadCatalogVideos } from "@/server/services/videos/video-catalog.service";
+import { syncChapterHotspots } from "@/server/services/videos/chapter-hotspots.service";
+import { runAiVideoHotspots } from "@/server/services/videos/ai-hotspots.runner";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "@/server/db/client";
@@ -27,6 +30,8 @@ import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
 import { assertNotBlocklisted } from "@/server/services/admin/governance.policy";
 import { getCuratedUnsplashGalleryForPlace } from "@/lib/media/unsplash-gallery-pool";
 import { eq, sql } from "drizzle-orm";
+import { runTrackedPipeline } from "@/server/services/pipeline/pipeline-run.service";
+import { getPublishPauseState, type PublishPauseState } from "@/server/services/pipeline/pipeline-control.service";
 import { nanoid } from "nanoid";
 
 /**
@@ -130,8 +135,28 @@ function determineArea(candidate: CandidatePlace): string {
  * - Open-Meteo Weather: $0
  * - Bounding-box Subdivison: Loại bỏ hoàn toàn 502/504 Timeout
  */
+/**
+ * Chạy pipeline hằng ngày và ghi một bản ghi pipeline_runs (running → success/paused/failed)
+ * để Radar và badge sức khỏe admin biết lần chạy gần nhất.
+ */
 export async function runDailyPipeline(
   options: { forceCrawlYoutube?: boolean } = {},
+) {
+  const pause = await getPublishPauseState();
+  return runTrackedPipeline("auto_promote", async () => {
+    const report = await executeDailyPipeline(options, pause);
+    return {
+      result: report,
+      status: pause.isPaused ? "paused" : "success",
+      promotedCount: report.promotedCount,
+      summary: { ...report, publishPaused: pause.isPaused, pauseReason: pause.reason },
+    };
+  });
+}
+
+async function executeDailyPipeline(
+  options: { forceCrawlYoutube?: boolean },
+  pause: PublishPauseState,
 ) {
   const startTime = Date.now();
   console.log(
@@ -146,6 +171,12 @@ export async function runDailyPipeline(
   console.log(
     "==================================================================",
   );
+  if (pause.isPaused) {
+    console.warn(
+      `⏸️  PHANH PUBLISH ĐANG BẬT (${pause.source}): ${pause.reason ?? "không rõ lý do"}. ` +
+        "Vẫn cào và chấm điểm ứng viên, nhưng KHÔNG thăng hạng địa điểm và KHÔNG tự xuất bản video.",
+    );
+  }
 
   // 1. Tải Blocklist
   const blocklist: PlaceBlocklist[] = await db.select().from(placeBlocklist);
@@ -229,10 +260,13 @@ export async function runDailyPipeline(
   console.log(
     "\n--- [Giai đoạn 3] Thẩm định & Thăng hạng Ứng viên lên Tọa độ Chính thức ---",
   );
-  const pendingCandidates: CandidatePlace[] = await db
-    .select()
-    .from(candidatePlaces)
-    .where(eq(candidatePlaces.status, "pending"));
+  // Đang phanh thì không thăng hạng ứng viên nào
+  const pendingCandidates: CandidatePlace[] = pause.isPaused
+    ? []
+    : await db
+        .select()
+        .from(candidatePlaces)
+        .where(eq(candidatePlaces.status, "pending"));
 
   console.log(`✓ Đang có ${pendingCandidates.length} ứng viên chờ thăng hạng.`);
 
@@ -420,12 +454,8 @@ export async function runDailyPipeline(
   console.log(
     "\n--- [Giai đoạn 4] So khớp Video Review & Xuất bản (Batch Mode) ---",
   );
-  const rawVideosPath = path.resolve(
-    process.cwd(),
-    "scripts/output/youtube/raw_videos.json",
-  );
-  if (fs.existsSync(rawVideosPath)) {
-    const rawVideos = JSON.parse(fs.readFileSync(rawVideosPath, "utf-8"));
+  const rawVideos = await loadCatalogVideos();
+  if (rawVideos.length > 0) {
     const allPublishedPlaces: Place[] = await db
       .select()
       .from(places)
@@ -438,7 +468,7 @@ export async function runDailyPipeline(
       district: p.area || p.city,
     }));
 
-    const vidsForMatch: VideoForMatching[] = rawVideos.map((v: any) => ({
+    const vidsForMatch: VideoForMatching[] = rawVideos.map((v) => ({
       videoId: v.videoId,
       title: v.title,
       description: v.description,
@@ -467,27 +497,41 @@ export async function runDailyPipeline(
             channelTitle: vid?.channelTitle,
             hasPaidPlacement: false,
             confidenceScore: m.score.toString(),
-            status: m.score >= 65 ? "auto_linked" : "pending_review",
+            status: !pause.isPaused && m.score >= 65 ? "auto_linked" : "pending_review",
             publishedAt: vid?.publishedAt ? new Date(vid.publishedAt) : now,
             lastCheckedAt: now,
           })
           .onDuplicateKeyUpdate({
             set: {
               confidenceScore: m.score.toString(),
-              status: m.score >= 65 ? "auto_linked" : "pending_review",
+              status: !pause.isPaused && m.score >= 65 ? "auto_linked" : "pending_review",
               lastCheckedAt: now,
             },
           });
       }
     }
 
-    // Auto-publish matched videos to placeMedia
-    await autoPublishMatchedVideos({
-      executor: db,
-      minConfidence: 60,
-      revalidate: false,
-    });
+    // Mốc hotspot từ chapter (chủ kênh tự ghi): tự duyệt trừ khi đang phanh publish
+    const chapterHotspots = await syncChapterHotspots(rawVideos, allPublishedPlaces, !pause.isPaused);
+    console.log(`=> Tạo ${chapterHotspots} mốc hotspot từ chapter video.`);
+
+    // Auto-publish matched videos to placeMedia (bỏ qua khi đang phanh)
+    if (!pause.isPaused) {
+      await autoPublishMatchedVideos({
+        executor: db,
+        minConfidence: 60,
+        revalidate: false,
+      });
+    }
   }
+
+  // 5b. AI xem video tìm mốc địa điểm (trong ngân sách giây video/24h của Gemini)
+  console.log("\n--- [Giai đoạn 4b] AI phân tích video tìm mốc địa điểm ---");
+  const aiHotspots = await runAiVideoHotspots();
+  console.log(
+    `=> AI: ${aiHotspots.analyzedVideos} video, ${aiHotspots.verifiedHotspots} mốc tự duyệt, ` +
+      `${aiHotspots.pendingHotspots} mốc chờ, dừng vì: ${aiHotspots.stoppedReason}`,
+  );
 
   // 6. GIAI ĐOẠN 5: BẢO TRÌ VIDEO 30 NGÀY
   console.log("\n--- [Giai đoạn 5] Bảo trì định kỳ Video ---");
@@ -519,6 +563,7 @@ export async function runDailyPipeline(
     candidatesDiscovered: osmResult.qualifyingCandidatesCount,
     promotedCount,
     totalPublishedPlaces: totalPlaces[0]?.count || 0,
+    aiHotspots,
     costEstimatedUSD: 0.0,
     freeTierCompliance: "100% FREE GUARANTEED",
   };

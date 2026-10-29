@@ -254,6 +254,8 @@ export async function applyPlanBIndoor(
     if (!success) {
       throw new AppError(ERRORS.PLAN.CONFLICT);
     }
+    // Plan B đổi địa điểm của trạm nên Match cũ/mới phải đổi trạng thái theo
+    await getUserRepositories().swipes.syncPlannedMatches(session.roomId);
   }
 
   return getPlanDetail(session, planId);

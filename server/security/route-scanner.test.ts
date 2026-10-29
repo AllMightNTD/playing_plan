@@ -22,6 +22,7 @@ export const PUBLIC_ALLOWLIST = new Set([
   "plans/invite/[inviteToken]/rsvp",
   "plans/share/[shareToken]",
   "search/suggest",
+  "geo/ip",
   "videos",
   "videos/[videoId]/hotspots",
   "rooms/join",
@@ -78,6 +79,7 @@ export const PROTECTED_ROUTES = new Set([
   "session",
   "swipes",
   "swipes/deck",
+  "swipes/[placeId]",
   "uploads",
   "uploads/[fileId]",
 ]);

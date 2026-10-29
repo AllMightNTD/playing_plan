@@ -59,3 +59,20 @@ export const CATEGORY_BEST_SLOTS: Record<PlaceCategory, TimeSlot[]> = {
 
 /** 0 = Chủ nhật ... 6 = Thứ 7 (theo Date.getDay()). */
 export const WEEKDAY_LABELS = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"] as const;
+
+/**
+ * Mục 14.2: địa điểm cố ý ẩn vì nằm trong hành lang an toàn đường sắt.
+ * Tìm kiếm hoặc mở slug này sẽ hiện cảnh báo và gợi ý các địa điểm thay thế.
+ */
+export const HIDDEN_SAFETY_PLACE = {
+  id: "p-hidden-train",
+  slug: "pho-ca-phe-duong-tau",
+  name: "Phố cà phê đường tàu (ĐÃ CHẶN AN TOÀN)",
+  area: "Hoàn Kiếm / Điện Biên Phủ",
+  category: "cafe",
+  costText: "Cấm hoạt động",
+  status: "hidden",
+  warningMessage:
+    "Chính quyền đã dựng rào chắn từ tháng 9/2022 và Sở Du lịch Hà Nội (3/2025) yêu cầu không đưa khách tới khu vực hành lang an toàn đường sắt vì nguy hiểm khi tàu chạy qua.",
+  alternatives: ["ca-phe-view-cau-long-bien", "cau-long-bien"],
+};

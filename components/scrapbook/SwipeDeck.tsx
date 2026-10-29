@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import {
-  Heart,
-  X,
   RotateCcw,
   Sparkles,
   MapPin,
@@ -21,24 +19,24 @@ interface SwipeDeckProps {
   initialDeck?: HanoiPlace[];
   initialMatches?: MatchDto[];
   roomType?: "couple" | "group";
-  onAddToPlan?: (placeId: string, placeName: string) => void;
-}
-
-interface EtagLogEntry {
-  id: string;
-  text: string;
-  time: string;
-  type: "304" | "200" | "swipe";
+  /** Trả `true` khi đã thêm vào kế hoạch thành công. */
+  onAddToPlan?: (placeId: string, placeName: string) => void | Promise<boolean>;
+  onOpenDetail?: (slug: string) => void;
+  /** Phòng đã đủ người chưa; chưa ghép đôi thì like chỉ được lưu, chưa thể Match */
+  isPaired?: boolean;
+  onError?: (message: string) => void;
 }
 
 export function SwipeDeck({
   initialDeck = [],
   initialMatches = [],
-  roomType: initialRoomType = "couple",
+  roomType: roomMode = "couple",
   onAddToPlan,
+  onOpenDetail,
+  isPaired = false,
+  onError,
 }: SwipeDeckProps) {
-  // State phòng & filter
-  const [roomMode, setRoomMode] = useState<"couple" | "group">(initialRoomType);
+  // State filter
   const [selectedHobby, setSelectedHobby] = useState<HobbyTagId | "all">("all");
 
   // State bộ bài quẹt
@@ -46,37 +44,17 @@ export function SwipeDeck({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipeHistory, setSwipeHistory] = useState<Array<{ place: HanoiPlace; choice: "like" | "nope" }>>([]);
   const [isLoadingDeck, setIsLoadingDeck] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
 
   // State Match & Polling ETag
   const [matches, setMatches] = useState<MatchDto[]>(initialMatches);
   const [lastEtag, setLastEtag] = useState<string>("");
   const [pollingStatus, setPollingStatus] = useState<"idle" | "304" | "200">("304");
-  const [etagLogs, setEtagLogs] = useState<EtagLogEntry[]>([
-    {
-      id: "init",
-      text: '[GET /api/v1/user/matches] If-None-Match: "initial" ➔ 304 (0B payload)',
-      time: new Date().toLocaleTimeString("vi-VN"),
-      type: "304",
-    },
-  ]);
 
   // State Confetti & Match Modal
   const [showCelebration, setShowCelebration] = useState(false);
   const [latestMatchPlace, setLatestMatchPlace] = useState<HanoiPlace | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  // Thêm log vào console giả lập ETag
-  const addEtagLog = useCallback((text: string, type: "304" | "200" | "swipe") => {
-    setEtagLogs((prev) => [
-      {
-        id: Math.random().toString(36).slice(2, 9),
-        text,
-        time: new Date().toLocaleTimeString("vi-VN"),
-        type,
-      },
-      ...prev.slice(0, 24), // Giữ tối đa 25 logs
-    ]);
-  }, []);
 
   // Hiệu ứng Canvas Confetti nhẹ nhàng không cần thư viện ngoài
   const triggerConfetti = useCallback(() => {
@@ -161,10 +139,16 @@ export function SwipeDeck({
     }
   }, []);
 
+  // Tải bộ thẻ một lần khi mount nếu chưa có initialDeck
+  const initialDeckLength = useRef(initialDeck.length);
+  useEffect(() => {
+    if (initialDeckLength.current === 0) fetchDeck();
+  }, [fetchDeck]);
+
   // Đổi Hobby filter
   const handleSelectHobby = (hobbyId: HobbyTagId | "all") => {
     setSelectedHobby(hobbyId);
-    fetchDeck(hobbyId);
+    fetchDeck(hobbyId === "all" ? undefined : hobbyId);
   };
 
   // Quẹt thẻ: like hoặc nope
@@ -175,11 +159,6 @@ export function SwipeDeck({
     // Ghi vào lịch sử để hỗ trợ Undo
     setSwipeHistory((prev) => [{ place, choice }, ...prev]);
     setCurrentIndex((prev) => prev + 1);
-
-    addEtagLog(
-      `[POST /api/v1/user/swipes] choice=${choice} ("${place.name}") ➔ 200 OK`,
-      "swipe"
-    );
 
     try {
       const res = await fetch("/api/v1/user/swipes", {
@@ -208,31 +187,47 @@ export function SwipeDeck({
             },
             ...prev,
           ]);
-
-          addEtagLog(
-            `🎉 NỔ MATCH: Cả hai cùng thích "${place.name}"! (Tự động lưu DB)`,
-            "200"
-          );
         }
+        return;
       }
+      throw new Error(`swipe API ${res.status}`);
     } catch {
-      // Fallback optimistic
+      // Chưa lưu được thì trả thẻ về để người dùng quẹt lại
+      setSwipeHistory((prev) => prev.filter((entry) => entry.place.id !== place.id));
+      setCurrentIndex((prev) => Math.max(0, prev - 1));
+      onError?.("Chưa lưu được lượt quẹt, thử lại nhé.");
     }
   };
 
   // Hoàn tác 1 lượt quẹt gần nhất (Undo)
-  const handleUndoSwipe = () => {
-    if (swipeHistory.length === 0 || currentIndex <= 0) return;
+  // Xóa lượt quẹt trên server trước rồi mới lùi thẻ; Match mất ngưỡng like cũng bị gỡ theo
+  const handleUndoSwipe = async () => {
+    if (swipeHistory.length === 0 || currentIndex <= 0 || isUndoing) return;
     const last = swipeHistory[0];
-    setSwipeHistory((prev) => prev.slice(1));
-    setCurrentIndex((prev) => prev - 1);
-    addEtagLog(`[UNDO] Hoàn tác lượt quẹt: "${last.place.name}"`, "swipe");
+    setIsUndoing(true);
+    try {
+      const res = await fetch(`/api/v1/user/swipes/${encodeURIComponent(last.place.id)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+      // 404: lượt quẹt chưa kịp lưu, server không có gì để xóa, vẫn lùi thẻ được
+      if (!res.ok && res.status !== 404) {
+        onError?.(json?.error?.message || "Chưa hoàn tác được, thử lại nhé.");
+        return;
+      }
+      const removedMatchId: string | null = json?.data?.removedMatchId ?? null;
+      if (removedMatchId) setMatches((prev) => prev.filter((m) => m.id !== removedMatchId));
+      setSwipeHistory((prev) => prev.slice(1));
+      setCurrentIndex((prev) => prev - 1);
+    } catch {
+      onError?.("Mất kết nối, chưa hoàn tác được.");
+    } finally {
+      setIsUndoing(false);
+    }
   };
 
   // Short Polling 3s kiểm tra Match mới với header ETag
   useEffect(() => {
     let isMounted = true;
-    const interval = setInterval(async () => {
+    const poll = async () => {
       try {
         const headers: Record<string, string> = {};
         if (lastEtag) {
@@ -245,10 +240,6 @@ export function SwipeDeck({
 
         if (res.status === 304) {
           setPollingStatus("304");
-          addEtagLog(
-            `[GET /api/v1/user/matches] If-None-Match: "${lastEtag.slice(0, 16)}..." ➔ 304 (0B payload)`,
-            "304"
-          );
         } else if (res.status === 200) {
           const newEtag = res.headers.get("ETag") || `W/"etag-${Date.now()}"`;
           setLastEtag(newEtag);
@@ -263,10 +254,6 @@ export function SwipeDeck({
             triggerConfetti();
             setLatestMatchPlace(unseen[0].place);
             setShowCelebration(true);
-            addEtagLog(
-              `[ETag] Phát hiện ${unseen.length} Match mới ("${unseen[0].place.name}") ➔ Bắn Confetti!`,
-              "200"
-            );
 
             // Đánh dấu đã xem
             for (const m of unseen) {
@@ -279,40 +266,15 @@ export function SwipeDeck({
       } catch {
         // Polling silent retry
       }
-    }, 3000);
+    };
+    poll();
+    const interval = setInterval(poll, 3000);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [lastEtag, addEtagLog, triggerConfetti]);
-
-  // Nút giả lập đối phương vừa like trùng (phục vụ test & demo trực quan)
-  const simulatePartnerLike = () => {
-    if (deck.length === 0) return;
-    const place = deck[Math.floor(Math.random() * deck.length)];
-    triggerConfetti();
-    setLatestMatchPlace(place);
-    setShowCelebration(true);
-    setPollingStatus("200");
-
-    const simMatchId = `sim_${Date.now()}`;
-    setMatches((prev) => [
-      {
-        id: simMatchId,
-        place,
-        matchedAt: new Date(),
-        status: "open",
-        isSeen: false,
-      },
-      ...prev,
-    ]);
-
-    addEtagLog(
-      `[SIMULATE] Đối phương vừa thích "${place.name}" ➔ Nổ Match & Confetti!`,
-      "200"
-    );
-  };
+  }, [lastEtag, triggerConfetti]);
 
   const currentPlace = deck[currentIndex];
   const ruleText =
@@ -321,53 +283,35 @@ export function SwipeDeck({
       : "👯‍♂️ Chế độ Nhóm: Cần ≥ 50% thành viên thả tim";
 
   return (
-    <section className="w-full max-w-6xl mx-auto py-8 px-4 sm:px-6">
+    <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 sm:p-6 shadow-sm space-y-5">
       {/* Canvas Confetti nổi toàn màn hình */}
       <canvas
         ref={canvasRef}
         className="fixed inset-0 pointer-events-none z-50"
       />
 
-      {/* Header Phân Khu */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E6D3B8]/60 pb-5 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dashed border-[#D8CBB8] pb-3">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#C84B31]">
-            💞 Phase 2 • Post-Commit Match Engine & ETag Polling
-          </span>
-          <h2 className="font-serif font-extrabold text-2xl sm:text-3xl text-[#362721] mt-1">
-            Quẹt Thẻ Chọn Điểm Hẹn & Đồng Bộ Thời Gian Thực
-          </h2>
+          <h3 className="font-serif font-extrabold text-lg text-paper-ink">💞 Quẹt Thẻ Tìm Điểm Hẹn Chung</h3>
+          <p className="text-xs text-paper-muted">
+            Khi cả hai bạn cùng thả tim một quán, pháo hoa sẽ nổ và quán được lưu vào danh sách Hợp Gu!
+          </p>
         </div>
-
-        {/* Chuyển chế độ phòng: Cặp đôi (2/2) vs Hội nhóm (>=50%) */}
-        <div className="flex items-center gap-1.5 bg-[#FFFDF9] p-1.5 rounded-2xl border border-[#E6D3B8] shadow-sm">
-          <button
-            type="button"
-            onClick={() => setRoomMode("couple")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              roomMode === "couple"
-                ? "bg-[#C84B31] text-white shadow-sm"
-                : "text-[#362721]/70 hover:bg-[#E6D3B8]/40"
-            }`}
-          >
-            👩‍❤️‍👨 Cặp đôi (2/2 Like)
-          </button>
-          <button
-            type="button"
-            onClick={() => setRoomMode("group")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              roomMode === "group"
-                ? "bg-[#C84B31] text-white shadow-sm"
-                : "text-[#362721]/70 hover:bg-[#E6D3B8]/40"
-            }`}
-          >
-            👯‍♂️ Hội nhóm (≥ 50%)
-          </button>
-        </div>
+        {/* Luật Match theo loại phòng trên server */}
+        <span className="px-3 py-1.5 rounded-xl bg-[#FAF4E8] border border-[#CBB292] text-xs font-bold text-paper-ink">
+          {roomMode === "couple" ? "👩‍❤️‍👨 Đi đôi (2 người)" : "👯‍♂️ Đi nhóm bạn"}
+        </span>
       </div>
 
+      {!isPaired && (
+        <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+          💌 Bạn đang quẹt một mình. Lượt thích vẫn được lưu, nhưng chỉ nổ Match khi người ấy vào phòng và cùng thả tim.
+          Bấm nút phòng đôi trên thanh tiêu đề để lấy mã mời nhé!
+        </div>
+      )}
+
       {/* Thanh 8 Hobby Filter Chips */}
-      <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         <span className="text-xs font-bold text-[#362721]/70 flex items-center gap-1 shrink-0 mr-1">
           <SlidersHorizontal className="w-3.5 h-3.5" /> Sở thích:
         </span>
@@ -387,11 +331,7 @@ export function SwipeDeck({
             key={hobby.id}
             type="button"
             onClick={() => handleSelectHobby(hobby.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border shrink-0 flex items-center gap-1 transition ${
-              selectedHobby === hobby.id
-                ? "bg-[#C84B31] text-white border-[#C84B31] shadow-sm"
-                : "bg-[#FFFDF9] text-[#362721] border-[#E6D3B8] hover:bg-[#E6D3B8]/40"
-            }`}
+            className={`hobby-tag-chip shrink-0 ${selectedHobby === hobby.id ? "active" : ""}`}
           >
             <span>{hobby.emoji}</span>
             <span>{hobby.label}</span>
@@ -400,13 +340,9 @@ export function SwipeDeck({
       </div>
 
       {/* Grid 2 Cột: Bàn Quẹt Polaroid (7/12) & Polling ETag + Danh Sách Matches (5/12) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Cột Trái (7/12): Bàn Quẹt Thẻ Polaroid */}
-        <div className="lg:col-span-7 bg-[#EFE5D4]/70 rounded-3xl p-5 sm:p-7 border-2 border-[#D8CBB8] flex flex-col items-center relative overflow-hidden shadow-sm">
-          {/* Washi tape trang trí góc trên */}
-          <div className="absolute top-2 left-6 w-24 h-5 bg-[#C84B31]/30 -rotate-6 rounded-sm border border-white/40 pointer-events-none" />
-          <div className="absolute top-2 right-6 w-24 h-5 bg-[#6E8361]/30 rotate-6 rounded-sm border border-white/40 pointer-events-none" />
-
+      <div className="responsive-2col grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Cột trái (7/12): bàn quẹt thẻ */}
+        <div className="lg:col-span-7 kraft-texture rounded-2xl p-4 sm:p-5 border border-[#CBB292] flex flex-col items-center">
           {isLoadingDeck ? (
             <div className="w-full max-w-md h-96 bg-[#FFFDF9] rounded-2xl flex flex-col items-center justify-center p-6 border-2 border-[#362721]/20">
               <RefreshCw className="w-8 h-8 text-[#C84B31] animate-spin mb-3" />
@@ -414,7 +350,7 @@ export function SwipeDeck({
             </div>
           ) : currentPlace ? (
             /* Thẻ Polaroid chính */
-            <div className="w-full max-w-md bg-[#FFFDF9] border-2 border-[#362721] rounded-2xl p-4 shadow-xl transition-all duration-300">
+            <div className="w-full max-w-md bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-3.5 shadow-md transition-all duration-300">
               {/* Khung ảnh Polaroid */}
               <div className="relative h-60 w-full rounded-xl overflow-hidden bg-stone-200">
                 {currentPlace.coverUrl ? (
@@ -440,8 +376,12 @@ export function SwipeDeck({
                 <span className="absolute top-3 left-3 bg-black/75 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow">
                   <MapPin className="w-3 h-3 text-[#F29B7E]" />
                   <span>{currentPlace.area}</span>
-                  <span>•</span>
-                  <span>{currentPlace.costText || "Hạt dẻ"}</span>
+                  {currentPlace.costText && (
+                    <>
+                      <span>•</span>
+                      <span>{currentPlace.costText}</span>
+                    </>
+                  )}
                 </span>
 
                 {/* Badge Quy tắc phòng */}
@@ -461,9 +401,9 @@ export function SwipeDeck({
                   </span>
                 </div>
 
-                <p className="text-xs text-[#362721]/80 mt-1.5 line-clamp-2 leading-relaxed">
-                  {currentPlace.summary || "Địa điểm hẹn hò lý tưởng tại Hà Nội."}
-                </p>
+                {currentPlace.summary && (
+                  <p className="text-xs text-[#362721]/80 mt-1.5 line-clamp-2 leading-relaxed">{currentPlace.summary}</p>
+                )}
 
                 {/* Khung giờ vàng ngắm cảnh */}
                 {currentPlace.goldenAfternoon && (
@@ -497,23 +437,23 @@ export function SwipeDeck({
           )}
 
           {/* Các nút quẹt thẻ (Nope, Undo, Like) */}
-          <div className="flex items-center justify-center gap-4 mt-5 w-full">
+          <div className="flex items-center justify-center gap-3 mt-4 w-full">
             <button
               type="button"
               disabled={!currentPlace}
               onClick={() => handleCardSwipe("nope")}
-              className="bg-[#FFFDF9] hover:bg-red-50 border-2 border-[#362721] text-[#362721] font-extrabold px-5 py-2.5 rounded-full shadow flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 disabled:opacity-40"
+              className="bg-[#FFFDF9] hover:bg-stone-100 border border-[#CBB292] text-paper-ink font-bold px-5 py-2.5 rounded-full shadow-xs flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 disabled:opacity-40"
             >
-              <X className="w-4 h-4 text-rose-600" />
-              <span>Bỏ qua (Nope)</span>
+              <span>👈</span>
+              <span>Đổi quán khác</span>
             </button>
 
             <button
               type="button"
-              disabled={swipeHistory.length === 0}
+              disabled={swipeHistory.length === 0 || isUndoing}
               onClick={handleUndoSwipe}
               title="Hoàn tác lượt quẹt vừa rồi"
-              className="bg-[#FFFDF9] hover:bg-[#E6D3B8]/50 border-2 border-[#362721] text-[#362721] font-bold p-2.5 rounded-full shadow transition transform active:scale-95 disabled:opacity-30"
+              className="bg-[#FFFDF9] hover:bg-[#E6D3B8]/50 border border-[#CBB292] text-paper-ink font-bold p-2.5 rounded-full shadow-xs transition transform active:scale-95 disabled:opacity-30"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -522,106 +462,93 @@ export function SwipeDeck({
               type="button"
               disabled={!currentPlace}
               onClick={() => handleCardSwipe("like")}
-              className="bg-[#C84B31] hover:bg-[#9E331E] border-2 border-[#362721] text-white font-extrabold px-6 py-2.5 rounded-full shadow-lg flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 disabled:opacity-40"
+              className="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-extrabold px-6 py-2.5 rounded-full shadow-md flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 disabled:opacity-40"
             >
-              <Heart className="w-4 h-4 fill-white" />
-              <span>Thích mê (Like!)</span>
+              <span>❤️</span>
+              <span>Thích quán này!</span>
             </button>
           </div>
         </div>
 
         {/* Cột Phải (5/12): Console Polling ETag 3s & Danh Sách Matches */}
         <div className="lg:col-span-5 space-y-4">
-          {/* Terminal Console mô phỏng ETag */}
-          <div className="bg-[#231A16] text-[#F7F1E5] rounded-2xl p-4 font-mono text-xs space-y-2.5 border border-[#4A3931] shadow-md">
-            <div className="flex items-center justify-between border-b border-[#4A3931] pb-2">
-              <span className="text-[#F29B7E] font-bold flex items-center gap-1.5">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Short Polling (3s ETag)
-              </span>
-              <span
-                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                  pollingStatus === "304"
-                    ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
-                    : "bg-amber-500 text-stone-950 font-extrabold animate-pulse"
-                }`}
-              >
-                {pollingStatus === "304" ? "304 Not Modified" : "200 OK (Match mới!)"}
-              </span>
-            </div>
-
-            {/* Khung scroll log */}
-            <div className="text-[11px] text-[#D7C4B0] space-y-1.5 max-h-28 overflow-y-auto scrollbar-thin pr-1">
-              {etagLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className={`leading-tight ${
-                    log.type === "200"
-                      ? "text-amber-300 font-bold"
-                      : log.type === "swipe"
-                      ? "text-[#F29B7E]"
-                      : "text-stone-400"
-                  }`}
-                >
-                  <span className="text-stone-500 mr-1.5">[{log.time}]</span>
-                  <span>{log.text}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Nút giả lập Like trùng */}
-            <button
-              type="button"
-              onClick={simulatePartnerLike}
-              className="w-full bg-[#C84B31] hover:bg-[#9E331E] text-white font-sans font-bold text-xs py-2 rounded-xl transition shadow flex items-center justify-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>⚡ Giả lập Đối phương vừa Like trùng (Bắn Confetti!)</span>
-            </button>
-          </div>
-
           {/* Danh sách địa điểm đã Match trong phòng */}
-          <div className="bg-[#FAF4E8] border border-[#D8CBB8] rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3 border-b border-[#D8CBB8]/60 pb-2">
-              <h3 className="font-serif font-bold text-sm text-[#362721] flex items-center gap-1.5">
-                <span>🎉 Tọa độ hai bạn đã Match</span>
-                <span className="bg-[#C84B31] text-white text-[10px] font-bold px-2 py-0.2 rounded-full">
-                  {matches.length}
-                </span>
-              </h3>
-              <span className="text-[10px] font-bold text-[#6E8361] flex items-center gap-1">
-                <Check className="w-3 h-3" /> Tự động lưu DB
-              </span>
+          <div className="bg-[#FAF4E8] border border-[#D8CBB8] rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-[#D8CBB8]/60 pb-3">
+              <div>
+                <h3 className="font-serif font-extrabold text-base text-[#362721] flex items-center gap-2">
+                  <span>🎉 Quán hai bạn cùng thích</span>
+                  <span className="bg-[#C84B31] text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                    {matches.length}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-[#362721]/70 mt-0.5">
+                  Tự động đồng bộ ngay khi cả hai cùng thả tim
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-2.5 max-h-64 overflow-y-auto scrollbar-thin pr-1">
+            <div className="space-y-2.5 max-h-[460px] overflow-y-auto scrollbar-thin pr-1">
               {matches.length === 0 ? (
-                <p className="text-xs text-[#362721]/60 text-center py-6 italic font-hand text-sm">
-                  Chưa có điểm hẹn chung nào. Cả hai hãy cùng quẹt thẻ nhé!
-                </p>
+                <div className="text-center py-10 space-y-2">
+                  <span className="text-3xl block">💌</span>
+                  <p className="text-xs text-[#362721]/70 italic font-hand text-base">
+                    Chưa có điểm hẹn chung nào.<br />Cả hai hãy cùng quẹt thẻ để tìm tọa độ trùng gu nhé!
+                  </p>
+                </div>
               ) : (
                 matches.map((m) => (
                   <div
                     key={m.id}
-                    className="flex items-center justify-between p-2.5 bg-[#FFFDF9] border border-[#E6D3B8] rounded-xl hover:border-[#C84B31]/60 transition"
+                    className="flex items-center justify-between p-3 bg-[#FFFDF9] border border-[#E6D3B8] rounded-xl hover:border-[#C84B31]/60 transition shadow-2xs"
                   >
-                    <div className="min-w-0 pr-2">
-                      <h4 className="font-semibold text-xs text-[#362721] truncate">
+                    <div
+                      onClick={() => onOpenDetail?.(m.place.slug)}
+                      className="min-w-0 pr-2 cursor-pointer group"
+                    >
+                      <h4 className="font-bold text-xs sm:text-sm text-[#362721] truncate group-hover:text-[#C84B31] transition">
                         {m.place.name}
                       </h4>
-                      <p className="text-[10px] text-[#362721]/70 mt-0.5">
-                        📍 {m.place.area} • {m.place.categoryLabel || m.place.category}
+                      <p className="text-[10px] sm:text-[11px] text-[#362721]/70 mt-0.5 flex items-center gap-1">
+                        <span>📍 {m.place.area}</span>
+                        <span>•</span>
+                        <span>{m.place.categoryLabel || m.place.category}</span>
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => onAddToPlan?.(m.place.id, m.place.name)}
-                      className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-bold bg-[#C84B31] hover:bg-[#9E331E] text-white rounded-lg shadow-sm transition"
-                      title="Thêm địa điểm này vào lịch trình"
-                    >
-                      <CalendarPlus className="w-3 h-3" />
-                      <span>+ Lịch</span>
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {onOpenDetail && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenDetail(m.place.slug)}
+                          className="px-2.5 py-1 text-[11px] font-bold text-[#C84B31] bg-rose-50 hover:bg-rose-100 rounded-lg border border-[#C84B31]/30 transition"
+                        >
+                          Xem
+                        </button>
+                      )}
+                      {m.status === "planned" ? (
+                        <span className="flex items-center gap-1 px-3 py-1 text-[11px] font-bold text-[#6E8361] bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <Check className="w-3 h-3" />
+                          <span>Đã lên lịch</span>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const added = await onAddToPlan?.(m.place.id, m.place.name);
+                            // Thêm thành công thì server đã chuyển Match sang planned; cập nhật ngay, polling đồng bộ lại sau
+                            if (added === true) {
+                              setMatches((prev) => prev.map((x) => (x.id === m.id ? { ...x, status: "planned" } : x)));
+                            }
+                          }}
+                          className="flex items-center gap-1 px-3 py-1 text-[11px] font-bold bg-[#C84B31] hover:bg-[#9E331E] text-white rounded-lg shadow-xs transition"
+                          title="Thêm địa điểm này vào lịch trình"
+                        >
+                          <CalendarPlus className="w-3 h-3" />
+                          <span>+ Lịch</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
@@ -685,6 +612,6 @@ export function SwipeDeck({
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

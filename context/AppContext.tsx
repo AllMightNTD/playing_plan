@@ -1,11 +1,32 @@
 "use client";
 
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
-import type { HanoiPlace } from "@/lib/mock-data";
+import type { HanoiPlace } from "@/lib/types/catalog";
 import { normalizeVietnamese } from "@/lib/search";
 import { isTrainStreetQuery, normalizeSearchQuery } from "@/lib/catalog-filter";
 import type { HomePublicDto, HomeSummaryDto } from "@/lib/types/home";
 import type { PlanDetailDto } from "@/server/services/user/plan.mapper";
+import type { RoomProfileDto } from "@/server/services/user/room.service";
+import { districtName, nearestDistrictKey } from "@/lib/districts";
+import { calculateHanoiTravelMinutes } from "@/lib/travel-time";
+
+/** Hệ số uốn lượn đường phố Hà Nội, cùng hệ số lib/travel-time dùng khi tính phút. */
+const ROAD_FACTOR = 1.35;
+const LOCATION_CACHE_KEY = "datemate:user-location";
+
+export interface UserLocation {
+  lat: number;
+  lng: number;
+  districtKey: string;
+  districtName: string;
+  /** ip: ước tính theo mạng (sai số vài km); gps: vị trí thiết bị */
+  source: "ip" | "gps";
+}
+
+export interface PlaceDistance {
+  km: number;
+  minutes: number;
+}
 
 /** API places giới hạn 24 bản ghi/trang (placeListQuerySchema). */
 const PLACES_PAGE_SIZE = 24;
@@ -23,21 +44,6 @@ async function fetchAllPlaces(): Promise<HanoiPlace[]> {
     cursor = payload?.data?.nextCursor ?? null;
   } while (cursor);
   return all;
-}
-
-export interface PlanStopItem {
-  id: string;
-  placeId: string;
-  time: string;
-  duration: number;
-  note: string;
-}
-
-export interface ChecklistItemData {
-  id: string;
-  text: string;
-  assignee: string;
-  done: boolean;
 }
 
 export interface ToastItem {
@@ -80,27 +86,13 @@ interface AppContextType {
   isPlaceSaved: (slug: string) => boolean;
   toggleSavePlace: (slug: string) => void;
 
-  // Match
-  matchedSlugs: string[];
-  partnerSecretLikedSlugs: string[];
-  recordMatchVote: (slug: string, choice: "like" | "nope") => void;
+  addUpcomingChecklistItem: (content: string) => Promise<boolean>;
+  deleteUpcomingChecklistItem: (itemId: string) => Promise<boolean>;
+  refreshUpcomingPlan: () => Promise<void>;
 
-  // Plan & Timeline
-  planTitle: string;
-  planDate: string;
-  planStops: PlanStopItem[];
-  addStopToPlan: (placeOrId: HanoiPlace | string) => void;
-  removeStopFromPlan: (stopId: string) => void;
-  moveStop: (idx: number, dir: number) => void;
-
-  // Checklist
-  checklist: ChecklistItemData[];
-  toggleChecklistItem: (id: string) => void;
-  addChecklistItem: (text: string) => void;
-
-  // Secret Date (F19)
-  secretModeEnabled: boolean;
-  setSecretModeEnabled: (enabled: boolean) => void;
+  // Phòng đôi: thành viên, biệt danh (chỉ tải khi đã có phòng)
+  roomProfile: RoomProfileDto | null;
+  refreshRoomProfile: () => Promise<void>;
 
   // Modals
   activeDetailSlug: string | null;
@@ -117,23 +109,26 @@ interface AppContextType {
   setIsWheelOpen: (open: boolean) => void;
   isSpinning: boolean;
   wheelResult: HanoiPlace | null;
-  spinWheel: () => void;
+  spinWheel: () => Promise<void>;
 
   isRoomModalOpen: boolean;
   setIsRoomModalOpen: (open: boolean) => void;
+
+  // Vị trí hiện tại của người dùng (IP hoặc GPS), chỉ giữ trong trình duyệt
+  userLocation: UserLocation | null;
+  isLocating: boolean;
+  locateWithGps: () => Promise<void>;
+  distanceToPlace: (place: HanoiPlace) => PlaceDistance | null;
+
+  // Ngăn kéo "Tìm sở thích" dưới navbar (mở từ navbar, trang chủ, thanh dưới mobile)
+  isSearchDrawerOpen: boolean;
+  setIsSearchDrawerOpen: (open: boolean) => void;
 
   // Toasts
   toasts: ToastItem[];
   addToast: (msg: string, type?: "info" | "success" | "error") => void;
   removeToast: (id: string) => void;
 
-  // Explore quick filter ('all' | 'outdoor' | 'indoor' | 'art' | 'saved')
-  exploreFilter: string;
-  setExploreFilter: (f: string) => void;
-  filterSavedFavorites: () => void;
-
-  // iCal export
-  exportCalendarIcs: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -144,7 +139,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [exploreFilter, setExploreFilter] = useState("all");
 
   // Home Dynamic APIs (F12, F13, F08, F01)
   const [homePublic, setHomePublic] = useState<HomePublicDto | null>(null);
@@ -247,6 +241,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadUpcomingPlan(upcomingPlanId);
   }, [upcomingPlanId, homeSummary, loadUpcomingPlan]);
 
+  const refreshUpcomingPlan = useCallback(async () => {
+    await loadUpcomingPlan(upcomingPlanId);
+  }, [loadUpcomingPlan, upcomingPlanId]);
+
+  // Hồ sơ phòng (thành viên, biệt danh). Chưa có phòng thì không gọi để tránh 401 vô ích.
+  const [roomProfile, setRoomProfile] = useState<RoomProfileDto | null>(null);
+  const hasRoom = Boolean(homeSummary?.room);
+
+  const refreshRoomProfile = useCallback(async () => {
+    try {
+      const res = await fetch("/api/v1/user/rooms/me", { cache: "no-store" });
+      const json = await res.json();
+      setRoomProfile(res.ok ? json.data : null);
+    } catch (err) {
+      console.warn("Không thể tải thông tin phòng:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (hasRoom) refreshRoomProfile();
+    else setRoomProfile(null);
+  }, [hasRoom, refreshRoomProfile]);
+
   // 2. Saved (đồng bộ từ home summary, chưa có phiên thì rỗng)
   const [savedPlaceSlugs, setSavedPlaceSlugs] = useState<string[]>([]);
 
@@ -315,88 +332,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // 4. Match
-  const [matchedSlugs, setMatchedSlugs] = useState<string[]>([
-    "ca-phe-view-cau-long-bien",
-    "ho-tay-duong-thanh-nien",
-  ]);
-
-  const partnerSecretLikedSlugs = [
-    "cau-long-bien",
-    "bai-da-song-hong",
-    "thao-nguyen-hoa-long-bien",
-    "ca-phe-view-cau-long-bien",
-    "lotte-observation-deck-top-of-hanoi",
-  ];
-
-  const recordMatchVote = (slug: string, choice: "like" | "nope") => {
-    const place = places.find((p) => p.slug === slug);
-    if (!place) return;
-
-    if (choice === "like") {
-      if (
-        partnerSecretLikedSlugs.includes(slug) &&
-        !matchedSlugs.includes(slug)
-      ) {
-        setMatchedSlugs((prev) => [...prev, slug]);
-        addToast(
-          `🎉 Tâm đầu ý hợp! Cả bạn và Linh đều thích "${place.name}"!`,
-          "success"
-        );
-      } else {
-        addToast(`❤️ Đã thích "${place.name}" (Đang ẩn chờ Linh quẹt)`, "info");
-      }
-    }
-  };
-
-  // 5. Plans & Timeline
-  const [planTitle] = useState("Ngắm hoàng hôn Hồ Tây & Cà phê Cầu Long Biên");
-  const [planDate] = useState("2026-11-01");
-  const [planStops, setPlanStops] = useState<PlanStopItem[]>([
-    {
-      id: "s1",
-      placeId: "p8",
-      time: "16:30",
-      duration: 60,
-      note: "Ngồi ban công tầng 4 uống cà phê trứng, canh tàu chạy qua lúc 17:15",
-    },
-    {
-      id: "s2",
-      placeId: "p1",
-      time: "17:35",
-      duration: 45,
-      note: "Đi bộ lên Cầu Long Biên chụp ảnh giờ vàng và giờ xanh",
-    },
-    {
-      id: "s3",
-      placeId: "p3",
-      time: "18:30",
-      duration: 90,
-      note: "Dạo đường Thanh Niên và ăn phở cuốn Trúc Bạch",
-    },
-  ]);
-
-  const addStopToPlan = (placeOrId: HanoiPlace | string) => {
-    let place: HanoiPlace | undefined;
-    if (typeof placeOrId === "string") {
-      place = places.find((p) => p.id === placeOrId || p.slug === placeOrId);
-    } else {
-      place = placeOrId;
-    }
-    if (!place) return;
-
-    const newStop: PlanStopItem = {
-      id: "s-" + Date.now(),
-      placeId: place.id,
-      time: "19:30",
-      duration: 60,
-      note: `Ghé ${place.name} (${place.bestTimeText})`,
-    };
-
-    setPlanStops((prev) => [...prev, newStop]);
-    addToast(`📅 Đã thêm "${place.name}" vào Kế hoạch!`, "success");
-  };
-
+  // 4. Kế hoạch sắp tới (điểm dừng + checklist lưu trên server)
   const quickAddPlaceToPlan = async (placeOrId: HanoiPlace | string): Promise<boolean> => {
     let place: HanoiPlace | undefined;
     if (typeof placeOrId === "string") {
@@ -467,54 +403,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const removeStopFromPlan = (stopId: string) => {
-    setPlanStops((prev) => prev.filter((s) => s.id !== stopId));
-    addToast("Đã xóa điểm dừng khỏi lịch trình", "info");
+  const addUpcomingChecklistItem = async (content: string): Promise<boolean> => {
+    const text = content.trim();
+    if (!upcomingPlan || !text) return false;
+    try {
+      const res = await fetch(`/api/v1/user/plans/${encodeURIComponent(upcomingPlan.id)}/checklist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        addToast(json?.error?.message || "Chưa thêm được mục chuẩn bị.", "error");
+        return false;
+      }
+      await refetchHomeSummary();
+      return true;
+    } catch (err) {
+      console.warn("Lỗi thêm checklist:", err);
+      addToast("Mất kết nối, chưa thêm được mục chuẩn bị.", "error");
+      return false;
+    }
   };
 
-  const moveStop = (idx: number, dir: number) => {
-    const target = idx + dir;
-    if (target < 0 || target >= planStops.length) return;
-    setPlanStops((prev) => {
-      const copy = [...prev];
-      const temp = copy[idx];
-      copy[idx] = copy[target];
-      copy[target] = temp;
-      return copy;
-    });
+  const deleteUpcomingChecklistItem = async (itemId: string): Promise<boolean> => {
+    if (!upcomingPlan) return false;
+    try {
+      const res = await fetch(
+        `/api/v1/user/plans/${encodeURIComponent(upcomingPlan.id)}/checklist/${encodeURIComponent(itemId)}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error(`checklist API ${res.status}`);
+      await refetchHomeSummary();
+      return true;
+    } catch (err) {
+      console.warn("Lỗi xóa checklist:", err);
+      addToast("Chưa xóa được mục chuẩn bị, thử lại nhé.", "error");
+      return false;
+    }
   };
 
-  // 6. Checklist
-  const [checklist, setChecklist] = useState<ChecklistItemData[]>([
-    { id: "c1", text: "Sạc dự phòng đầy 100% + Cáp sạc", assignee: "Dũng", done: true },
-    { id: "c2", text: "Phối đồ tông Trắng kem & Nâu vintage", assignee: "Cả hai", done: true },
-    { id: "c3", text: "Kẹp tóc càng cua + Áo khoác cardigan mỏng", assignee: "Linh", done: false },
-    { id: "c4", text: "Kiểm tra tiền mặt lẻ gửi xe gầm cầu", assignee: "Dũng", done: false },
-  ]);
-
-  const toggleChecklistItem = (id: string) => {
-    setChecklist((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, done: !item.done } : item))
-    );
-  };
-
-  const addChecklistItem = (text: string) => {
-    if (!text.trim()) return;
-    setChecklist((prev) => [
-      ...prev,
-      {
-        id: "c-" + Date.now(),
-        text: text.trim(),
-        assignee: "Cả hai",
-        done: false,
-      },
-    ]);
-  };
-
-  // 7. Secret Date (F19)
-  const [secretModeEnabled, setSecretModeEnabled] = useState(false);
-
-  // 8. Modals
+  // 5. Modals
   const [activeDetailSlug, setActiveDetailSlug] = useState<string | null>(null);
 
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -531,74 +460,105 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [recentWheelSlugs, setRecentWheelSlugs] = useState<string[]>([]);
   const [wheelResult, setWheelResult] = useState<HanoiPlace | null>(null);
 
-  const spinWheel = () => {
-    const candidates = places.filter((p) => !recentWheelSlugs.includes(p.slug));
-    const pool = candidates.length > 0 ? candidates : places;
-    if (pool.length === 0) return;
+  // Vòng quay: server bốc ngẫu nhiên trong catalog đã xuất bản, loại 5 kết quả gần nhất
+  const spinWheel = async () => {
     setIsSpinning(true);
-    const chosen = pool[Math.floor(Math.random() * pool.length)];
-
-    setTimeout(() => {
+    try {
+      const query = new URLSearchParams();
+      if (recentWheelSlugs.length > 0) query.set("exclude", recentWheelSlugs.join(","));
+      const [res] = await Promise.all([
+        fetch(`/api/v1/user/places/random?${query}`, { cache: "no-store" }),
+        new Promise((resolve) => setTimeout(resolve, 700)),
+      ]);
+      const json = await res.json();
+      if (!res.ok || !json?.data) {
+        addToast(json?.error?.message || "Chưa bốc được địa điểm, thử lại nhé.", "error");
+        return;
+      }
+      const chosen: HanoiPlace = json.data;
       setWheelResult(chosen);
-      setRecentWheelSlugs((prev) => {
-        const next = [...prev, chosen.slug];
-        return next.length > 5 ? next.slice(next.length - 5) : next;
-      });
+      setRecentWheelSlugs((prev) => [...prev, chosen.slug].slice(-5));
+    } catch (err) {
+      console.warn("Lỗi vòng quay:", err);
+      addToast("Mất kết nối, chưa quay được.", "error");
+    } finally {
       setIsSpinning(false);
-    }, 700);
+    }
   };
 
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
 
-  // 9. Calendar .ics
-  const exportCalendarIcs = () => {
-    const icsLines = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//DateMate Hanoi v1.2//VN",
-      "CALSCALE:GREGORIAN",
-      "METHOD:PUBLISH",
-      "BEGIN:VEVENT",
-      "UID:datemate-plan-20261101@datemate.vn",
-      "DTSTAMP:20261027T080000Z",
-      "DTSTART:20261101T093000Z",
-      "DTEND:20261101T130000Z",
-      `SUMMARY:💕 Hẹn hò DateMate: ${planTitle}`,
-      "DESCRIPTION:Lộ trình chi tiết đã lưu trên DateMate (Hồng Đào). Nhắc hẹn tự động trước 1 ngày và 2 giờ.",
-      "LOCATION:Cầu Long Biên & Hồ Tây, Hà Nội",
-      "BEGIN:VALARM",
-      "TRIGGER:-PT2H",
-      "ACTION:DISPLAY",
-      "DESCRIPTION:Còn 2 tiếng nữa đến giờ hẹn hò rồi nha!",
-      "END:VALARM",
-      "BEGIN:VALARM",
-      "TRIGGER:-P1D",
-      "ACTION:DISPLAY",
-      "DESCRIPTION:Ngày mai có lịch hẹn hò, nhớ chuẩn bị trang phục đôi nhé!",
-      "END:VALARM",
-      "END:VEVENT",
-      "END:VCALENDAR",
-    ].join("\r\n");
+  // 6. Vị trí người dùng: mặc định ước tính theo IP (không hỏi quyền), có thể đổi sang GPS cho chính xác
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
-    const blob = new Blob([icsLines], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "DateMate-Lich-Hen-Ho-Ha-Noi.ics";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    addToast(
-      "📅 Đã tải file lịch .ics (Mở bằng Apple / Google Calendar để tự báo chuông trước 2 giờ!)",
-      "success"
-    );
+  const saveLocation = (location: UserLocation) => {
+    setUserLocation(location);
+    try {
+      sessionStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(location));
+    } catch {
+      // Trình duyệt chặn storage thì chỉ giữ trong bộ nhớ
+    }
   };
 
-  const filterSavedFavorites = useCallback(() => {
-    setExploreFilter("saved");
-    addToast("❤️ Đang lọc các địa điểm hai bạn đã lưu yêu thích!", "info");
-  }, [addToast]);
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(LOCATION_CACHE_KEY);
+      if (cached) {
+        setUserLocation(JSON.parse(cached));
+        return;
+      }
+    } catch {
+      // Bỏ qua cache hỏng / bị chặn
+    }
+    let active = true;
+    setIsLocating(true);
+    fetch("/api/v1/user/geo/ip", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const loc = json?.data?.location;
+        if (active && loc) {
+          saveLocation({ lat: loc.lat, lng: loc.lng, districtKey: loc.districtKey, districtName: loc.districtName, source: "ip" });
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setIsLocating(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const locateWithGps = async () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      addToast("Thiết bị không hỗ trợ định vị GPS.", "error");
+      return;
+    }
+    setIsLocating(true);
+    try {
+      const { coords } = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+      );
+      const point = { lat: coords.latitude, lng: coords.longitude };
+      const key = nearestDistrictKey(point);
+      saveLocation({ ...point, districtKey: key, districtName: districtName(key), source: "gps" });
+      addToast("📍 Đã cập nhật vị trí chính xác theo GPS!", "success");
+    } catch {
+      addToast("Chưa lấy được vị trí GPS, hãy cho phép truy cập vị trí nhé.", "error");
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const distanceToPlace = (place: HanoiPlace): PlaceDistance | null => {
+    if (!userLocation || place.lat == null || place.lng == null) return null;
+    const now = new Date();
+    const travel = calculateHanoiTravelMinutes(userLocation, { lat: place.lat, lng: place.lng }, now.getHours() * 60 + now.getMinutes());
+    return { km: travel.distanceKm * ROAD_FACTOR, minutes: travel.travelMinutes };
+  };
+
 
   return (
     <AppContext.Provider
@@ -622,31 +582,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSelectedCategory,
         isTrainStreetSearch,
 
-        exploreFilter,
-        setExploreFilter,
-        filterSavedFavorites,
 
         savedPlaceSlugs,
         isPlaceSaved,
         toggleSavePlace,
 
-        matchedSlugs,
-        partnerSecretLikedSlugs,
-        recordMatchVote,
+        addUpcomingChecklistItem,
+        deleteUpcomingChecklistItem,
+        refreshUpcomingPlan,
 
-        planTitle,
-        planDate,
-        planStops,
-        addStopToPlan,
-        removeStopFromPlan,
-        moveStop,
-
-        checklist,
-        toggleChecklistItem,
-        addChecklistItem,
-
-        secretModeEnabled,
-        setSecretModeEnabled,
+        roomProfile,
+        refreshRoomProfile,
 
         activeDetailSlug,
         setActiveDetailSlug,
@@ -666,12 +612,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         isRoomModalOpen,
         setIsRoomModalOpen,
+        isSearchDrawerOpen,
+        setIsSearchDrawerOpen,
+        userLocation,
+        isLocating,
+        locateWithGps,
+        distanceToPlace,
 
         toasts,
         addToast,
         removeToast,
-
-        exportCalendarIcs,
       }}
     >
       {children}

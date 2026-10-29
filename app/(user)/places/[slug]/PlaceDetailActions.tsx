@@ -7,7 +7,7 @@ import { Heart, CalendarPlus, Navigation, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PlaceDetailActions({ place }: { place: HanoiPlace }) {
-  const { toggleSavePlace, isPlaceSaved, addStopToPlan, addToast } = useApp();
+  const { toggleSavePlace, isPlaceSaved, quickAddPlaceToPlan, addToast } = useApp();
   const saved = isPlaceSaved(place.slug);
 
   const handleShare = () => {
@@ -33,7 +33,7 @@ export function PlaceDetailActions({ place }: { place: HanoiPlace }) {
   return (
     <div className="flex flex-wrap items-center gap-2.5 pt-2">
       <button
-        onClick={() => addStopToPlan(place)}
+        onClick={() => quickAddPlaceToPlan(place)}
         className="px-5 py-2.5 rounded-2xl bg-white text-brown hover:bg-peach-soft font-bold text-xs shadow-md transition flex items-center gap-1.5"
       >
         <CalendarPlus className="w-4 h-4 text-peach-deep" />

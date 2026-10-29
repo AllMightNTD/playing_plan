@@ -55,6 +55,7 @@ export async function addStop(session: MemberSession, planId: string, input: Add
     toPlanTouch(session)
   );
   if (!stop) throw new AppError(ERRORS.PLAN.STOP_LIMIT_REACHED);
+  if (stop.placeId) await getUserRepositories().swipes.syncPlannedMatches(session.roomId);
   return toPlanStopDto(stop);
 }
 
@@ -91,6 +92,7 @@ export async function deleteStop(session: MemberSession, planId: string, stopId:
   await loadEditablePlan(session, planId);
   const deleted = await getUserRepositories().plans.deleteStop(toPlanScope(session, planId), stopId, toPlanTouch(session));
   if (!deleted) throw new AppError(ERRORS.PLAN.STOP_NOT_FOUND);
+  await getUserRepositories().swipes.syncPlannedMatches(session.roomId);
 }
 
 /** Checklist là phần chuẩn bị chung (F10, F19) nên vẫn sửa được khi kế hoạch bất ngờ đang khóa. */

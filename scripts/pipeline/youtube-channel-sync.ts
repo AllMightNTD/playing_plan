@@ -1,3 +1,4 @@
+import { saveCatalogVideos } from "@/server/services/videos/video-catalog.service";
 import { CURATED_YOUTUBE_CHANNELS, YouTubeChannelConfig } from "@/server/config/youtube-channels";
 import { reserveQuota, getQuotaStatus } from "@/server/services/youtube/quota-ledger";
 import * as fs from "fs";
@@ -186,10 +187,15 @@ export async function syncYoutubeChannels(options: SyncChannelsOptions = {}): Pr
     }
   }
 
-  // Ghi kết quả ra file cache cục bộ
-  const outputPath = path.join(outputDir, "raw_videos.json");
-  fs.writeFileSync(outputPath, JSON.stringify(allVideos, null, 2), "utf-8");
-  console.log(`[YouTube Sync] Hoàn thành! Đã lưu ${allVideos.length} videos vào ${outputPath}`);
+  // Dry run chỉ sinh video mẫu để kiểm thử luồng, tuyệt đối không ghi ra file hay DB
+  if (dryRun) {
+    console.log(`[YouTube Sync] Dry run: ${allVideos.length} video mẫu, không lưu.`);
+  } else {
+    const outputPath = path.join(outputDir, "raw_videos.json");
+    fs.writeFileSync(outputPath, JSON.stringify(allVideos, null, 2), "utf-8");
+    const savedCount = await saveCatalogVideos(allVideos);
+    console.log(`[YouTube Sync] Hoàn thành! Đã lưu ${allVideos.length} videos vào ${outputPath}, upsert ${savedCount} vào video_catalog`);
+  }
 
   return {
     totalChannelsProcessed: channels.length,

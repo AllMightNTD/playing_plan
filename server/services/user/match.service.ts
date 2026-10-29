@@ -5,6 +5,7 @@ import { filterPlacesByHobby } from "@/lib/catalog/hobby-filter";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { MatchRecord, MemberSession } from "@/server/db/repositories/types";
 import type { SwipeChoice } from "@/lib/constants/user";
+import { AppError, ERRORS } from "@/server/http/errors";
 
 export interface MatchDto {
   id: string;
@@ -20,6 +21,11 @@ export interface SwipeResultDto {
   isNewMatch: boolean;
 }
 
+export interface UndoSwipeDto {
+  placeId: string;
+  removedMatchId: string | null;
+}
+
 export interface MatchesEtagResult {
   notModified: boolean;
   etag: string;
@@ -32,7 +38,9 @@ export interface MatchesEtagResult {
 export function computeMatchesEtag(roomId: string, rawMatches: MatchRecord[]): string {
   const latestTs = rawMatches.reduce((max, m) => Math.max(max, m.matchedAt ? new Date(m.matchedAt).getTime() : 0), 0);
   const unseenCount = rawMatches.filter((m) => !m.isSeen).length;
-  return `W/"matches-${roomId}-${rawMatches.length}-${latestTs}-${unseenCount}"`;
+  // Đổi trạng thái (open ↔ planned) cũng phải làm đổi ETag, nếu không polling trả 304 và UI không cập nhật
+  const plannedCount = rawMatches.filter((m) => m.status === "planned").length;
+  return `W/"matches-${roomId}-${rawMatches.length}-${latestTs}-${unseenCount}-${plannedCount}"`;
 }
 
 /** F07: bộ thẻ là catalog đang xuất bản trừ các nơi người này đã vuốt, hỗ trợ lọc theo Hobby tag. */
@@ -43,6 +51,18 @@ export async function getSwipeDeck(session: MemberSession | null, limit: number,
 
   const swiped = new Set(await getUserRepositories().swipes.listSwipedPlaceIds(session.roomId, session.memberId));
   return filtered.filter((place) => !swiped.has(place.id)).slice(0, limit);
+}
+
+/** Hoàn tác lượt quẹt của chính mình; Match mất ngưỡng like thì bị gỡ theo. */
+export async function undoSwipe(session: MemberSession, placeId: string): Promise<UndoSwipeDto> {
+  const result = await getUserRepositories().swipes.undoSwipe({
+    roomId: session.roomId,
+    memberId: session.memberId,
+    placeId,
+  });
+  if (result.status === "not_found") throw new AppError(ERRORS.SWIPE.NOT_FOUND);
+  if (result.status === "match_planned") throw new AppError(ERRORS.SWIPE.MATCH_PLANNED);
+  return { placeId, removedMatchId: result.removedMatchId };
 }
 
 export async function recordSwipe(session: MemberSession, placeId: string, choice: SwipeChoice): Promise<SwipeResultDto> {

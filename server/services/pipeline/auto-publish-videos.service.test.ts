@@ -3,7 +3,10 @@ import {
   classifyVideoCategory,
   evaluateVideoRecommend,
 } from "@/server/services/user/videos.service";
-import { loadRawVideos } from "@/server/services/pipeline/auto-publish-videos.service";
+import { readLocalRawVideos } from "@/server/services/videos/video-catalog.service";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 describe("Video Catalog Service & Categorisation", () => {
   describe("classifyVideoCategory", () => {
@@ -110,14 +113,21 @@ describe("Video Catalog Service & Categorisation", () => {
     });
   });
 
-  describe("loadRawVideos", () => {
-    it("should successfully load raw videos from json file", () => {
-      const videos = loadRawVideos();
-      expect(videos.length).toBeGreaterThan(0);
-      expect(videos[0]).toHaveProperty("videoId");
-      expect(videos[0]).toHaveProperty("title");
-      expect(videos[0]).toHaveProperty("channelTitle");
-      expect(videos[0]).toHaveProperty("isEmbeddable");
+  describe("readLocalRawVideos", () => {
+    // Không phụ thuộc file scripts/output (bị gitignore): tự tạo file mẫu tạm
+    it("đọc file kết quả cào cục bộ, file thiếu hoặc hỏng thì trả rỗng", () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "datemate-videos-"));
+      const file = path.join(dir, "raw_videos.json");
+      try {
+        fs.writeFileSync(file, JSON.stringify([{ videoId: "abc", title: "T", channelTitle: "C", isEmbeddable: true }]));
+        expect(readLocalRawVideos(file)).toEqual([expect.objectContaining({ videoId: "abc", channelTitle: "C" })]);
+
+        fs.writeFileSync(file, "{hỏng");
+        expect(readLocalRawVideos(file)).toEqual([]);
+        expect(readLocalRawVideos(path.join(dir, "khong-co.json"))).toEqual([]);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
     });
   });
 });

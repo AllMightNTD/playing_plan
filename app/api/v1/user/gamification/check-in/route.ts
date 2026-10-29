@@ -15,14 +15,12 @@ export const POST = handleRoute(async (req: NextRequest) => {
   const session = await requireRoomSession();
   const body = (await req.json().catch(() => null)) as CheckInInput | null;
 
-  if (!body || !body.placeName || !body.district) {
+  if (!body || typeof body.placeId !== "string" || !body.placeId.trim()) {
     throw new AppError(ERRORS.COMMON.VALIDATION_FAILED);
   }
 
   const result = await checkInPlace(session, {
-    placeId: body.placeId,
-    placeName: body.placeName,
-    district: body.district,
+    placeId: body.placeId.trim(),
     method: body.method === "gps_auto" ? "gps_auto" : "manual_confirm",
   });
 

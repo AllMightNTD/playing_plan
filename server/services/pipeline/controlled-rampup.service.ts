@@ -1,3 +1,4 @@
+import { assertPublishNotPaused } from "@/server/services/pipeline/pipeline-control.service";
 import { db } from "@/server/db/client";
 import { places, NewPlace } from "@/server/db/schema/places";
 import {
@@ -62,8 +63,9 @@ export async function runControlledPromotion(
   const batchId = options?.batchId || `batch_auto_promote_${Date.now()}`;
   const now = new Date();
 
-  // 1. Phanh 2: Kiểm tra Kill Switch khẩn cấp
+  // 1. Phanh 2: Kill Switch khẩn cấp (env) và phanh do circuit breaker/admin bật (DB)
   assertPublishNotHalted();
+  await assertPublishNotPaused();
 
   // 2. Kiểm tra Quota YouTube
   const quota = await getQuotaStatus();

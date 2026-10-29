@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { resetMemoryStore } from "@/server/db/demo/memory-store";
 import { AppError, ERRORS } from "@/server/http/errors";
 import { createInvite, ensureRoomSession, joinRoom, revokeRoomMember } from "./room.service";
-import { getSwipeDeck, listMatches, recordSwipe } from "./match.service";
+import { getSwipeDeck, listMatches, recordSwipe, undoSwipe } from "./match.service";
+import { getMemoryStore } from "@/server/db/demo/memory-store";
+import { createPlan, deletePlan } from "./plan.service";
+import { addStop, deleteStop } from "./plan-items.service";
 import { listSavedPlaces, savePlace, unsavePlace } from "./saved.service";
 
 let ipCounter = 0;
@@ -164,5 +167,84 @@ describe("saved places", () => {
     await unsavePlace(creator, "p1");
     expect(await listSavedPlaces(creator)).toEqual([]);
     expect(await listSavedPlaces(null)).toEqual([]);
+  });
+});
+
+describe("undo swipe", () => {
+  const hasCode = (code: string) => (error: unknown) => error instanceof AppError && error.definition.code === code;
+
+  it("removes the swipe so the place returns to the deck", async () => {
+    const { creator } = await createCouple();
+    await recordSwipe(creator, "p1", "nope");
+    expect(await undoSwipe(creator, "p1")).toEqual({ placeId: "p1", removedMatchId: null });
+    const deck = await getSwipeDeck(creator, 50);
+    expect(deck.some((place) => place.id === "p1")).toBe(true);
+  });
+
+  it("removes the open match formed by the undone like", async () => {
+    const { creator, partner } = await createCouple();
+    await recordSwipe(creator, "p1", "like");
+    const { matchId } = await recordSwipe(partner, "p1", "like");
+
+    const result = await undoSwipe(partner, "p1");
+    expect(result.removedMatchId).toBe(matchId);
+    expect(await listMatches(creator)).toHaveLength(0);
+  });
+
+  it("refuses to undo a like whose match is already planned", async () => {
+    const { creator, partner } = await createCouple();
+    await recordSwipe(creator, "p1", "like");
+    await recordSwipe(partner, "p1", "like");
+    getMemoryStore().matches.get(`${creator.roomId}:p1`)!.status = "planned";
+
+    await expect(undoSwipe(partner, "p1")).rejects.toSatisfy(hasCode(ERRORS.SWIPE.MATCH_PLANNED.code));
+    expect(await listMatches(creator)).toHaveLength(1);
+  });
+
+  it("returns not found for a place never swiped or swiped by someone else", async () => {
+    const { creator, partner } = await createCouple();
+    await recordSwipe(creator, "p1", "like");
+    await expect(undoSwipe(partner, "p1")).rejects.toSatisfy(hasCode(ERRORS.SWIPE.NOT_FOUND.code));
+    await expect(undoSwipe(creator, "p2")).rejects.toSatisfy(hasCode(ERRORS.SWIPE.NOT_FOUND.code));
+  });
+});
+
+describe("match planned status follows plan stops", () => {
+  const hasCode = (code: string) => (error: unknown) => error instanceof AppError && error.definition.code === code;
+
+  async function createMatchedCouple() {
+    const couple = await createCouple();
+    await recordSwipe(couple.creator, "p1", "like");
+    await recordSwipe(couple.partner, "p1", "like");
+    return couple;
+  }
+
+  it("thêm địa điểm đã Match vào kế hoạch thì Match thành planned, undo bị chặn", async () => {
+    const { creator, partner } = await createMatchedCouple();
+    const plan = await createPlan(creator, { title: "Hẹn", planDate: "2026-11-07", startTime: "16:30" });
+    await addStop(creator, plan.id, { placeId: "p1" });
+
+    expect((await listMatches(creator))[0].status).toBe("planned");
+    await expect(undoSwipe(partner, "p1")).rejects.toSatisfy(hasCode(ERRORS.SWIPE.MATCH_PLANNED.code));
+  });
+
+  it("tạo kế hoạch kèm địa điểm cũng chuyển planned", async () => {
+    const { creator } = await createMatchedCouple();
+    await createPlan(creator, { title: "Hẹn", planDate: "2026-11-07", startTime: "16:30", placeId: "p1" });
+    expect((await listMatches(creator))[0].status).toBe("planned");
+  });
+
+  it("xóa điểm dừng hoặc kế hoạch cuối cùng chứa địa điểm thì Match quay về open", async () => {
+    const { creator } = await createMatchedCouple();
+    const planA = await createPlan(creator, { title: "A", planDate: "2026-11-07", startTime: "16:30" });
+    const planB = await createPlan(creator, { title: "B", planDate: "2026-11-08", startTime: "16:30" });
+    const stopA = await addStop(creator, planA.id, { placeId: "p1" });
+    await addStop(creator, planB.id, { placeId: "p1" });
+
+    await deleteStop(creator, planA.id, stopA.id);
+    expect((await listMatches(creator))[0].status).toBe("planned"); // vẫn còn ở kế hoạch B
+
+    await deletePlan(creator, planB.id);
+    expect((await listMatches(creator))[0].status).toBe("open");
   });
 });

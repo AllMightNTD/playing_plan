@@ -1,3 +1,5 @@
+import { runTrackedPipeline } from "@/server/services/pipeline/pipeline-run.service";
+import { assertPublishNotPaused } from "@/server/services/pipeline/pipeline-control.service";
 import { db } from "@/server/db/client";
 import { places, placeGuides, placeMedia, NewPlace } from "@/server/db/schema/places";
 import { candidatePlaces, placeBlocklist, PlaceBlocklist, CandidatePlace } from "@/server/db/schema/governance";
@@ -113,6 +115,8 @@ function slugify(name: string): string {
 }
 
 async function main() {
+  // Phanh publish (circuit breaker/admin/env) đang bật thì không chạy script xuất bản hàng loạt
+  await assertPublishNotPaused();
   console.log("==================================================================");
   console.log("🚀 [MỞ VAN THĂNG HẠNG TỰ ĐỘNG] BULK PROMOTE HÀNG TRĂM ĐỊA ĐIỂM");
   console.log("==================================================================");
@@ -320,10 +324,14 @@ async function main() {
   console.log(`   - Thăng hạng thành công: ${promotedCount} địa điểm`);
   console.log(`   - Bỏ qua do dính blocklist: ${skippedBlocklistCount}`);
   console.log("==================================================================");
+  return { promotedCount, summary: { candidates: candidates.length, promotedCount, skippedBlocklistCount } };
 }
 
 if (process.argv[1]?.includes("bulk-promote-all-candidates")) {
-  main().catch((err) => {
+  runTrackedPipeline("auto_promote", async () => {
+    const { promotedCount, summary } = await main();
+    return { result: undefined, promotedCount, summary };
+  }).catch((err) => {
     console.error("❌ Lỗi bulk promotion:", err);
     process.exit(1);
   });

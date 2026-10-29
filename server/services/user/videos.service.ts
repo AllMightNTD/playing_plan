@@ -1,7 +1,7 @@
 import { db } from "@/server/db/client";
 import { places, placeMedia, Place } from "@/server/db/schema/places";
 import { placeVideos, PlaceVideo } from "@/server/db/schema/governance";
-import { loadRawVideos, RawVideoItem } from "@/server/services/pipeline/auto-publish-videos.service";
+import { loadCatalogVideos, type CatalogVideo } from "@/server/services/videos/video-catalog.service";
 import { eq, inArray } from "drizzle-orm";
 
 export type VideoCategory = "cafe" | "food" | "photo" | "walk" | "fun" | "chill" | "stay";
@@ -131,7 +131,7 @@ export function classifyVideoCategory(
  * Đánh giá tính đề xuất của video cho cặp đôi
  */
 export function evaluateVideoRecommend(
-  video: RawVideoItem,
+  video: CatalogVideo,
   hasLinkedPlace: boolean
 ): { isRecommend: boolean; reason?: string } {
   if (hasLinkedPlace) {
@@ -182,8 +182,8 @@ export async function queryUserVideos(
 ): Promise<VideoCatalogResponse> {
   const { q = "", category = "all", tab = "all", channel = "all", page = 1, limit = 24 } = filters;
 
-  // 1. Tải danh sách raw videos
-  const rawVideos = loadRawVideos();
+  // 1. Tải danh sách video từ bảng video_catalog
+  const rawVideos = await loadCatalogVideos();
 
   // 2. Tải địa điểm chính thức và bảng liên kết place_videos từ DB (nếu có)
   let placeMap = new Map<string, VideoPlaceInfo>();

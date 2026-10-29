@@ -30,11 +30,14 @@ export function generateInviteCode(): string {
   return Array.from(bytes, (byte) => INVITE_CODE_ALPHABET[byte % INVITE_CODE_ALPHABET.length]).join("");
 }
 
-/** Người dùng có thể gõ thường/hoa, có khoảng trắng, gạch nối, hoặc tiền tố DM-. */
+/**
+ * Người dùng có thể gõ thường/hoa, có khoảng trắng, gạch nối, hoặc tiền tố DM-.
+ * Chỉ bỏ "DM" khi dài hơn mã chuẩn, vì bảng chữ cái có D và M nên mã thật cũng có thể bắt đầu bằng "DM".
+ */
 export function normalizeInviteCode(code: string): string {
-  let cleaned = code.replace(/[\s-]/g, "").toUpperCase();
-  if (cleaned.startsWith("DM")) {
-    cleaned = cleaned.slice(2);
+  const cleaned = code.replace(/[\s-]/g, "").toUpperCase();
+  if (cleaned.length === INVITE_CODE_LENGTH + 2 && cleaned.startsWith("DM")) {
+    return cleaned.slice(2);
   }
   return cleaned;
 }

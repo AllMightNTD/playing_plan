@@ -1,3 +1,4 @@
+import { saveCatalogVideos } from "@/server/services/videos/video-catalog.service";
 import { reserveQuota } from "./quota-ledger";
 import * as fs from "fs";
 import * as path from "path";
@@ -389,6 +390,12 @@ export class YouTubeCoupleReviewCrawler {
     // Sắp xếp video theo độ hot (lượt xem & ngày đăng)
     allVideos.sort((a, b) => b.viewCount - a.viewCount);
 
+    // Dry run (thiếu API key) chỉ có video mẫu: không ghi file hay DB để không trộn dữ liệu giả vào catalog
+    if (this.dryRun) {
+      console.log(`\n🧪 [Dry Run] ${allVideos.length} video mẫu, không lưu.`);
+      return allVideos;
+    }
+
     const outputFilePath =
       options?.outputFilePath || path.resolve(process.cwd(), "scripts/output/youtube/raw_videos.json");
 
@@ -399,6 +406,10 @@ export class YouTubeCoupleReviewCrawler {
 
     fs.writeFileSync(outputFilePath, JSON.stringify(allVideos, null, 2), "utf-8");
     console.log(`\n💾 [Save Complete] Đã lưu thành công ${allVideos.length} video độc bản vào: ${outputFilePath}`);
+
+    // Nguồn chính lúc chạy là bảng video_catalog (upsert, không mất video của các lượt cào trước)
+    const savedCount = await saveCatalogVideos(allVideos);
+    console.log(`💾 [Video Catalog] Đã upsert ${savedCount} video vào bảng video_catalog.`);
 
     return allVideos;
   }

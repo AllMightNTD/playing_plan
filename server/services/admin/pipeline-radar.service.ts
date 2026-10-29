@@ -6,11 +6,24 @@ import {
   pipelineRuns,
 } from "@/server/db/schema/governance";
 import { auditLogs } from "@/server/db/schema/audit";
+import { videoCatalog, videoHotspots } from "@/server/db/schema/videos";
+import { formatTimestamp } from "@/lib/video-chapters";
 import { getQuotaStatus, MAX_DAILY_YOUTUBE_QUOTA } from "@/server/services/youtube/quota-ledger";
 import { sql, eq, desc, and } from "drizzle-orm";
 import * as crypto from "crypto";
 import { AppError, ERRORS } from "@/server/http/errors";
 import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
+import {
+  countGradesSince,
+  insertSampleGrade,
+  notGraded,
+} from "@/server/db/queries/admin/pipeline-control.queries";
+import {
+  SYSTEM_ACTOR,
+  getPublishPauseState,
+  setPublishPaused,
+  type PublishPauseState,
+} from "@/server/services/pipeline/pipeline-control.service";
 
 export interface PipelineStats {
   quota: {
@@ -29,8 +42,10 @@ export interface PipelineStats {
     autoLinkedCount: number;
     pendingReviewCount: number;
   };
-  rolling7DayAccuracy: number;
+  rolling7DayAccuracy: number | null;
+  gradedSampleCount: number;
   autoPause: boolean;
+  pause: PublishPauseState;
 }
 
 export interface PipelineEventItem {
@@ -44,7 +59,7 @@ export interface PipelineEventItem {
 
 export interface SampleCardItem {
   id: string;
-  type: "place" | "video";
+  type: "place" | "video" | "hotspot";
   title: string;
   subtitle: string;
   details: string;
@@ -54,27 +69,17 @@ export interface SampleCardItem {
   meta: Record<string, unknown>;
 }
 
-// Bộ nhớ cache tạm thời lưu các lượt chấm mẫu trong ngày để tính rolling accuracy
-const dailyGrades: Array<{
-  itemId: string;
-  type: "place" | "video";
-  isCorrect: boolean;
-  gradedAt: Date;
-}> = [
-  // Hạt giống ban đầu với độ chính xác chuẩn 90%
-  { itemId: "seed_1", type: "place", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_2", type: "place", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_3", type: "place", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_4", type: "place", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_5", type: "place", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_6", type: "video", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_7", type: "video", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_8", type: "video", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_9", type: "video", isCorrect: true, gradedAt: new Date() },
-  { itemId: "seed_10", type: "video", isCorrect: false, gradedAt: new Date() },
-];
+const ROLLING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+/** Chưa đủ mẫu thì không tính phanh, tránh 1 lượt chấm sai đầu tiên kéo accuracy về 0% */
+export const MIN_GRADES_FOR_BREAKER = 10;
+export const ACCURACY_BREAKER_THRESHOLD = 85.0;
 
-let isEmergencyAutoPaused = false;
+/** Tỷ lệ đúng trong 7 ngày gần nhất (bảng pipeline_sample_grades); null khi chưa có lượt chấm nào. */
+async function computeRollingAccuracy(now: Date): Promise<{ accuracy: number | null; sampleSize: number }> {
+  const { total, correct } = await countGradesSince(new Date(now.getTime() - ROLLING_WINDOW_MS));
+  if (total === 0) return { accuracy: null, sampleSize: 0 };
+  return { accuracy: Number(((correct / total) * 100).toFixed(1)), sampleSize: total };
+}
 
 /**
  * Lấy số liệu thống kê tổng quan của Pipeline Radar.
@@ -101,10 +106,10 @@ export async function getPipelineRadarStats(): Promise<PipelineStats> {
     })
     .from(placeVideos);
 
-  // Tính rolling 7-day accuracy từ dailyGrades
-  const correctGrades = dailyGrades.filter((g) => g.isCorrect).length;
-  const rolling7DayAccuracy =
-    dailyGrades.length > 0 ? Number(((correctGrades / dailyGrades.length) * 100).toFixed(1)) : 90.0;
+  const [{ accuracy: rolling7DayAccuracy, sampleSize: gradedSampleCount }, pause] = await Promise.all([
+    computeRollingAccuracy(new Date()),
+    getPublishPauseState(),
+  ]);
 
   return {
     quota: {
@@ -124,7 +129,9 @@ export async function getPipelineRadarStats(): Promise<PipelineStats> {
       pendingReviewCount: Number(videosAgg?.pendingReview || 0),
     },
     rolling7DayAccuracy,
-    autoPause: isEmergencyAutoPaused || process.env.EMERGENCY_HALT_PUBLISH === "true",
+    gradedSampleCount,
+    autoPause: pause.isPaused,
+    pause,
   };
 }
 
@@ -184,7 +191,13 @@ export async function getSampleCardsForGrading(): Promise<SampleCardItem[]> {
   const sampleCandidates = await db
     .select()
     .from(candidatePlaces)
-    .where(and(eq(candidatePlaces.status, "pending"), sql`${candidatePlaces.evaluatedTier} IN ('A', 'B')`))
+    .where(
+      and(
+        eq(candidatePlaces.status, "pending"),
+        sql`${candidatePlaces.evaluatedTier} IN ('A', 'B')`,
+        notGraded("place", candidatePlaces.id)
+      )
+    )
     .limit(5);
 
   for (const c of sampleCandidates) {
@@ -207,7 +220,12 @@ export async function getSampleCardsForGrading(): Promise<SampleCardItem[]> {
   const sampleVideos = await db
     .select()
     .from(placeVideos)
-    .where(eq(placeVideos.status, "auto_linked"))
+    .where(
+      and(
+        eq(placeVideos.status, "auto_linked"),
+        notGraded("video", sql`CONCAT(${placeVideos.placeId}, ':', ${placeVideos.videoId})`)
+      )
+    )
     .limit(5);
 
   for (const v of sampleVideos) {
@@ -227,6 +245,46 @@ export async function getSampleCardsForGrading(): Promise<SampleCardItem[]> {
     });
   }
 
+  // 3. Lấy 5 mốc địa điểm trong video do máy tự duyệt (AI hoặc chapter) để kiểm toán
+  const sampleHotspots = await db
+    .select({
+      id: videoHotspots.id,
+      videoId: videoHotspots.videoId,
+      timestampSec: videoHotspots.timestampSec,
+      source: videoHotspots.source,
+      confidence: videoHotspots.confidence,
+      evidence: videoHotspots.evidence,
+      label: videoHotspots.label,
+      placeName: places.name,
+      placeArea: places.area,
+      videoTitle: videoCatalog.title,
+    })
+    .from(videoHotspots)
+    .innerJoin(places, eq(places.id, videoHotspots.placeId))
+    .innerJoin(videoCatalog, eq(videoCatalog.videoId, videoHotspots.videoId))
+    .where(
+      and(
+        eq(videoHotspots.status, "verified"),
+        sql`${videoHotspots.source} IN ('ai', 'chapter')`,
+        notGraded("hotspot", videoHotspots.id)
+      )
+    )
+    .orderBy(sql`RAND()`)
+    .limit(5);
+
+  for (const h of sampleHotspots) {
+    const watchUrl = `https://www.youtube.com/watch?v=${h.videoId}&t=${h.timestampSec}s`;
+    cards.push({
+      id: h.id,
+      type: "hotspot",
+      title: `${h.placeName} @ ${formatTimestamp(h.timestampSec)}`,
+      subtitle: `${h.source === "ai" ? "AI" : "Chapter"}${h.confidence ? ` • tin cậy ${h.confidence}` : ""} • ${h.videoTitle}`,
+      details: h.evidence || `Nhãn: ${h.label ?? h.placeName} (${h.placeArea})`,
+      confidenceScore: h.confidence ? Math.round(Number(h.confidence) * 100) : undefined,
+      meta: { videoId: h.videoId, timestampSec: h.timestampSec, watchUrl },
+    });
+  }
+
   return cards;
 }
 
@@ -234,48 +292,76 @@ export async function getSampleCardsForGrading(): Promise<SampleCardItem[]> {
  * Xử lý kết quả chấm thẻ kiểm toán từ Admin.
  * Nếu độ chính xác rolling rớt dưới 85% -> tự động bật phanh khẩn cấp auto_pause.
  */
-export async function gradeSampleItem(input: {
-  itemId: string;
-  type: "place" | "video";
-  isCorrect: boolean;
-  feedback?: string;
-}): Promise<{ success: boolean; newRollingAccuracy: number; autoPaused: boolean }> {
-  // Ghi nhận lượt chấm
-  dailyGrades.push({
+export async function gradeSampleItem(
+  input: {
+    itemId: string;
+    type: "place" | "video" | "hotspot";
+    isCorrect: boolean;
+    feedback?: string;
+  },
+  gradedBy: string
+): Promise<{ success: boolean; newRollingAccuracy: number | null; autoPaused: boolean }> {
+  const now = new Date();
+  await insertSampleGrade({
     itemId: input.itemId,
-    type: input.type,
+    itemType: input.type,
     isCorrect: input.isCorrect,
-    gradedAt: new Date(),
+    feedback: input.feedback?.trim() || null,
+    gradedBy,
+    gradedAt: now,
   });
 
-  // Xử lý side-effect: Nếu đánh giá video sai -> chuyển trạng thái rejected
-  if (input.type === "video" && !input.isCorrect) {
+  // Video đã chấm thì chốt trạng thái liên kết: đúng → verified, sai → rejected
+  if (input.type === "video") {
     const [placeId, videoId] = input.itemId.split(":");
     if (placeId && videoId) {
       await db
         .update(placeVideos)
-        .set({ status: "rejected" })
+        .set({ status: input.isCorrect ? "verified" : "rejected" })
         .where(and(eq(placeVideos.placeId, placeId), eq(placeVideos.videoId, videoId)));
     }
   }
 
-  // Tính lại Rolling 7-day
-  const correctGrades = dailyGrades.filter((g) => g.isCorrect).length;
-  const newRollingAccuracy = Number(((correctGrades / dailyGrades.length) * 100).toFixed(1));
-
-  // Kích hoạt phanh tự động nếu accuracy < 85%
-  let autoPaused = false;
-  if (newRollingAccuracy < 85.0) {
-    isEmergencyAutoPaused = true;
-    autoPaused = true;
-    console.warn(`[CIRCUIT BREAKER] Tỷ lệ chính xác rơi xuống ${newRollingAccuracy}% (< 85%). Đã kích hoạt auto_pause!`);
+  // Mốc tự động bị chấm sai thì gỡ khỏi người dùng ngay
+  if (input.type === "hotspot" && !input.isCorrect) {
+    await db
+      .update(videoHotspots)
+      .set({ status: "rejected", verifiedBy: gradedBy, updatedAt: now })
+      .where(eq(videoHotspots.id, input.itemId));
   }
 
-  return {
-    success: true,
-    newRollingAccuracy,
-    autoPaused,
-  };
+  const { accuracy: newRollingAccuracy, sampleSize } = await computeRollingAccuracy(now);
+
+  // Circuit breaker: accuracy < 85% trên đủ số mẫu thì bật phanh publish (lưu DB, cron đọc được)
+  let autoPaused = false;
+  if (
+    newRollingAccuracy !== null &&
+    sampleSize >= MIN_GRADES_FOR_BREAKER &&
+    newRollingAccuracy < ACCURACY_BREAKER_THRESHOLD
+  ) {
+    const pause = await getPublishPauseState();
+    if (!pause.isPaused) {
+      await setPublishPaused(
+        true,
+        SYSTEM_ACTOR,
+        `Accuracy 7 ngày ${newRollingAccuracy}% < ${ACCURACY_BREAKER_THRESHOLD}% trên ${sampleSize} mẫu`
+      );
+      console.warn(`[CIRCUIT BREAKER] Accuracy ${newRollingAccuracy}% trên ${sampleSize} mẫu. Đã bật phanh publish.`);
+    }
+    autoPaused = true;
+  }
+
+  return { success: true, newRollingAccuracy, autoPaused };
+}
+
+/** Admin gỡ (hoặc bật) phanh publish thủ công, bắt buộc ghi lý do để kiểm toán. */
+export async function setPublishPauseByAdmin(adminEmail: string, isPaused: boolean, reason: string): Promise<PublishPauseState> {
+  const pause = await getPublishPauseState();
+  if (pause.source === "env") {
+    throw new AppError(ERRORS.COMMON.VALIDATION_FAILED, { pause: "EMERGENCY_HALT_PUBLISH đang bật, gỡ trong biến môi trường" });
+  }
+  await setPublishPaused(isPaused, adminEmail, reason);
+  return getPublishPauseState();
 }
 
 /**

@@ -23,20 +23,16 @@ export const POST = handleRoute(async (req: NextRequest) => {
   const session = await requireRoomSession();
   const body = (await req.json().catch(() => null)) as {
     placeId?: string;
-    placeName?: string;
-    district?: string;
     hint?: string;
     content?: string;
   } | null;
 
-  if (!body || !body.placeName || !body.content || body.content.trim().length === 0) {
+  if (!body || typeof body.placeId !== "string" || !body.placeId.trim() || !body.content?.trim()) {
     throw new AppError(ERRORS.COMMON.VALIDATION_FAILED);
   }
 
   const note = await createSecretNote(session, {
-    placeId: body.placeId,
-    placeName: body.placeName,
-    district: body.district,
+    placeId: body.placeId.trim(),
     hint: body.hint,
     content: body.content,
   });

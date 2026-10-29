@@ -13,7 +13,7 @@ interface ScrapbookNavbarProps {
 export function ScrapbookNavbar({ scrollContainerRef }: ScrapbookNavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { savedPlaceSlugs, setIsRoomModalOpen, homeSummary, places } = useApp();
+  const { savedPlaceSlugs, setIsRoomModalOpen, homeSummary, places, filterSavedFavorites } = useApp();
 
   const [activeSection, setActiveSection] = useState<string>("section-home");
   const [scrollProgress, setScrollProgress] = useState<number>(8);
@@ -214,7 +214,10 @@ export function ScrapbookNavbar({ scrollContainerRef }: ScrapbookNavbarProps) {
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Nút Đã lưu yêu thích */}
             <button
-              onClick={(e) => scrollToSection(e, "section-explore")}
+              onClick={(e) => {
+                filterSavedFavorites();
+                scrollToSection(e, "section-explore");
+              }}
               className="relative bg-[#F9EFC7] hover:bg-[#F5E39E] border-2 border-[#D5BE7E] text-paper-ink px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition transform hover:-translate-y-0.5"
               title="Xem các địa điểm đã thả tim lưu lại"
             >

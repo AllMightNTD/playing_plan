@@ -127,6 +127,11 @@ interface AppContextType {
   addToast: (msg: string, type?: "info" | "success" | "error") => void;
   removeToast: (id: string) => void;
 
+  // Explore quick filter ('all' | 'outdoor' | 'indoor' | 'art' | 'saved')
+  exploreFilter: string;
+  setExploreFilter: (f: string) => void;
+  filterSavedFavorites: () => void;
+
   // iCal export
   exportCalendarIcs: () => void;
 }
@@ -139,6 +144,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [exploreFilter, setExploreFilter] = useState("all");
 
   // Home Dynamic APIs (F12, F13, F08, F01)
   const [homePublic, setHomePublic] = useState<HomePublicDto | null>(null);
@@ -589,6 +595,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const filterSavedFavorites = useCallback(() => {
+    setExploreFilter("saved");
+    addToast("❤️ Đang lọc các địa điểm hai bạn đã lưu yêu thích!", "info");
+  }, [addToast]);
+
   return (
     <AppContext.Provider
       value={{
@@ -610,6 +621,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         selectedCategory,
         setSelectedCategory,
         isTrainStreetSearch,
+
+        exploreFilter,
+        setExploreFilter,
+        filterSavedFavorites,
 
         savedPlaceSlugs,
         isPlaceSaved,

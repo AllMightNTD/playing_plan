@@ -57,9 +57,17 @@ export function PlaceCard({ place, compact = false, index = 0, featured }: Place
     setActiveDetailSlug(place.slug);
   };
 
-  const bestTime = place.bestTimeText
-    ? `Hợp đi lúc ${place.bestTimeText} nha`
-    : "Hợp đi lúc 16:24 - 17:24 nha";
+  const bestTime = useMemo(() => {
+    if (!place.bestTimeText) return "Hợp đi lúc 16:24 - 17:24 nha";
+    let text = place.bestTimeText.trim();
+    if (!text.toLowerCase().startsWith("hợp đi lúc")) {
+      text = `Hợp đi lúc ${text}`;
+    }
+    if (!text.toLowerCase().endsWith("nha")) {
+      text = `${text} nha`;
+    }
+    return text;
+  }, [place.bestTimeText]);
 
   const district = place.area?.split("-")[0]?.trim() || "Hà Nội";
   const price = place.costText || "50k - 150k";

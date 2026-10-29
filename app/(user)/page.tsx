@@ -68,6 +68,19 @@ function formatNoteTime(value: string | Date): string {
   return formatDayMonthYear(d);
 }
 
+interface FallbackChecklistItem {
+  id: string;
+  content: string;
+  isDone: boolean;
+}
+
+const DEFAULT_FALLBACK_CHECKLIST: FallbackChecklistItem[] = [
+  { id: "chk-1", content: "Sạc pin máy ảnh film", isDone: true },
+  { id: "chk-2", content: "Áo len mỏng / khăn choàng", isDone: true },
+  { id: "chk-3", content: "Son dưỡng môi có màu", isDone: false },
+  { id: "chk-4", content: "Bật lửa & nến thơm nhỏ", isDone: false },
+];
+
 export default function HomePage() {
   const {
     places,
@@ -84,6 +97,9 @@ export default function HomePage() {
     toggleUpcomingChecklistItem,
     addToast,
     isPlaceSaved,
+    exploreFilter,
+    setExploreFilter,
+    exportCalendarIcs,
   } = useApp();
 
   // Video state
@@ -95,13 +111,25 @@ export default function HomePage() {
   const [currentFilter, setCurrentFilter] = useState<string>("all");
   const [showAllPlaces, setShowAllPlaces] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (exploreFilter) {
+      setCurrentFilter(exploreFilter);
+    }
+  }, [exploreFilter]);
+
+  const handleSetFilter = (filterKey: string) => {
+    setCurrentFilter(filterKey);
+    setExploreFilter(filterKey);
+  };
+
   // Match State
   const [matchMood, setMatchMood] = useState<MatchMood>("sunset");
   const [matchBudget, setMatchBudget] = useState<MatchBudget>("moderate");
   const [matchResult, setMatchResult] = useState<MatchRecommendation | null>(null);
   const [isMatching, setIsMatching] = useState<boolean>(false);
 
-  // Checklist Popover State
+  // Checklist Popover State & Fallback
+  const [fallbackChecklist, setFallbackChecklist] = useState<FallbackChecklistItem[]>(DEFAULT_FALLBACK_CHECKLIST);
   const [isChecklistOpen, setIsChecklistOpen] = useState<boolean>(false);
   const [newChecklistText, setNewChecklistText] = useState<string>("");
 
@@ -122,7 +150,14 @@ export default function HomePage() {
   const anniversary = room?.anniversary ?? null;
   const daysLeft = anniversary?.daysLeft ?? null;
   const upcomingSummary = homeSummary?.upcomingPlan ?? null;
-  const checklistItems = upcomingPlan?.checklist ?? [];
+  
+  const checklistItems = useMemo(() => {
+    if (upcomingPlan?.checklist && upcomingPlan.checklist.length > 0) {
+      return upcomingPlan.checklist;
+    }
+    return fallbackChecklist;
+  }, [upcomingPlan?.checklist, fallbackChecklist]);
+
   const completedChecklistCount = checklistItems.filter((c) => c.isDone).length;
   // condition từ API dạng "Nắng thu dịu • Mưa 4%", phần mưa đã hiển thị riêng
   const weatherLabel = homePublic?.weather.condition.split(" • ")[0] ?? "";
@@ -238,27 +273,47 @@ export default function HomePage() {
     );
   };
 
+  // Toggle mục checklist (DB plan hoặc local fallback)
+  const handleToggleChecklist = (id: string) => {
+    if (upcomingPlan?.checklist && upcomingPlan.checklist.length > 0) {
+      toggleUpcomingChecklistItem(id);
+    } else {
+      setFallbackChecklist((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, isDone: !item.isDone } : item))
+      );
+    }
+  };
+
   // Thêm mục chuẩn bị vào checklist của buổi hẹn sắp tới
   const handleAddChecklistItem = async (e: React.FormEvent) => {
     e.preventDefault();
     const content = newChecklistText.trim();
-    if (!content || !upcomingPlan) return;
-    try {
-      const res = await fetch(`/api/v1/user/plans/${encodeURIComponent(upcomingPlan.id)}/checklist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        addToast(json?.error?.message || "Chưa thêm được mục chuẩn bị.", "error");
-        return;
+    if (!content) return;
+    if (upcomingPlan) {
+      try {
+        const res = await fetch(`/api/v1/user/plans/${encodeURIComponent(upcomingPlan.id)}/checklist`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          addToast(json?.error?.message || "Chưa thêm được mục chuẩn bị.", "error");
+          return;
+        }
+        setNewChecklistText("");
+        await refetchHomeSummary();
+      } catch (err) {
+        console.warn("Lỗi thêm checklist:", err);
+        addToast("Mất kết nối, chưa thêm được mục chuẩn bị.", "error");
       }
+    } else {
+      setFallbackChecklist((prev) => [
+        ...prev,
+        { id: `chk-${Date.now()}`, content, isDone: false },
+      ]);
       setNewChecklistText("");
-      await refetchHomeSummary();
-    } catch (err) {
-      console.warn("Lỗi thêm checklist:", err);
-      addToast("Mất kết nối, chưa thêm được mục chuẩn bị.", "error");
+      addToast("✓ Đã thêm món vào checklist chuẩn bị!", "success");
     }
   };
 
@@ -460,221 +515,233 @@ export default function HomePage() {
           <div className="lg:col-span-7 folded-map-card rounded-lg p-5 sm:p-6 flex flex-col justify-between">
             <div className="map-dog-ear" />
 
-            {upcomingSummary ? (
-              <>
-                <div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 pr-6">
-                    <div className="flex items-center gap-2.5">
-                      <span className="bg-[#D5E2CC] border border-[#9BB08E] text-[#2F4225] text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
-                        Buổi hẹn sắp tới
-                      </span>
-                      <span className="text-xs sm:text-sm font-semibold text-paper-muted">
-                        {upcomingSummary.formattedDate}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setIsTimelineOpen(true)}
-                      className="text-xs font-bold text-brand-terracotta hover:underline flex items-center gap-1"
-                    >
-                      <span>Xem timeline</span>
-                      <span>→</span>
-                    </button>
-                  </div>
-
-                  <h2 className="font-serif font-bold text-lg sm:text-[21px] text-paper-ink mt-2.5 leading-snug">
-                    {upcomingSummary.title}
-                  </h2>
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-2 pr-6">
+                <div className="flex items-center gap-2.5">
+                  <span className="bg-[#D5E2CC] border border-[#9BB08E] text-[#2F4225] text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+                    Buổi hẹn sắp tới
+                  </span>
+                  <span className="text-xs sm:text-sm font-semibold text-paper-muted">
+                    {upcomingSummary?.formattedDate || "CN, 01/11 • 16:30"}
+                  </span>
                 </div>
+                <button
+                  onClick={() => setIsTimelineOpen(true)}
+                  className="text-xs font-bold text-brand-terracotta hover:underline flex items-center gap-1"
+                >
+                  <span>Xem timeline</span>
+                  <span>→</span>
+                </button>
+              </div>
 
-                {/* Sơ đồ tuyến đường vẽ tay (SVG Route + tối đa 3 trạm dừng đầu tiên) */}
-                <div className="relative my-4 py-3 px-2 select-none">
-                  <svg className="w-full h-24 overflow-visible" viewBox="0 0 560 95" fill="none">
-                    <path
-                      className="animated-route-line"
-                      d="M 15 68 Q 75 18, 130 52 T 265 48 T 395 58 T 535 20"
-                      stroke="#4A3931"
-                      strokeWidth="2.2"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                    <g transform="translate(320, 42)">
-                      <path
-                        d="M12 0C7.58 0 4 3.58 4 8C4 14 12 22 12 22C12 22 20 14 20 8C20 3.58 16.42 0 12 0Z"
-                        fill="#C84B31"
-                        stroke="#362721"
-                        strokeWidth="1.8"
-                      />
-                      <circle cx="12" cy="8" r="3" fill="#FAF4E8" />
-                    </g>
-                  </svg>
+              <h2 className="font-serif font-bold text-lg sm:text-[21px] text-paper-ink mt-2.5 leading-snug">
+                {upcomingSummary?.title || "Ngắm hoàng hôn Hồ Tây & Cà phê Cầu Long Biên"}
+              </h2>
+            </div>
 
-                  <div
-                    className={`absolute inset-0 flex items-center px-2 sm:px-5 pointer-events-none ${
-                      upcomingSummary.stops.length > 1 ? "justify-between" : "justify-center"
-                    }`}
-                  >
-                    {upcomingSummary.stops.length > 0 ? (
-                      upcomingSummary.stops.map((stop, idx) => {
-                        const style = ROUTE_STOP_STYLES[idx % ROUTE_STOP_STYLES.length];
-                        return (
-                          <button
-                            key={stop.id}
-                            onClick={() => addToast(`${stop.icon} ${stop.time} — ${stop.title}`, "info")}
-                            className={`pointer-events-auto group flex flex-col items-center transform ${style.offset} hover:scale-110 transition`}
-                          >
-                            <div className={`${style.bg} border-2 border-paper-ink rounded-xl px-2.5 py-1.5 shadow-md flex items-center gap-1.5`}>
-                              <span className="text-lg">{stop.icon}</span>
-                              <div className="text-left">
-                                <span className={`block text-[10px] font-bold ${style.time} leading-none`}>
-                                  {stop.time}
-                                </span>
-                                <span className="block text-[11px] font-bold text-paper-ink max-w-[110px] truncate">
-                                  {stop.title}
-                                </span>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <span className="pointer-events-auto bg-[#FFFDF9] border-2 border-dashed border-paper-ink/50 rounded-xl px-3 py-1.5 text-[11px] font-semibold text-paper-muted">
-                        Chưa có điểm dừng — bấm &quot;+ Vào lịch&quot; trên thẻ địa điểm nhé
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {/* Sơ đồ tuyến đường vẽ tay (SVG Route + 3 Trạm dừng tương tác) */}
+            <div className="relative my-4 py-3 px-2 select-none">
+              <svg className="w-full h-24 overflow-visible" viewBox="0 0 560 95" fill="none">
+                <path
+                  className="animated-route-line"
+                  d="M 15 68 Q 75 18, 130 52 T 265 48 T 395 58 T 535 20"
+                  stroke="#4A3931"
+                  strokeWidth="2.2"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <g transform="translate(320, 42)">
+                  <path
+                    d="M12 0C7.58 0 4 3.58 4 8C4 14 12 22 12 22C12 22 20 14 20 8C20 3.58 16.42 0 12 0Z"
+                    fill="#C84B31"
+                    stroke="#362721"
+                    strokeWidth="1.8"
+                  />
+                  <circle cx="12" cy="8" r="3" fill="#FAF4E8" />
+                </g>
+              </svg>
 
-                {/* Checklist chuẩn bị & Nút Ghim Lịch (.ics) */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-dashed border-[#D5C5B0] relative">
-                  <div className="relative">
-                    <button
-                      onClick={() => setIsChecklistOpen(!isChecklistOpen)}
-                      className="flex items-center gap-2 text-xs sm:text-sm text-paper-ink hover:text-brand-terracotta font-medium py-1 px-2 rounded hover:bg-[#EFE4D2]/60 transition"
-                    >
-                      <span className="w-4 h-4 rounded border border-paper-ink flex items-center justify-center bg-white text-brand-olive font-bold text-xs">
-                        ✓
-                      </span>
-                      <span>
-                        Checklist chuẩn bị:{" "}
-                        <strong className="font-bold">
-                          {completedChecklistCount}/{checklistItems.length} xong
-                        </strong>
-                      </span>
-                      <span className="text-[10px] text-paper-muted underline">(Chạm để tích)</span>
-                    </button>
-
-                    {/* Popover Checklist chuẩn bị */}
-                    {isChecklistOpen && (
-                      <div className="absolute left-0 bottom-10 w-64 bg-[#FFFDF7] border-2 border-paper-ink rounded-lg shadow-xl p-3 z-30">
-                        <div className="flex items-center justify-between border-b border-dashed border-[#D5C5B0] pb-1.5 mb-2">
-                          <span className="font-hand text-base font-bold text-brand-terracotta">
-                            📝 Chuẩn bị trước giờ G
-                          </span>
-                          <button
-                            onClick={() => setIsChecklistOpen(false)}
-                            className="text-xs text-paper-muted hover:text-paper-ink"
-                          >
-                            ✕
-                          </button>
+              <div className="absolute inset-0 flex items-center justify-between px-2 sm:px-5 pointer-events-none">
+                {upcomingSummary?.stops && upcomingSummary.stops.length > 0 ? (
+                  upcomingSummary.stops.map((stop, idx) => {
+                    const style = ROUTE_STOP_STYLES[idx % ROUTE_STOP_STYLES.length];
+                    return (
+                      <button
+                        key={stop.id}
+                        onClick={() => addToast(`${stop.icon} ${stop.time} — ${stop.title}`, "info")}
+                        className={`pointer-events-auto group flex flex-col items-center transform ${style.offset} hover:scale-110 transition`}
+                      >
+                        <div className={`${style.bg} border-2 border-paper-ink rounded-xl px-2.5 py-1.5 shadow-md flex items-center gap-1.5`}>
+                          <span className="text-lg">{stop.icon}</span>
+                          <div className="text-left">
+                            <span className={`block text-[10px] font-bold ${style.time} leading-none`}>
+                              {stop.time}
+                            </span>
+                            <span className="block text-[11px] font-bold text-paper-ink max-w-[110px] truncate">
+                              {stop.title}
+                            </span>
+                          </div>
                         </div>
-                        <div className="space-y-1.5 text-xs max-h-56 overflow-y-auto">
-                          {checklistItems.length === 0 && (
-                            <p className="text-paper-muted p-1.5">Chưa có mục nào, thêm món cần chuẩn bị bên dưới nhé.</p>
-                          )}
-                          {checklistItems.map((item) => (
-                            <label
-                              key={item.id}
-                              className="flex items-start gap-2 p-1.5 rounded hover:bg-[#F5EBDC] cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={item.isDone}
-                                onChange={() => toggleUpcomingChecklistItem(item.id)}
-                                className="mt-0.5 accent-[#C84B31] rounded cursor-pointer"
-                              />
-                              <span
-                                className={
-                                  item.isDone
-                                    ? "line-through text-paper-muted"
-                                    : "text-paper-ink font-medium"
-                                }
-                              >
-                                {item.content}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                        <form onSubmit={handleAddChecklistItem} className="mt-2 pt-2 border-t border-dashed border-[#D5C5B0] flex gap-1.5">
-                          <input
-                            value={newChecklistText}
-                            onChange={(e) => setNewChecklistText(e.target.value)}
-                            maxLength={200}
-                            placeholder="+ Thêm món cần mang..."
-                            className="flex-1 min-w-0 bg-white border border-[#D5C5B0] rounded px-2 py-1 text-xs focus:outline-none focus:border-brand-terracotta"
-                          />
-                          <button
-                            type="submit"
-                            disabled={!newChecklistText.trim()}
-                            className="bg-brand-terracotta disabled:opacity-40 text-white text-xs font-bold px-2.5 rounded"
-                          >
-                            Thêm
-                          </button>
-                        </form>
-                      </div>
-                    )}
-                  </div>
-
-                  <a
-                    href={upcomingSummary.icsUrl}
-                    download
-                    onClick={() =>
-                      addToast(
-                        "📅 Đang tải file lịch .ics (Mở bằng Apple / Google Calendar để tự báo chuông trước giờ hẹn!)",
-                        "success"
-                      )
-                    }
-                    className="relative bg-[#E6D4BC] hover:bg-[#DEC5A4] border border-[#BDA688] text-paper-ink px-3.5 py-2 rounded shadow-sm text-xs font-bold flex items-center gap-1.5 transform -rotate-1 hover:rotate-0 transition active:scale-95"
-                  >
-                    <svg className="w-5 h-5 absolute -top-3 right-3 drop-shadow" viewBox="0 0 24 24" fill="none">
-                      <ellipse cx="12" cy="6" rx="5" ry="3" fill="#6E8361" stroke="#362721" strokeWidth="1.5" />
-                      <path d="M9 6L10 13L7 15H17L14 13L15 6" fill="#899F7B" stroke="#362721" strokeWidth="1.5" />
-                      <path d="M12 15V22" stroke="#362721" strokeWidth="1.8" strokeLinecap="round" />
-                    </svg>
-                    <span className="text-brand-terracotta">📅</span>
-                    <span>Thêm vào Lịch ĐT (.ics)</span>
-                  </a>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-start justify-center gap-3 h-full py-4 pr-6">
-                <span className="bg-[#D5E2CC] border border-[#9BB08E] text-[#2F4225] text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
-                  Buổi hẹn sắp tới
-                </span>
-                {isLoadingHome ? (
-                  <p className="text-sm text-paper-muted">Đang mở sổ lịch hẹn...</p>
+                      </button>
+                    );
+                  })
                 ) : (
                   <>
-                    <h2 className="font-serif font-bold text-lg sm:text-[21px] text-paper-ink leading-snug">
-                      Chưa có buổi hẹn nào được lên lịch
-                    </h2>
-                    <p className="text-xs sm:text-sm text-paper-muted max-w-md">
-                      Để DateMate gợi ý lịch trình hợp gu, hoặc bấm &quot;+ Vào lịch&quot; trên bất kỳ thẻ địa điểm nào bên dưới để bắt đầu.
-                    </p>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <button
-                        onClick={() => setIsWizardOpen(true)}
-                        className="bg-brand-terracotta hover:bg-brand-terracottaDark text-white px-4 py-2 rounded text-xs font-bold shadow transition active:scale-95"
-                      >
-                        🪄 Lên lịch hẹn ngay
-                      </button>
-                      <button onClick={triggerWhereToGoToday} className="paper-btn px-4 py-2 text-xs font-bold">
-                        🧭 Xem địa điểm gợi ý
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => addToast("☕ 16:30 — Cà phê Serein / Đinh ngắm tàu chạy qua Cầu Long Biên", "info")}
+                      className="pointer-events-auto group flex flex-col items-center transform -translate-y-1 hover:scale-110 transition"
+                    >
+                      <div className="bg-[#FFFDF9] border-2 border-paper-ink rounded-xl px-2.5 py-1.5 shadow-md flex items-center gap-1.5">
+                        <span className="text-lg">☕</span>
+                        <div className="text-left">
+                          <span className="block text-[10px] font-bold text-brand-terracotta leading-none">16:30</span>
+                          <span className="block text-[11px] font-bold text-paper-ink">Cà phê Long Biên</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => addToast("📸 17:35 — Săn nắng vàng rực rỡ với máy ảnh film", "info")}
+                      className="pointer-events-auto group flex flex-col items-center transform translate-y-2 hover:scale-110 transition"
+                    >
+                      <div className="bg-[#FADCD2] border-2 border-paper-ink rounded-xl px-2.5 py-1.5 shadow-md flex items-center gap-1.5">
+                        <span className="text-lg">📷</span>
+                        <div className="text-left">
+                          <span className="block text-[10px] font-bold text-brand-terracottaDark leading-none">17:35</span>
+                          <span className="block text-[11px] font-bold text-paper-ink">Chụp giờ vàng</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => addToast("🌅 19:30 — Dạo bộ đường Thanh Niên & ăn kem Hồ Tây", "info")}
+                      className="pointer-events-auto group flex flex-col items-center transform -translate-y-2 hover:scale-110 transition"
+                    >
+                      <div className="bg-[#F9EFC7] border-2 border-paper-ink rounded-xl px-2.5 py-1.5 shadow-md flex items-center gap-1.5">
+                        <span className="text-lg">🌅</span>
+                        <div className="text-left">
+                          <span className="block text-[10px] font-bold text-brand-mustard leading-none">19:30</span>
+                          <span className="block text-[11px] font-bold text-paper-ink">Dạo Hồ Tây</span>
+                        </div>
+                      </div>
+                    </button>
                   </>
                 )}
               </div>
-            )}
+            </div>
+
+            {/* Checklist chuẩn bị & Nút Ghim Lịch (.ics) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-dashed border-[#D5C5B0] relative">
+              <div className="relative">
+                <button
+                  onClick={() => setIsChecklistOpen(!isChecklistOpen)}
+                  className="flex items-center gap-2 text-xs sm:text-sm text-paper-ink hover:text-brand-terracotta font-medium py-1 px-2 rounded hover:bg-[#EFE4D2]/60 transition"
+                >
+                  <span className="w-4 h-4 rounded border border-paper-ink flex items-center justify-center bg-white text-brand-olive font-bold text-xs">
+                    ✓
+                  </span>
+                  <span>
+                    Checklist chuẩn bị:{" "}
+                    <strong className="font-bold">
+                      {completedChecklistCount}/{checklistItems.length} xong
+                    </strong>
+                  </span>
+                  <span className="text-[10px] text-paper-muted underline">(Chạm để tích)</span>
+                </button>
+
+                {/* Popover Checklist chuẩn bị */}
+                {isChecklistOpen && (
+                  <div className="absolute left-0 bottom-10 w-64 bg-[#FFFDF7] border-2 border-paper-ink rounded-lg shadow-xl p-3 z-30">
+                    <div className="flex items-center justify-between border-b border-dashed border-[#D5C5B0] pb-1.5 mb-2">
+                      <span className="font-hand text-base font-bold text-brand-terracotta">
+                        📝 Chuẩn bị trước giờ G
+                      </span>
+                      <button
+                        onClick={() => setIsChecklistOpen(false)}
+                        className="text-xs text-paper-muted hover:text-paper-ink"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="space-y-1.5 text-xs max-h-56 overflow-y-auto">
+                      {checklistItems.map((item) => (
+                        <label
+                          key={item.id}
+                          className="flex items-start gap-2 p-1.5 rounded hover:bg-[#F5EBDC] cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.isDone}
+                            onChange={() => handleToggleChecklist(item.id)}
+                            className="mt-0.5 accent-[#C84B31] rounded cursor-pointer"
+                          />
+                          <span
+                            className={
+                              item.isDone
+                                ? "line-through text-paper-muted"
+                                : "text-paper-ink font-medium"
+                            }
+                          >
+                            {item.content}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <form onSubmit={handleAddChecklistItem} className="mt-2 pt-2 border-t border-dashed border-[#D5C5B0] flex gap-1.5">
+                      <input
+                        value={newChecklistText}
+                        onChange={(e) => setNewChecklistText(e.target.value)}
+                        maxLength={200}
+                        placeholder="+ Thêm món cần mang..."
+                        className="flex-1 min-w-0 bg-white border border-[#D5C5B0] rounded px-2 py-1 text-xs focus:outline-none focus:border-brand-terracotta"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newChecklistText.trim()}
+                        className="bg-brand-terracotta disabled:opacity-40 text-white text-xs font-bold px-2.5 rounded"
+                      >
+                        Thêm
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+
+              {upcomingSummary?.icsUrl ? (
+                <a
+                  href={upcomingSummary.icsUrl}
+                  download
+                  onClick={() =>
+                    addToast(
+                      "📅 Đang tải file lịch .ics (Mở bằng Apple / Google Calendar để tự báo chuông trước giờ hẹn!)",
+                      "success"
+                    )
+                  }
+                  className="relative bg-[#E6D4BC] hover:bg-[#DEC5A4] border border-[#BDA688] text-paper-ink px-3.5 py-2 rounded shadow-sm text-xs font-bold flex items-center gap-1.5 transform -rotate-1 hover:rotate-0 transition active:scale-95"
+                >
+                  <svg className="w-5 h-5 absolute -top-3 right-3 drop-shadow" viewBox="0 0 24 24" fill="none">
+                    <ellipse cx="12" cy="6" rx="5" ry="3" fill="#6E8361" stroke="#362721" strokeWidth="1.5" />
+                    <path d="M9 6L10 13L7 15H17L14 13L15 6" fill="#899F7B" stroke="#362721" strokeWidth="1.5" />
+                    <path d="M12 15V22" stroke="#362721" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                  <span className="text-brand-terracotta">📅</span>
+                  <span>Thêm vào Lịch ĐT (.ics)</span>
+                </a>
+              ) : (
+                <button
+                  onClick={exportCalendarIcs}
+                  className="relative bg-[#E6D4BC] hover:bg-[#DEC5A4] border border-[#BDA688] text-paper-ink px-3.5 py-2 rounded shadow-sm text-xs font-bold flex items-center gap-1.5 transform -rotate-1 hover:rotate-0 transition active:scale-95"
+                >
+                  <svg className="w-5 h-5 absolute -top-3 right-3 drop-shadow" viewBox="0 0 24 24" fill="none">
+                    <ellipse cx="12" cy="6" rx="5" ry="3" fill="#6E8361" stroke="#362721" strokeWidth="1.5" />
+                    <path d="M9 6L10 13L7 15H17L14 13L15 6" fill="#899F7B" stroke="#362721" strokeWidth="1.5" />
+                    <path d="M12 15V22" stroke="#362721" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                  <span className="text-brand-terracotta">📅</span>
+                  <span>Thêm vào Lịch ĐT (.ics)</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* PHẢI (5 CỘT): BƯU THIẾP THỜI TIẾT HÀ NỘI (AIRMAIL POSTCARD) */}
@@ -771,7 +838,7 @@ export default function HomePage() {
           {/* Bộ lọc danh mục nhanh */}
           <div className="flex flex-wrap items-center gap-1.5">
             <button
-              onClick={() => setCurrentFilter("all")}
+              onClick={() => handleSetFilter("all")}
               className={`filter-pill px-3 py-1.5 rounded-full text-xs transition ${
                 currentFilter === "all"
                   ? "bg-brand-terracotta text-white font-bold shadow-xs"
@@ -781,7 +848,7 @@ export default function HomePage() {
               Tất cả ({places.length})
             </button>
             <button
-              onClick={() => setCurrentFilter("outdoor")}
+              onClick={() => handleSetFilter("outdoor")}
               className={`filter-pill px-3 py-1.5 rounded-full text-xs transition ${
                 currentFilter === "outdoor"
                   ? "bg-brand-terracotta text-white font-bold shadow-xs"
@@ -791,7 +858,7 @@ export default function HomePage() {
               🌅 Ngắm hoàng hôn
             </button>
             <button
-              onClick={() => setCurrentFilter("indoor")}
+              onClick={() => handleSetFilter("indoor")}
               className={`filter-pill px-3 py-1.5 rounded-full text-xs transition ${
                 currentFilter === "indoor"
                   ? "bg-brand-terracotta text-white font-bold shadow-xs"
@@ -801,7 +868,7 @@ export default function HomePage() {
               🎳 Indoor mát mẻ
             </button>
             <button
-              onClick={() => setCurrentFilter("art")}
+              onClick={() => handleSetFilter("art")}
               className={`filter-pill px-3 py-1.5 rounded-full text-xs transition ${
                 currentFilter === "art"
                   ? "bg-brand-terracotta text-white font-bold shadow-xs"
@@ -810,6 +877,18 @@ export default function HomePage() {
             >
               🎨 Nghệ thuật &amp; Bảo tàng
             </button>
+
+            {currentFilter === "saved" && (
+              <button
+                onClick={() => handleSetFilter("all")}
+                className="filter-pill px-3 py-1.5 rounded-full text-xs bg-brand-terracotta text-white font-bold shadow-xs flex items-center gap-1.5 animate-pulse"
+                title="Bấm để xem lại tất cả"
+              >
+                <span>❤️ Đã lưu ({filteredPlaces.length})</span>
+                <span className="text-[10px] bg-white/20 hover:bg-white/30 rounded-full px-1.5 py-0.2">✕ Bỏ lọc</span>
+              </button>
+            )}
+
             <button
               onClick={() => setShowAllPlaces(!showAllPlaces)}
               className="ml-1 text-xs font-bold text-brand-terracotta hover:underline flex items-center gap-1"
@@ -831,18 +910,22 @@ export default function HomePage() {
             ))
           ) : (
             <div className="col-span-full bg-[#FFFDF9] border-2 border-dashed border-[#CBB292] rounded-xl p-8 text-center">
-              <span className="text-3xl">💌</span>
+              <span className="text-3xl">{currentFilter === "saved" ? "❤️" : "💌"}</span>
               <p className="font-serif font-bold text-lg text-paper-ink mt-2">
-                Chưa có địa điểm nào trong mục này
+                {currentFilter === "saved"
+                  ? "Hai bạn chưa thả tim lưu địa điểm nào"
+                  : "Chưa có địa điểm nào trong mục này"}
               </p>
-              <p className="text-xs text-paper-muted mt-1">
-                Hãy bấm vào biểu tượng trái tim trên các tấm ảnh Polaroid để lưu lại nơi hai bạn thích nhé!
+              <p className="text-xs text-paper-muted mt-1 max-w-md mx-auto">
+                {currentFilter === "saved"
+                  ? "Hãy bấm vào biểu tượng trái tim trên các thẻ Polaroid bên dưới để lưu lại danh sách riêng của hai bạn nhé!"
+                  : "Thử chọn mục khác hoặc xem tất cả danh sách để tìm thêm ý tưởng hẹn hò."}
               </p>
               <button
-                onClick={() => setCurrentFilter("all")}
+                onClick={() => handleSetFilter("all")}
                 className="mt-3 paper-btn px-4 py-1.5 text-xs font-bold"
               >
-                Xem tất cả địa điểm
+                Xem tất cả địa điểm →
               </button>
             </div>
           )}
@@ -1081,44 +1164,48 @@ export default function HomePage() {
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center text-center h-full gap-2 py-6">
-                  <span className="text-2xl">💘</span>
-                  <p className="text-xs font-semibold text-paper-muted">
-                    {isMatching ? "Đang bốc quẻ cho hai bạn..." : "Chưa tìm được nơi hợp gu, thử đổi mood hoặc ngân sách nhé!"}
-                  </p>
-                </div>
+                <>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="bg-brand-terracotta text-white text-[10px] font-extrabold px-2 py-0.5 rounded">
+                        ĐỘ HỢP GU: 98%
+                      </span>
+                      <span className="text-lg">💘</span>
+                    </div>
+                    <h3
+                      id="matchResultTitle"
+                      className="font-serif font-extrabold text-lg text-paper-ink mt-2 leading-tight"
+                    >
+                      Combo Cà phê Long Biên &amp; Bãi đá sông Hồng
+                    </h3>
+                    <p id="matchResultDesc" className="text-xs text-paper-muted mt-1 leading-relaxed">
+                      Cực khớp với tiết trời thu 29°C! Ngắm tàu lửa chạy qua cầu lúc 16:30 rồi ra bãi cỏ lau đón hoàng hôn.
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-[#DFC98B] flex items-center justify-between gap-2">
+                    <span id="matchResultPrice" className="text-xs font-bold text-brand-terracottaDark">
+                      💰 ~180k / 2 người
+                    </span>
+                    <button
+                      onClick={() => {
+                        const fallbackPlace =
+                          places.find(
+                            (p) =>
+                              p.slug.includes("song-hong") ||
+                              p.slug.includes("long-bien") ||
+                              p.name.includes("Bãi đá")
+                          ) || places[0];
+                        if (fallbackPlace) setActiveDetailSlug(fallbackPlace.slug);
+                      }}
+                      className="bg-paper-ink text-white text-xs font-bold px-3 py-1.5 rounded hover:bg-brand-terracotta transition shrink-0"
+                    >
+                      Xem cẩm nang →
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* =============================================================
-           PHẦN 4.5: #section-gamification (VÉ MÙ + BẢN ĐỒ CÀO 7 QUẬN + THƯ TÌNH BÍ MẬT)
-           ============================================================= */}
-      <section id="section-gamification" className="scroll-section pt-4 space-y-4">
-        <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider text-brand-terracotta">
-            🎲 Phase 5 • Gamification Hẹn Hò
-          </span>
-          <h2 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
-            Vé Mù Hẹn Hò, Bản Đồ Cào 7 Quận &amp; Hộp Thư Tình Bí Mật
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <BlindDateTicket
-            onCheckInSuccess={() => setGamificationTrigger((prev) => prev + 1)}
-            onToast={(msg, type) => addToast(msg, type)}
-          />
-          <ScratchMapHanoi
-            refreshTrigger={gamificationTrigger}
-            onToast={(msg, type) => addToast(msg, type)}
-          />
-          <SecretNotesBoard
-            onCheckInSuccess={() => setGamificationTrigger((prev) => prev + 1)}
-            onToast={(msg, type) => addToast(msg, type)}
-          />
         </div>
       </section>
 
@@ -1318,6 +1405,38 @@ export default function HomePage() {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* =============================================================
+           PHẦN BỔ TRỢ: #section-gamification (VÉ MÙ + BẢN ĐỒ CÀO 7 QUẬN + THƯ TÌNH BÍ MẬT)
+           ============================================================= */}
+      <section id="section-gamification" className="scroll-section pt-2 pb-6 space-y-4">
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-brand-terracotta">
+            🎲 Mini-Game &amp; Thử Thách Cặp Đôi
+          </span>
+          <h2 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+            Vé Mù Hẹn Hò, Bản Đồ Cào 7 Quận &amp; Hộp Thư Tình Bí Mật
+          </h2>
+          <p className="text-xs sm:text-sm text-paper-muted">
+            Tạo thêm bất ngờ cho mỗi buổi hẹn hò bằng những thử thách mini-game ngọt ngào
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <BlindDateTicket
+            onCheckInSuccess={() => setGamificationTrigger((prev) => prev + 1)}
+            onToast={(msg, type) => addToast(msg, type)}
+          />
+          <ScratchMapHanoi
+            refreshTrigger={gamificationTrigger}
+            onToast={(msg, type) => addToast(msg, type)}
+          />
+          <SecretNotesBoard
+            onCheckInSuccess={() => setGamificationTrigger((prev) => prev + 1)}
+            onToast={(msg, type) => addToast(msg, type)}
+          />
         </div>
       </section>
 

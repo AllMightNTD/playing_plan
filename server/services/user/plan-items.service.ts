@@ -33,14 +33,22 @@ export async function addStop(session: MemberSession, planId: string, input: Add
   await loadEditablePlan(session, planId);
   if (input.placeId) await requirePublishedPlace(input.placeId);
 
+  const [h, m] = (input.plannedTime || "00:00").split(":").map(Number);
+  const startMinute = (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+
   const stop = await getUserRepositories().plans.insertStopWithinLimit(
     toPlanScope(session, planId),
     {
       id: nanoid(21),
+      roomId: session.roomId,
       placeId: input.placeId ?? null,
       customName: input.customName ?? null,
       plannedTime: input.plannedTime ?? null,
       durationMin: input.durationMin ?? DEFAULT_STOP_DURATION_MIN,
+      dayOffset: 0,
+      startMinute,
+      travelMinutes: 15,
+      isPinnedTime: false,
       note: input.note ?? null,
     },
     MAX_PLAN_STOPS,

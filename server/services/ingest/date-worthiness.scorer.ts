@@ -32,6 +32,23 @@ const ROMANTIC_CATEGORIES = new Set([
   "park",
   "museum",
   "gallery",
+  "bar",
+  "pub",
+  "ice_cream",
+  "cinema",
+  "theatre",
+  "arts_centre",
+  "theme_park",
+  "zoo",
+  "attraction",
+  "aquarium",
+  "picnic_site",
+  "garden",
+  "bowling_alley",
+  "bakery",
+  "pastry",
+  "tea",
+  "craft",
 ]);
 
 const STREET_CART_JUNK_KEYWORDS = [

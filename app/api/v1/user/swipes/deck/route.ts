@@ -6,6 +6,6 @@ import { getSwipeDeck } from "@/server/services/user/match.service";
 
 export const GET = handleRoute(async (req: NextRequest) => {
   const query = parseSearchParams(req, deckQuerySchema);
-  const deck = await getSwipeDeck(await findRoomSession(), query.limit);
+  const deck = await getSwipeDeck(await findRoomSession(), query.limit, query.hobby);
   return jsonData({ items: deck });
 });

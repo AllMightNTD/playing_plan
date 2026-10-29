@@ -10,7 +10,7 @@ export const memorySwipeRepository: SwipeRepository = {
   },
 
   async saveSwipeAndSyncMatch({ roomId, memberId, placeId, choice, now }) {
-    const { swipes, matches, members } = getMemoryStore();
+    const { swipes, matches, members, rooms } = getMemoryStore();
     swipes.set(`${memberId}:${placeId}`, { roomId, memberId, placeId, choice });
 
     const matchKey = `${roomId}:${placeId}`;
@@ -18,34 +18,71 @@ export const memorySwipeRepository: SwipeRepository = {
 
     if (choice === "nope") {
       if (existing?.status === "open") matches.delete(matchKey);
-      return null;
+      return { matchId: null, isNewMatch: false };
     }
 
-    const partnerLiked = [...swipes.values()].some(
-      (swipe) =>
-        swipe.roomId === roomId &&
-        swipe.placeId === placeId &&
-        swipe.choice === "like" &&
-        swipe.memberId !== memberId &&
-        !members.get(swipe.memberId)?.revokedAt
+    const room = rooms.get(roomId);
+    const roomType = room?.roomType ?? "couple";
+    const activeMembers = [...members.values()].filter(
+      (m) => m.roomId === roomId && !m.revokedAt
     );
-    if (!partnerLiked) return null;
+    const totalActive = activeMembers.length;
+
+    // Đếm số lượt like của thành viên active cho địa điểm này
+    const likesCount = [...swipes.values()].filter(
+      (s) =>
+        s.roomId === roomId &&
+        s.placeId === placeId &&
+        s.choice === "like" &&
+        !members.get(s.memberId)?.revokedAt
+    ).length;
+
+    // Ngưỡng cần để match:
+    // - Couple: cần 2 lượt like (cả 2 người)
+    // - Group: cần >= 50% số thành viên active (tối thiểu 2)
+    const threshold = roomType === "group" ? Math.max(2, Math.ceil(totalActive * 0.5)) : 2;
+
+    if (likesCount < threshold) {
+      return { matchId: null, isNewMatch: false };
+    }
 
     if (existing) {
-      if (existing.status === "dismissed") existing.status = "open";
-      return existing.id;
+      const wasDismissed = existing.status === "dismissed";
+      if (wasDismissed) {
+        existing.status = "open";
+        existing.isSeen = false;
+        existing.matchedAt = now;
+        return { matchId: existing.id, isNewMatch: true };
+      }
+      return { matchId: existing.id, isNewMatch: false };
     }
 
-    const match = { id: nanoid(21), roomId, placeId, matchedAt: now, status: "open" as const };
+    const match = { id: nanoid(21), roomId, placeId, matchedAt: now, status: "open" as const, isSeen: false };
     matches.set(matchKey, match);
-    return match.id;
+    return { matchId: match.id, isNewMatch: true };
   },
 
   async listMatches(roomId) {
     return [...getMemoryStore().matches.values()]
       .filter((match) => match.roomId === roomId && match.status !== "dismissed")
       .sort((a, b) => b.matchedAt.getTime() - a.matchedAt.getTime())
-      .map(({ id, placeId, matchedAt, status }) => ({ id, placeId, matchedAt, status }));
+      .map(({ id, placeId, matchedAt, status, isSeen }) => ({
+        id,
+        placeId,
+        matchedAt,
+        status,
+        isSeen: isSeen ?? false,
+      }));
+  },
+
+  async markMatchSeen(roomId, matchId) {
+    for (const match of getMemoryStore().matches.values()) {
+      if (match.roomId === roomId && match.id === matchId) {
+        match.isSeen = true;
+        return true;
+      }
+    }
+    return false;
   },
 };
 

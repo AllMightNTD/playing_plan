@@ -13,6 +13,10 @@ import {
   recoverSession,
   revokeRoomMember,
   rotateRecoveryKey,
+  recordRoomConsent,
+  requestSoftDelete,
+  restoreSoftDelete,
+  checkRoomConflict,
 } from "./room.service";
 import { createPlan, listPlans } from "./plan.service";
 
@@ -190,9 +194,65 @@ describe("recoverSession", () => {
     expect((await recoverSession(newKey, nextIp())).session.memberId).toBe(original.session.memberId);
   });
 
+  it("should automatically rotate recovery key on recovery so old key cannot be reused", async () => {
+    const original = await ensureRoomSession(null, nextIp());
+    const oldKey = original.issued!.recoveryKey!;
+    const recovered = await recoverSession(oldKey, nextIp());
+
+    expect(recovered.issued?.recoveryKey).toBeTruthy();
+    expect(recovered.issued?.recoveryKey).not.toBe(oldKey);
+
+    // Khóa cũ phải bị từ chối ngay lập tức
+    await expectAppError(recoverSession(oldKey, nextIp()), ERRORS.ROOM.RECOVERY_INVALID.code);
+
+    // Khóa mới xoay hoạt động chuẩn
+    const secondRecovery = await recoverSession(recovered.issued!.recoveryKey!, nextIp());
+    expect(secondRecovery.session.memberId).toBe(original.session.memberId);
+  });
+
   it("should reject recovery for a revoked device", async () => {
     const { creator, partner } = await createPairedRoom();
     await revokeRoomMember(creator.session, partner.session.memberId);
     await expectAppError(recoverSession(partner.issued!.recoveryKey!, nextIp()), ERRORS.ROOM.RECOVERY_INVALID.code);
+  });
+});
+
+describe("recordRoomConsent (Decree 13/2023)", () => {
+  it("should record consent version and timestamp in room profile", async () => {
+    const user = await ensureRoomSession(null, nextIp());
+    await recordRoomConsent(user.session, "2026.1");
+    const profile = await getRoomProfile(user.session);
+    expect(profile.room.consentVersion).toBe("2026.1");
+    expect(profile.room.consentAt).toBeInstanceOf(Date);
+  });
+});
+
+describe("soft-delete and restore (14 days)", () => {
+  it("should set pendingDeletedAt on soft-delete request and clear it on restore", async () => {
+    const user = await ensureRoomSession(null, nextIp());
+    const requestedAt = await requestSoftDelete(user.session);
+    expect(requestedAt).toBeInstanceOf(Date);
+
+    let profile = await getRoomProfile(user.session);
+    expect(profile.room.pendingDeletedAt).toEqual(requestedAt);
+
+    await restoreSoftDelete(user.session);
+    profile = await getRoomProfile(user.session);
+    expect(profile.room.pendingDeletedAt).toBeNull();
+  });
+});
+
+describe("checkRoomConflict", () => {
+  it("should report hasData false for brand new empty solo room", async () => {
+    const user = await ensureRoomSession(null, nextIp());
+    const conflict = await checkRoomConflict(user.session.roomId);
+    expect(conflict).toEqual({ isSolo: true, hasData: false });
+  });
+
+  it("should report hasData true once user created a plan", async () => {
+    const user = await ensureRoomSession(null, nextIp());
+    await createPlan(user.session, { title: "Cà phê Hồ Tây", planDate: "2026-11-01", startTime: "16:00" });
+    const conflict = await checkRoomConflict(user.session.roomId);
+    expect(conflict).toEqual({ isSolo: true, hasData: true });
   });
 });

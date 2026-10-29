@@ -3,6 +3,7 @@ import {
   varchar,
   datetime,
   json,
+  int,
   index,
 } from "drizzle-orm/mysql-core";
 
@@ -23,5 +24,18 @@ export const auditLogs = mysqlTable(
   ]
 );
 
+export const auditRateLimits = mysqlTable(
+  "audit_rate_limits",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(), // [action]:[ip]
+    attemptCount: int("attempt_count").notNull().default(1),
+    firstAttemptAt: datetime("first_attempt_at").notNull(),
+    blockedUntil: datetime("blocked_until"),
+    updatedAt: datetime("updated_at").notNull(),
+  }
+);
+
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
+export type AuditRateLimit = typeof auditRateLimits.$inferSelect;
+export type NewAuditRateLimit = typeof auditRateLimits.$inferInsert;

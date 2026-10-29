@@ -28,6 +28,17 @@ describe("YouTubeCoupleReviewCrawler", () => {
       expect(queryStrings).toContain("review quán cafe Đà Lạt view hoàng hôn");
       expect(queryStrings).toContain("review quán cafe Đà Lạt riêng tư");
     });
+
+    it("should generate group and family targeted queries when specified", () => {
+      const groupQueries = crawler.generateSearchQueries("khu vui chơi", "Hà Nội", undefined, "group");
+      const groupStrings = groupQueries.map((q) => q.query);
+      expect(groupStrings.some((q) => q.includes("nhóm bạn"))).toBe(true);
+      expect(groupStrings.some((q) => q.includes("khu vui chơi giải trí Hà Nội"))).toBe(true);
+
+      const familyQueries = crawler.generateSearchQueries("quán ăn", "Hà Nội", undefined, "family");
+      const familyStrings = familyQueries.map((q) => q.query);
+      expect(familyStrings.some((q) => q.includes("gia đình"))).toBe(true);
+    });
   });
 
   describe("isTargetCoupleVideo (Negative and Context Filtering)", () => {

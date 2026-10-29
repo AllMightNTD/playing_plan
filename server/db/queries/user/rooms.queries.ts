@@ -127,6 +127,16 @@ export const drizzleRoomRepository: RoomRepository = {
         status: rooms.status,
         anniversaryDate: rooms.anniversaryDate,
         inviteExpiresAt: rooms.inviteExpiresAt,
+        roomType: rooms.roomType,
+        maxMembers: rooms.maxMembers,
+        storageQuotaBytes: rooms.storageQuotaBytes,
+        storageUsedBytes: rooms.storageUsedBytes,
+        photoCount: rooms.photoCount,
+        maxPhotos: rooms.maxPhotos,
+        version: rooms.version,
+        consentVersion: rooms.consentVersion,
+        consentAt: rooms.consentAt,
+        pendingDeletedAt: rooms.pendingDeletedAt,
       })
       .from(rooms)
       .where(and(eq(rooms.id, roomId), ne(rooms.status, "deleted")))
@@ -186,7 +196,7 @@ export const drizzleRoomRepository: RoomRepository = {
           and(
             eq(rooms.id, roomId),
             isInviteFor(inviteHash, now),
-            lt(rooms.memberCount, MAX_ROOM_MEMBERS),
+            lt(rooms.memberCount, rooms.maxMembers),
           ),
         );
 

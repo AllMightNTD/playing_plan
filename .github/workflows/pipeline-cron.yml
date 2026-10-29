@@ -2,24 +2,20 @@ name: Automated Ingestion & Enrichment Pipeline
 
 on:
   schedule:
-    # Chạy hằng ngày lúc 02:00 sáng (Giờ Việt Nam UTC+7, tức 19:00 UTC)
-    - cron: "0 19 * * *"
+    # Chạy hằng ngày lúc 03:30 sáng (Giờ Việt Nam UTC+7, tức 20:30 UTC)
+    # Khung giờ vàng: Overpass server vắng nhất, Quota YouTube tươi mới, Web không có người dùng
+    - cron: "30 20 * * *"
   workflow_dispatch:
     inputs:
-      stage:
-        description: "Ramp-up Stage (1: 10 places, 2: 20 places, 3: 50 places)"
-        required: true
-        default: "1"
-        type: choice
-        options:
-          - "1"
-          - "2"
-          - "3"
+      force:
+        description: "Chạy thủ công ngay lập tức"
+        required: false
+        default: "true"
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Codebase
@@ -39,11 +35,10 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Master Pipeline Runner
+      - name: Run Master Daily Pipeline (100% Free)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          RAMP_UP_STAGE: ${{ github.event.inputs.stage || '1' }}
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: |
-          pnpm cron:pipeline
+          pnpm pipeline:daily

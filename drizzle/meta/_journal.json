@@ -36,6 +36,34 @@
       "when": 1793184492155,
       "tag": "0004_thankful_tana_nile",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1793246963782,
+      "tag": "0005_low_lightspeed",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1793247866513,
+      "tag": "0006_fancy_lionheart",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1793249649907,
+      "tag": "0007_chunky_wither",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1793257224841,
+      "tag": "0008_daily_swarm",
+      "breakpoints": true
     }
   ]
 }

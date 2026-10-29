@@ -4,3 +4,5 @@ export * from "./plans";
 export * from "./interactions";
 export * from "./audit";
 export * from "./governance";
+export * from "./uploads";
+export * from "./gamification";

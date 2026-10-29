@@ -5,10 +5,16 @@ import { drizzlePlanRepository } from "@/server/db/queries/user/plans.queries";
 import { drizzleSwipeRepository } from "@/server/db/queries/user/swipes.queries";
 import { drizzleSavedPlaceRepository } from "@/server/db/queries/user/saved.queries";
 import { drizzleMemoryRepository } from "@/server/db/queries/user/memories.queries";
+import { drizzleUploadRepository } from "@/server/db/queries/user/uploads.queries";
+import { drizzleRoomNoticeRepository } from "@/server/db/queries/user/notices.queries";
+import { drizzleGamificationRepository } from "@/server/db/queries/user/gamification.queries";
 import { memoryRoomRepository } from "@/server/db/demo/rooms.memory";
 import { memoryPlanRepository } from "@/server/db/demo/plans.memory";
 import { memorySavedPlaceRepository, memorySwipeRepository } from "@/server/db/demo/interactions.memory";
 import { memoryMemoryRepository } from "@/server/db/demo/memories.memory";
+import { memoryUploadRepository } from "@/server/db/demo/uploads.memory";
+import { memoryRoomNoticeRepository } from "@/server/db/demo/notices.memory";
+import { memoryGamificationRepository } from "@/server/db/demo/gamification.memory";
 import type { UserRepositories } from "@/server/db/repositories/types";
 
 const drizzleRepositories: UserRepositories = {
@@ -17,6 +23,9 @@ const drizzleRepositories: UserRepositories = {
   swipes: drizzleSwipeRepository,
   saved: drizzleSavedPlaceRepository,
   memories: drizzleMemoryRepository,
+  uploads: drizzleUploadRepository,
+  notices: drizzleRoomNoticeRepository,
+  gamification: drizzleGamificationRepository,
 };
 
 const memoryRepositories: UserRepositories = {
@@ -25,6 +34,9 @@ const memoryRepositories: UserRepositories = {
   swipes: memorySwipeRepository,
   saved: memorySavedPlaceRepository,
   memories: memoryMemoryRepository,
+  uploads: memoryUploadRepository,
+  notices: memoryRoomNoticeRepository,
+  gamification: memoryGamificationRepository,
 };
 
 /**

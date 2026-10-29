@@ -9,6 +9,8 @@ import {
   primaryKey,
   uniqueIndex,
   int,
+  boolean,
+  json,
 } from "drizzle-orm/mysql-core";
 
 export const swipes = mysqlTable(
@@ -34,6 +36,7 @@ export const matches = mysqlTable(
     placeId: varchar("place_id", { length: 21 }).notNull(),
     matchedAt: datetime("matched_at").notNull(),
     status: mysqlEnum("status", ["open", "planned", "dismissed"]).notNull().default("open"),
+    isSeen: boolean("is_seen").notNull().default(false),
   },
   (table) => [
     uniqueIndex("uniq_matches_room_place").on(table.roomId, table.placeId),
@@ -48,6 +51,9 @@ export const memories = mysqlTable(
     roomId: varchar("room_id", { length: 21 }).notNull(),
     rating: tinyint("rating").notNull().default(5),
     journal: text("journal"),
+    dominantColor: varchar("dominant_color", { length: 7 }),
+    timelineConfig: json("timeline_config"),
+    musicTrackId: varchar("music_track_id", { length: 50 }),
     visitedAt: datetime("visited_at").notNull(),
     createdAt: datetime("created_at").notNull(),
   },
@@ -61,11 +67,14 @@ export const memoryPhotos = mysqlTable(
   {
     id: varchar("id", { length: 21 }).primaryKey(),
     memoryId: varchar("memory_id", { length: 21 }).notNull(),
+    roomId: varchar("room_id", { length: 21 }).notNull(),
+    uploadId: varchar("upload_id", { length: 32 }),
     url: text("url").notNull(),
     caption: varchar("caption", { length: 200 }),
     sortOrder: int("sort_order").notNull().default(0),
   },
   (table) => [
+    index("idx_memory_photos_room_id").on(table.roomId),
     index("idx_memory_photos_memory_id").on(table.memoryId),
   ]
 );

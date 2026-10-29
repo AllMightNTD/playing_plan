@@ -12,6 +12,9 @@ import type { MemoryBoardDto, MemoryNoteDto } from "@/server/services/user/memor
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { MoodKey, TimeSlot } from "@/lib/constants/catalog";
 import type { MemoryNoteColor } from "@/lib/constants/user";
+import { BlindDateTicket } from "@/components/scrapbook/BlindDateTicket";
+import { ScratchMapHanoi } from "@/components/scrapbook/ScratchMapHanoi";
+import { SecretNotesBoard } from "@/components/scrapbook/SecretNotesBoard";
 
 type MatchMood = "sunset" | "active" | "art";
 type MatchBudget = "saving" | "moderate" | "luxury";
@@ -112,6 +115,7 @@ export default function HomePage() {
   const [noteDraft, setNoteDraft] = useState<string>("");
   const [noteColor, setNoteColor] = useState<MemoryNoteColor>("peach");
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
+  const [gamificationTrigger, setGamificationTrigger] = useState<number>(0);
 
   // Personalized Data
   const room = homeSummary?.room ?? null;
@@ -1090,6 +1094,35 @@ export default function HomePage() {
       </section>
 
       {/* =============================================================
+           PHẦN 4.5: #section-gamification (VÉ MÙ + BẢN ĐỒ CÀO 7 QUẬN + THƯ TÌNH BÍ MẬT)
+           ============================================================= */}
+      <section id="section-gamification" className="scroll-section pt-4 space-y-4">
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-brand-terracotta">
+            🎲 Phase 5 • Gamification Hẹn Hò
+          </span>
+          <h2 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+            Vé Mù Hẹn Hò, Bản Đồ Cào 7 Quận &amp; Hộp Thư Tình Bí Mật
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <BlindDateTicket
+            onCheckInSuccess={() => setGamificationTrigger((prev) => prev + 1)}
+            onToast={(msg, type) => addToast(msg, type)}
+          />
+          <ScratchMapHanoi
+            refreshTrigger={gamificationTrigger}
+            onToast={(msg, type) => addToast(msg, type)}
+          />
+          <SecretNotesBoard
+            onCheckInSuccess={() => setGamificationTrigger((prev) => prev + 1)}
+            onToast={(msg, type) => addToast(msg, type)}
+          />
+        </div>
+      </section>
+
+      {/* =============================================================
            PHẦN 5: #section-memory (KHO KỶ NIỆM CẶP ĐÔI - BẢNG GỖ BẦN CORKBOARD)
            ============================================================= */}
       <section id="section-memory" className="scroll-section pt-4 pb-10">
@@ -1106,12 +1139,21 @@ export default function HomePage() {
             </p>
           </div>
 
-          <button
-            onClick={() => setIsComposingNote(!isComposingNote)}
-            className="paper-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 active:scale-95"
-          >
-            <span>{isComposingNote ? "✕ Thôi, để sau" : "✍️ + Dán thêm giấy nhớ kỷ niệm"}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/memories"
+              className="bg-brand-terracotta hover:bg-brand-terracottaDark text-white px-4 py-2 text-xs font-bold rounded-xl shadow flex items-center gap-1.5 transition active:scale-95"
+            >
+              <span>🎞️</span>
+              <span>Phim Kỷ Niệm Ảo (60fps)</span>
+            </Link>
+            <button
+              onClick={() => setIsComposingNote(!isComposingNote)}
+              className="paper-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 active:scale-95"
+            >
+              <span>{isComposingNote ? "✕ Thôi, để sau" : "✍️ + Dán thêm giấy nhớ kỷ niệm"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Bảng gỗ bần Corkboard ghim ảnh & giấy nhớ */}

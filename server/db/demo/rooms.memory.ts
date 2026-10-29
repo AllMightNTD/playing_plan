@@ -46,6 +46,16 @@ export const memoryRoomRepository: RoomRepository = {
       inviteExpiresAt: null,
       anniversaryDate: null,
       status: "solo",
+      roomType: "couple",
+      maxMembers: 2,
+      storageQuotaBytes: 26214400,
+      storageUsedBytes: 0,
+      photoCount: 0,
+      maxPhotos: 50,
+      version: 1,
+      consentVersion: null,
+      consentAt: null,
+      pendingDeletedAt: null,
       lastActiveAt: now,
       createdAt: now,
       updatedAt: now,
@@ -94,6 +104,16 @@ export const memoryRoomRepository: RoomRepository = {
       status: room.status,
       anniversaryDate: room.anniversaryDate,
       inviteExpiresAt: room.inviteExpiresAt,
+      roomType: room.roomType,
+      maxMembers: room.maxMembers,
+      storageQuotaBytes: room.storageQuotaBytes,
+      storageUsedBytes: room.storageUsedBytes,
+      photoCount: room.photoCount,
+      maxPhotos: room.maxPhotos,
+      version: room.version,
+      consentVersion: room.consentVersion,
+      consentAt: room.consentAt,
+      pendingDeletedAt: room.pendingDeletedAt,
       members: activeMembers,
     };
   },
@@ -119,7 +139,7 @@ export const memoryRoomRepository: RoomRepository = {
   async joinRoomByInvite(roomId, inviteHash, partner, now) {
     const { rooms, members } = getMemoryStore();
     const room = rooms.get(roomId);
-    if (!room || !isInviteFor(room, inviteHash, now) || room.memberCount >= MAX_ROOM_MEMBERS) return false;
+    if (!room || !isInviteFor(room, inviteHash, now) || room.memberCount >= (room.maxMembers ?? MAX_ROOM_MEMBERS)) return false;
 
     Object.assign(room, {
       memberCount: room.memberCount + 1,

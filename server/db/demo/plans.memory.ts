@@ -41,6 +41,15 @@ export const memoryPlanRepository: PlanRepository = {
     return plan ? { ...plan } : null;
   },
 
+  async findByShareToken(shareToken) {
+    for (const plan of getMemoryStore().plans.values()) {
+      if (plan.shareToken === shareToken) {
+        return { ...plan };
+      }
+    }
+    return null;
+  },
+
   async listStops(scope) {
     return findScopedPlan(scope) ? cloneSorted(getMemoryStore().stopsByPlan.get(scope.planId)) : [];
   },
@@ -145,6 +154,60 @@ export const memoryPlanRepository: PlanRepository = {
     items.splice(index, 1);
     compact(items);
     touchPlan(plan, touch);
+    return true;
+  },
+
+  async saveRsvp(rsvp) {
+    getMemoryStore().rsvps.set(rsvp.id, { ...rsvp });
+  },
+
+  async listRsvps(planId) {
+    return Array.from(getMemoryStore().rsvps.values())
+      .filter((r) => r.planId === planId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map((r) => ({ ...r }));
+  },
+
+  async atomicShiftSchedule(scope, expectedVersion, stopUpdates, touch) {
+    const plan = findScopedPlan(scope);
+    if (!plan || plan.version !== expectedVersion) return false;
+
+    plan.version += 1;
+    touchPlan(plan, touch);
+
+    const stops = getChildList(getMemoryStore().stopsByPlan, scope.planId);
+    for (const update of stopUpdates) {
+      const stop = stops.find((s) => s.id === update.id);
+      if (stop) {
+        stop.plannedTime = update.plannedTime;
+        stop.startMinute = update.startMinute;
+        stop.dayOffset = update.dayOffset;
+        if (update.travelMinutes !== undefined) stop.travelMinutes = update.travelMinutes;
+      }
+    }
+    return true;
+  },
+
+  async updateStopsBatch(scope, expectedVersion, stopUpdates, touch) {
+    const plan = findScopedPlan(scope);
+    if (!plan || plan.version !== expectedVersion) return false;
+
+    plan.version += 1;
+    touchPlan(plan, touch);
+
+    const stops = getChildList(getMemoryStore().stopsByPlan, scope.planId);
+    for (const update of stopUpdates) {
+      const stop = stops.find((s) => s.id === update.id);
+      if (stop) {
+        if (update.placeId !== undefined) stop.placeId = update.placeId;
+        if (update.customName !== undefined) stop.customName = update.customName;
+        if (update.plannedTime !== undefined) stop.plannedTime = update.plannedTime;
+        if (update.startMinute !== undefined) stop.startMinute = update.startMinute;
+        if (update.travelMinutes !== undefined) stop.travelMinutes = update.travelMinutes;
+        if (update.isPinnedTime !== undefined) stop.isPinnedTime = update.isPinnedTime;
+        if (update.note !== undefined) stop.note = update.note;
+      }
+    }
     return true;
   },
 };

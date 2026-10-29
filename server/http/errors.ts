@@ -123,12 +123,23 @@ export const ERRORS = {
     },
   },
   MEMORY: {
+    NOT_FOUND: { code: "MEMORY_NOT_FOUND", status: 404, message: "Không tìm thấy kỷ niệm này." },
     NOTE_NOT_FOUND: { code: "MEMORY_NOTE_NOT_FOUND", status: 404, message: "Không tìm thấy tờ giấy nhớ này." },
     NOTE_LIMIT_REACHED: {
       code: "MEMORY_NOTE_LIMIT_REACHED",
       status: 409,
       message: "Bảng kỷ niệm đã đầy 100 giấy nhớ, gỡ bớt rồi dán tiếp nha.",
     },
+  },
+  UPLOAD: {
+    NOT_FOUND: { code: "UPLOAD_NOT_FOUND", status: 404, message: "Không tìm thấy tệp tải lên này." },
+    INVALID_IMAGE: { code: "UPLOAD_INVALID_IMAGE", status: 400, message: "Tệp tải lên không phải là định dạng ảnh hợp lệ." },
+    IMAGE_TOO_LARGE: { code: "UPLOAD_IMAGE_TOO_LARGE", status: 400, message: "Ảnh có độ phân giải quá lớn (vượt quá 16 megapixel), vui lòng nén trước." },
+    QUOTA_EXCEEDED: { code: "UPLOAD_QUOTA_EXCEEDED", status: 413, message: "Phòng của bạn đã đạt giới hạn dung lượng 25MB hoặc tối đa 50 ảnh." },
+    CONSENT_REQUIRED: { code: "UPLOAD_CONSENT_REQUIRED", status: 403, message: "Bạn cần đồng thuận chính sách bảo vệ dữ liệu cá nhân (Nghị định 13/2023) trước khi tải ảnh." },
+  },
+  NOTICE: {
+    NOT_FOUND: { code: "NOTICE_NOT_FOUND", status: 404, message: "Không tìm thấy thông báo này." },
   },
 } as const satisfies Record<string, Record<string, ErrorDefinition>>;
 

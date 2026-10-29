@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
     "type-check": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
@@ -20,13 +21,16 @@
     "video:publish": "npx tsx --env-file=.env scripts/pipeline/publish-all-videos.ts",
     "crawl:couple": "npx tsx --env-file=.env scripts/pipeline/crawl-couple-videos.ts",
     "places:ingest-fun": "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx --env-file=.env scripts/pipeline/cron-ingest-fun-places.ts",
-    "places:promote-all": "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx --env-file=.env scripts/pipeline/bulk-promote-all-candidates.ts"
+    "places:promote-all": "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx --env-file=.env scripts/pipeline/bulk-promote-all-candidates.ts",
+    "places:expand": "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx --env-file=.env scripts/pipeline/ingest-more-hanoi-places.ts",
+    "pipeline:daily": "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx --env-file=.env scripts/pipeline/daily-auto-pipeline.ts"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",
     "@hookform/resolvers": "^3.9.1",
     "@tanstack/react-query": "^5.66.0",
     "@tidbcloud/serverless": "^0.3.0",
+    "archiver": "^8.0.0",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -39,12 +43,14 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
+    "sharp": "^0.35.5",
     "suncalc": "^1.9.0",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/archiver": "^8.0.0",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

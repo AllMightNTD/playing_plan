@@ -38,12 +38,26 @@ export interface RoomOverview {
   status: "solo" | "paired" | "deleted";
   anniversaryDate: string | null;
   inviteExpiresAt: Date | null;
+  roomType: "couple" | "group";
+  maxMembers: number;
+  storageQuotaBytes: number;
+  storageUsedBytes: number;
+  photoCount: number;
+  maxPhotos: number;
+  version: number;
+  consentVersion: string | null;
+  consentAt: Date | null;
+  pendingDeletedAt: Date | null;
   members: RoomMemberView[];
 }
 
 export interface RoomProfilePatch {
   name?: string | null;
   anniversaryDate?: string | null;
+  consentVersion?: string | null;
+  consentAt?: Date | null;
+  pendingDeletedAt?: Date | null;
+  status?: "solo" | "paired" | "deleted";
 }
 
 export interface InviteRecord {
@@ -80,15 +94,26 @@ export interface PlanTouch {
   by: string;
 }
 
-export type PlanPatch = Partial<Pick<DatePlan, "title" | "planDate" | "startTime" | "status" | "budget" | "note">>;
-export type StopPatch = Partial<Pick<PlanStop, "customName" | "plannedTime" | "durationMin" | "note">>;
+export type PlanPatch = Partial<Pick<DatePlan, "title" | "planDate" | "startTime" | "status" | "budget" | "note" | "shareToken" | "shareExpiresAt" | "version">>;
+export type StopPatch = Partial<Pick<PlanStop, "placeId" | "customName" | "plannedTime" | "durationMin" | "dayOffset" | "startMinute" | "travelMinutes" | "isPinnedTime" | "note">>;
 export type ChecklistPatch = Partial<Pick<ChecklistItem, "content" | "isDone" | "assignedTo">>;
 export type NewStopRecord = Omit<PlanStop, "sortOrder" | "planId">;
 export type NewChecklistRecord = Omit<ChecklistItem, "sortOrder" | "planId">;
 
+export interface PlanRsvpRecord {
+  id: string;
+  planId: string;
+  roomId: string;
+  responderName: string;
+  status: "confirmed" | "change_requested";
+  changeNote: string | null;
+  createdAt: Date;
+}
+
 export interface PlanRepository {
   listByRoom(roomId: string, limit: number): Promise<DatePlan[]>;
   findById(scope: PlanScope): Promise<DatePlan | null>;
+  findByShareToken(shareToken: string): Promise<DatePlan | null>;
   listStops(scope: PlanScope): Promise<PlanStop[]>;
   listChecklist(scope: PlanScope): Promise<ChecklistItem[]>;
   insertPlan(plan: DatePlan, firstStop: NewStopRecord | null): Promise<void>;
@@ -107,6 +132,20 @@ export interface PlanRepository {
   ): Promise<ChecklistItem | null>;
   updateChecklistItem(scope: PlanScope, itemId: string, patch: ChecklistPatch, touch: PlanTouch): Promise<boolean>;
   deleteChecklistItem(scope: PlanScope, itemId: string, touch: PlanTouch): Promise<boolean>;
+  saveRsvp(rsvp: PlanRsvpRecord): Promise<void>;
+  listRsvps(planId: string): Promise<PlanRsvpRecord[]>;
+  atomicShiftSchedule(
+    scope: PlanScope,
+    expectedVersion: number,
+    stopUpdates: Array<{ id: string; plannedTime: string | null; startMinute: number; dayOffset: number; travelMinutes?: number }>,
+    touch: PlanTouch
+  ): Promise<boolean>;
+  updateStopsBatch(
+    scope: PlanScope,
+    expectedVersion: number,
+    stopUpdates: Array<{ id: string; placeId?: string | null; customName?: string | null; plannedTime?: string | null; startMinute?: number; travelMinutes?: number; isPinnedTime?: boolean; note?: string | null }>,
+    touch: PlanTouch
+  ): Promise<boolean>;
 }
 
 export interface SwipeInput {
@@ -122,16 +161,23 @@ export interface MatchRecord {
   placeId: string;
   matchedAt: Date;
   status: "open" | "planned" | "dismissed";
+  isSeen: boolean;
+}
+
+export interface SwipeSyncResult {
+  matchId: string | null;
+  isNewMatch: boolean;
 }
 
 export interface SwipeRepository {
   listSwipedPlaceIds(roomId: string, memberId: string): Promise<string[]>;
   /**
-   * Lưu lựa chọn và đồng bộ Match trong cùng transaction (F07): cả hai cùng thích thì tạo Match,
-   * bỏ thích thì gỡ Match chưa lên kế hoạch. Trả về id Match đang mở (nếu có).
+   * Lưu lựa chọn và đồng bộ Match trong cùng transaction: cả hai cùng thích thì tạo Match,
+   * bỏ thích thì gỡ Match chưa lên kế hoạch. Trả về { matchId, isNewMatch }.
    */
-  saveSwipeAndSyncMatch(input: SwipeInput): Promise<string | null>;
+  saveSwipeAndSyncMatch(input: SwipeInput): Promise<SwipeSyncResult>;
   listMatches(roomId: string): Promise<MatchRecord[]>;
+  markMatchSeen(roomId: string, matchId: string): Promise<boolean>;
 }
 
 export interface SavedPlaceRepository {
@@ -161,10 +207,119 @@ export interface MemoryRepository {
   listMemories(roomId: string, limit: number): Promise<MemoryWithCover[]>;
 }
 
+export interface UploadRecord {
+  id: string;
+  roomId: string;
+  memberId: string;
+  memoryId: string | null;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  width: number | null;
+  height: number | null;
+  relativePath: string;
+  createdAt: Date;
+  deletedAt: Date | null;
+}
+
+export interface UploadRepository {
+  getUpload(roomId: string, uploadId: string): Promise<UploadRecord | null>;
+  insertUpload(upload: UploadRecord): Promise<void>;
+  softDeleteUpload(roomId: string, uploadId: string, now: Date): Promise<UploadRecord | null>;
+  listUploads(roomId: string): Promise<UploadRecord[]>;
+  atomicAllocateQuota(roomId: string, addBytes: number, addPhotos: number): Promise<boolean>;
+  atomicReleaseQuota(roomId: string, releaseBytes: number, releasePhotos: number): Promise<void>;
+}
+
+export interface RoomNoticeRecord {
+  id: string;
+  roomId: string;
+  memberId: string | null;
+  noticeType: "room_delete_pending" | "new_match" | "plan_rsvp" | "time_change_request" | "secret_note_unlocked";
+  title: string;
+  content: string;
+  metadata: unknown;
+  readAt: Date | null;
+  createdAt: Date;
+}
+
+export interface RoomNoticeRepository {
+  listNotices(roomId: string, memberId?: string): Promise<RoomNoticeRecord[]>;
+  insertNotice(notice: RoomNoticeRecord): Promise<void>;
+  markAsRead(roomId: string, noticeId: string, now: Date): Promise<boolean>;
+}
+
+export interface PlaceCheckinRecord {
+  id: string;
+  roomId: string;
+  memberId: string;
+  placeId: string;
+  placeName: string;
+  district: string;
+  method: "gps_auto" | "manual_confirm";
+  checkedInAt: Date;
+}
+
+export interface BlindDateStep {
+  step: number;
+  title: string;
+  hint: string;
+  placeId: string;
+  placeName: string;
+  district: string;
+  isUnlocked: boolean;
+}
+
+export interface BlindDateTicketRecord {
+  id: string;
+  roomId: string;
+  budgetTier: "budget" | "medium" | "luxury";
+  currentStep: number;
+  totalSteps: number;
+  status: "in_progress" | "completed" | "cancelled";
+  steps: BlindDateStep[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SecretNoteRecord {
+  id: string;
+  roomId: string;
+  authorMemberId: string;
+  placeId: string;
+  placeName: string;
+  district: string;
+  hint: string;
+  content: string;
+  isUnlocked: boolean;
+  unlockedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface GamificationRepository {
+  getActiveBlindDateTicket(roomId: string): Promise<BlindDateTicketRecord | null>;
+  createBlindDateTicket(ticket: BlindDateTicketRecord): Promise<void>;
+  updateBlindDateTicket(
+    roomId: string,
+    ticketId: string,
+    currentStep: number,
+    status: "in_progress" | "completed"
+  ): Promise<BlindDateTicketRecord | null>;
+  recordCheckin(checkin: PlaceCheckinRecord): Promise<void>;
+  listCheckins(roomId: string): Promise<PlaceCheckinRecord[]>;
+  createSecretNote(note: SecretNoteRecord): Promise<void>;
+  listSecretNotes(roomId: string): Promise<SecretNoteRecord[]>;
+  unlockSecretNotesForPlace(roomId: string, placeIdOrName: string, now: Date): Promise<SecretNoteRecord[]>;
+}
+
 export interface UserRepositories {
   rooms: RoomRepository;
   plans: PlanRepository;
   swipes: SwipeRepository;
   saved: SavedPlaceRepository;
   memories: MemoryRepository;
+  uploads: UploadRepository;
+  notices: RoomNoticeRepository;
+  gamification: GamificationRepository;
 }
+

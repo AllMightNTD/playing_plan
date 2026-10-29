@@ -1,0 +1,2744 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DateMate — Cẩm nang hẹn hò Hà Nội (Sổ tay Cặp đôi)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            paper: {
+              bg: '#F7F1E5',
+              card: '#FFFDF9',
+              kraft: '#E6D3B8',
+              kraftDark: '#CBB292',
+              ink: '#362721',
+              muted: '#6E5A4F'
+            },
+            brand: {
+              terracotta: '#C84B31',
+              terracottaDark: '#9E331E',
+              coral: '#F29B7E',
+              peach: '#FADCD2',
+              olive: '#6E8361',
+              mustard: '#D99B26',
+              airmailBlue: '#3E5C76'
+            }
+          },
+          fontFamily: {
+            sans: ['"Be Vietnam Pro"', 'sans-serif'],
+            serif: ['"Fraunces"', 'Georgia', 'serif'],
+            hand: ['"Caveat"', 'cursive']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background-color: #241B17;
+      color: #362721;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      overflow-x: hidden;
+      margin: 0;
+    }
+
+    /* Nền giấy Scrapbook chấm bi nhẹ dịu mắt */
+    .scrapbook-paper {
+      background-color: #F7F1E5;
+      background-image: radial-gradient(#DED2BE 1.1px, transparent 1.1px);
+      background-size: 24px 24px;
+    }
+    .kraft-texture {
+      background-color: #E8D7C0;
+      background-image: linear-gradient(180deg, #EFE0CC 0%, #E2CCB0 100%);
+    }
+
+    .scroll-section { scroll-margin-top: 110px; }
+
+    /* Navbar tabs gọn gàng, thân thiện */
+    .nav-craft-tab {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 13px;
+      color: #362721;
+      background: rgba(255, 253, 249, 0.75);
+      border: 1.5px solid #D5C1A7;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .nav-craft-tab:hover {
+      background: #FFFDF9;
+      border-color: #C84B31;
+    }
+    .nav-craft-tab.active {
+      background: #C84B31;
+      color: #FFFDF9;
+      border-color: #8F2D19;
+      box-shadow: 0 4px 12px rgba(200, 75, 49, 0.25);
+    }
+
+    /* Slide-down Search Drawer */
+    .search-drawer-panel {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+      background-color: #FAF4E8;
+      border-top: 1px dashed transparent;
+    }
+    .search-drawer-panel.is-open {
+      max-height: 620px;
+      opacity: 1;
+      border-top: 2px dashed #CBB292;
+      box-shadow: 0 14px 28px rgba(54, 39, 33, 0.16);
+    }
+
+    @keyframes inputPulse {
+      0% { box-shadow: 0 0 0 0 rgba(200, 75, 49, 0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(200, 75, 49, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(200, 75, 49, 0); }
+    }
+    .input-focus-pulse { animation: inputPulse 0.9s ease-out; }
+
+    /* Hobby chip */
+    .hobby-tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 13px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      background-color: #FFFDF9;
+      color: #362721;
+      border: 1.5px solid #D5C5B0;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .hobby-tag-chip:hover { border-color: #C84B31; background-color: #FFF7F4; }
+    .hobby-tag-chip.active {
+      background-color: #C84B31;
+      color: #FFFDF9;
+      border-color: #8F2D19;
+    }
+
+    /* Ticket stub */
+    .ticket-btn {
+      position: relative;
+      border-radius: 14px;
+      transition: all 0.22s ease;
+    }
+    .ticket-btn:hover { transform: translateY(-2px); }
+    .ticket-inner-stitch {
+      border: 1.5px dashed rgba(255, 253, 249, 0.65);
+      border-radius: 10px;
+    }
+
+    /* Postcard */
+    .airmail-postcard {
+      background: #FFFDF9;
+      padding: 8px;
+      border-radius: 16px;
+      background-image: repeating-linear-gradient(
+        -45deg,
+        #C84B31 0px, #C84B31 12px,
+        #FFFDF9 12px, #FFFDF9 20px,
+        #3E5C76 20px, #3E5C76 32px,
+        #FFFDF9 32px, #FFFDF9 40px
+      );
+      box-shadow: 0 6px 18px rgba(54, 39, 33, 0.08);
+    }
+    .airmail-inner {
+      background: #FFFDF9;
+      border-radius: 11px;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* Polaroid card & Washi tape */
+    .polaroid-card {
+      background: #FFFDF9;
+      border: 1.5px solid #E2D6C5;
+      border-radius: 16px;
+      padding: 12px 12px 16px 12px;
+      box-shadow: 0 6px 18px rgba(54, 39, 33, 0.07);
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .polaroid-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 26px rgba(200, 75, 49, 0.16);
+      border-color: #F29B7E;
+    }
+    .washi-tape {
+      position: absolute;
+      width: 76px;
+      height: 20px;
+      z-index: 20;
+      opacity: 0.85;
+      background-color: rgba(242, 155, 126, 0.65);
+      top: -9px;
+      left: 18px;
+      transform: rotate(-6deg);
+      border-radius: 2px;
+    }
+
+    /* Scroll progress bar */
+    .scroll-progress-track {
+      height: 3px;
+      background: rgba(203, 178, 146, 0.3);
+      width: 100%;
+    }
+    .scroll-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #C84B31 0%, #F29B7E 50%, #D99B26 100%);
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* Đĩa than xoay */
+    @keyframes spinSlow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .vinyl-spin { animation: spinSlow 6s linear infinite; }
+    .vinyl-paused { animation-play-state: paused; }
+
+    /* Ẩn/Hiện thông số kỹ thuật (Dev Spec Overlay) */
+    .dev-spec-only { display: none !important; }
+    body.show-dev-specs .dev-spec-only { display: block !important; }
+    body.show-dev-specs span.dev-spec-only { display: inline-flex !important; }
+
+    /* Viewport simulator modes */
+    .viewport-wrapper {
+      transition: max-width 0.35s ease;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .viewport-wrapper.mode-desktop { max-width: 1380px; }
+    .viewport-wrapper.mode-tablet {
+      max-width: 820px;
+      border-left: 8px solid #382B24;
+      border-right: 8px solid #382B24;
+      border-radius: 24px;
+      margin-top: 10px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .viewport-wrapper.mode-mobile {
+      max-width: 412px;
+      border-left: 10px solid #382B24;
+      border-right: 10px solid #382B24;
+      border-top: 16px solid #382B24;
+      border-bottom: 16px solid #382B24;
+      border-radius: 34px;
+      margin-top: 10px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    /* Responsive rules */
+    @media (max-width: 767px) {
+      .desktop-nav-links { display: none !important; }
+      .mobile-scroll-pills { display: flex !important; }
+      .mobile-bottom-nav { display: flex !important; }
+      .main-content-area { padding: 14px 12px 92px 12px !important; }
+      .responsive-2col, .responsive-3col, .responsive-4col { grid-template-columns: 1fr !important; }
+      .explore-header-row { flex-direction: column !important; align-items: flex-start !important; }
+    }
+    @media (min-width: 768px) and (max-width: 1023px) {
+      .desktop-nav-links { display: none !important; }
+      .mobile-scroll-pills { display: flex !important; }
+      .responsive-2col { grid-template-columns: 1fr !important; }
+      .responsive-3col { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    }
+
+    .viewport-wrapper.mode-tablet .desktop-nav-links { display: none !important; }
+    .viewport-wrapper.mode-tablet .mobile-scroll-pills { display: flex !important; }
+    .viewport-wrapper.mode-tablet .responsive-2col { grid-template-columns: 1fr !important; }
+    .viewport-wrapper.mode-tablet .responsive-3col { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+    .viewport-wrapper.mode-mobile .desktop-nav-links { display: none !important; }
+    .viewport-wrapper.mode-mobile .mobile-scroll-pills { display: flex !important; }
+    .viewport-wrapper.mode-mobile .mobile-bottom-nav { display: flex !important; }
+    .viewport-wrapper.mode-mobile .couple-badge-text { display: none !important; }
+    .viewport-wrapper.mode-mobile .responsive-2col,
+    .viewport-wrapper.mode-mobile .responsive-3col,
+    .viewport-wrapper.mode-mobile .responsive-4col { grid-template-columns: 1fr !important; }
+    .viewport-wrapper.mode-mobile .explore-header-row { flex-direction: column !important; align-items: flex-start !important; }
+    .viewport-wrapper.mode-mobile .main-content-area { padding: 14px 12px 92px 12px !important; }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- =====================================================================
+       1. KHUNG BAO TRANG WEB CHÍNH (GIAO DIỆN NGƯỜI DÙNG CUỐI SẠCH SẼ, DỄ DÙNG)
+       ===================================================================== -->
+  <div id="viewportContainer" class="viewport-wrapper mode-desktop flex-1">
+    <div class="scrapbook-paper min-h-screen flex flex-col relative shadow-2xl">
+
+      <!-- =================================================================
+           THANH ĐIỀU HƯỚNG CHÍNH (TỐI GIẢN 4 MỤC RÕ RÀNG CHO END-USER)
+           ================================================================= -->
+      <nav class="sticky top-0 z-40 kraft-texture border-b border-[#CBB292] shadow-xs">
+        <div class="max-w-[1160px] mx-auto px-3 sm:px-6">
+          <div class="flex items-center justify-between gap-2 py-3">
+            <!-- Logo ấm áp -->
+            <a href="#section-home" onclick="scrollToSection(event, 'section-home')" class="flex items-center gap-2.5 shrink-0">
+              <div class="w-9 h-9 rounded-xl bg-brand-terracotta flex items-center justify-center text-white shadow-xs border-2 border-[#FAF4E8]">
+                <span class="text-lg">💞</span>
+              </div>
+              <div>
+                <span class="font-serif font-extrabold text-lg sm:text-xl text-paper-ink tracking-tight block leading-none">DateMate</span>
+                <span class="text-[11px] text-paper-muted font-medium hidden sm:block mt-0.5">Cẩm nang hẹn hò Hà Nội</span>
+              </div>
+            </a>
+
+            <!-- 4 Mục Điều Hướng Cốt Lõi (Dễ hiểu ngay từ lần đầu vào web) -->
+            <div class="desktop-nav-links flex items-center gap-2">
+              <a href="#section-home" onclick="scrollToSection(event, 'section-home')" data-section="section-home" class="nav-craft-tab active">
+                <span>📅</span><span>Kế hoạch hôm nay</span>
+              </a>
+              <a href="#section-explore" onclick="scrollToSection(event, 'section-explore')" data-section="section-explore" class="nav-craft-tab">
+                <span>🧭</span><span>Khám phá quán đẹp</span>
+              </a>
+              <a href="#section-couple-games" onclick="scrollToSection(event, 'section-couple-games')" data-section="section-couple-games" class="nav-craft-tab">
+                <span>💞</span><span>Trò chơi Hợp Gu</span>
+              </a>
+              <a href="#section-memory" onclick="scrollToSection(event, 'section-memory')" data-section="section-memory" class="nav-craft-tab">
+                <span>📸</span><span>Sổ tay Kỷ niệm</span>
+              </a>
+            </div>
+
+            <!-- Cụm nút bên phải: Tìm sở thích + Chuông + Hồ sơ cặp đôi -->
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onclick="toggleNavbarSearchDrawer()"
+                id="navSearchToggleBtn"
+                class="bg-[#FFFDF9] hover:bg-[#FFF5F0] border-2 border-brand-terracotta text-brand-terracottaDark px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+              >
+                <span>🔍</span>
+                <span class="hidden sm:inline">Tìm sở thích</span>
+                <span id="activeFilterCountBadge" class="hidden bg-brand-terracotta text-white text-[10px] px-1.5 rounded-full">0</span>
+              </button>
+
+              <!-- Chuông thông báo -->
+              <div class="relative">
+                <button
+                  type="button"
+                  onclick="toggleNoticesDropdown()"
+                  class="relative bg-[#FFFDF9] hover:bg-[#F9EFC7] border border-[#CBB292] text-paper-ink w-9 h-9 rounded-full flex items-center justify-center text-sm transition"
+                  title="Thông báo của hai bạn"
+                >
+                  <span>🔔</span>
+                  <span id="unreadNoticeBadge" class="absolute -top-1 -right-1 bg-brand-terracotta text-white text-[10px] font-extrabold w-4 h-4 flex items-center justify-center rounded-full">3</span>
+                </button>
+
+                <!-- Dropdown Thông báo thân thiện -->
+                <div id="noticesDropdownPanel" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl shadow-2xl p-4 z-50">
+                  <div class="flex items-center justify-between pb-2.5 border-b border-dashed border-[#CBB292]">
+                    <div>
+                      <p class="font-serif font-extrabold text-sm text-paper-ink">🔔 Hoạt động của hai bạn</p>
+                      <p class="text-[11px] text-paper-muted">Cập nhật mới nhất từ người thương</p>
+                    </div>
+                    <button onclick="markAllNoticesRead()" class="text-[11px] font-bold text-brand-terracotta hover:underline">
+                      ✓ Đánh dấu đã đọc
+                    </button>
+                  </div>
+                  <div id="noticesListContainer" class="divide-y divide-[#EFE5D4] max-h-64 overflow-y-auto my-1"></div>
+                </div>
+              </div>
+
+              <!-- Huy hiệu Phòng Đôi gọn đẹp -->
+              <button
+                type="button"
+                onclick="openRoomSecurityModal()"
+                class="bg-[#FFFDF9] hover:bg-brand-peach/40 border border-[#CBB292] rounded-full p-1 pr-3 flex items-center gap-2 shadow-2xs transition"
+                title="Quản lý phòng đôi & Mã ghép đôi"
+              >
+                <div class="relative w-7 h-7 rounded-full overflow-hidden border border-brand-terracotta shrink-0">
+                  <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=200&q=80" alt="Couple" class="w-full h-full object-cover" />
+                  <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-500 ring-1 ring-white"></span>
+                </div>
+                <div class="couple-badge-text text-left leading-tight">
+                  <span class="text-[11px] font-bold text-paper-ink block">Phòng đôi của Bún</span>
+                  <span class="text-[10px] font-semibold text-brand-terracotta block">❤️ Đã ghép đôi</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dải cuộn ngang cho Tablet & Mobile -->
+          <div class="mobile-scroll-pills hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-2 border-t border-[#DEC8AC]">
+            <button type="button" onclick="toggleNavbarSearchDrawer(true)" class="nav-craft-tab !py-1 !px-3 !text-xs !border-brand-terracotta !bg-[#FFF7F4] font-bold">
+              🔍 Tìm sở thích
+            </button>
+            <a href="#section-home" onclick="scrollToSection(event, 'section-home')" data-section="section-home" class="nav-craft-tab active !py-1 !px-3 !text-xs">📅 Kế hoạch</a>
+            <a href="#section-explore" onclick="scrollToSection(event, 'section-explore')" data-section="section-explore" class="nav-craft-tab !py-1 !px-3 !text-xs">🧭 Khám phá</a>
+            <a href="#section-couple-games" onclick="scrollToSection(event, 'section-couple-games')" data-section="section-couple-games" class="nav-craft-tab !py-1 !px-3 !text-xs">💞 Hợp Gu</a>
+            <a href="#section-memory" onclick="scrollToSection(event, 'section-memory')" data-section="section-memory" class="nav-craft-tab !py-1 !px-3 !text-xs">📸 Kỷ niệm</a>
+          </div>
+        </div>
+
+        <!-- NGĂN KÉO INPUT TÌM KIẾM SỞ THÍCH -->
+        <div id="navbarSearchDrawer" class="search-drawer-panel">
+          <div class="max-w-[1140px] mx-auto px-4 py-4 space-y-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div class="relative flex-1">
+                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-terracotta">🔍</span>
+                <input
+                  id="navSearchInput"
+                  type="text"
+                  oninput="handlePreferenceSearchInput(this.value, 'navbar')"
+                  onkeydown="if(event.key === 'Enter') { scrollToExploreResults(); }"
+                  placeholder="Hôm nay hai bạn thích gì? (VD: ngắm hoàng hôn, làm gốm, cà phê cổ, trượt băng...)"
+                  class="w-full pl-10 pr-24 py-2.5 bg-[#FFFDF9] border-2 border-brand-terracotta rounded-xl text-sm font-medium text-paper-ink focus:outline-none"
+                />
+                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <button type="button" onclick="clearAllPreferenceFilters()" class="px-2 py-1 rounded bg-[#EFE5D4] text-xs font-bold">✕</button>
+                  <button type="button" onclick="triggerRandomHobbySuggestion()" class="px-2 py-1 rounded bg-[#F9EFC7] border border-[#D5BE7E] text-xs font-bold">🎲 Gợi ý</button>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="scrollToExploreResults()" class="bg-brand-terracotta text-white font-bold text-xs px-4 py-2.5 rounded-xl">
+                  Xem danh sách quán ↓
+                </button>
+                <button type="button" onclick="toggleNavbarSearchDrawer(false)" class="bg-[#E5D1B8] text-paper-ink font-bold text-xs px-3 py-2.5 rounded-xl">
+                  Đóng ▲
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5" id="drawerHobbyTagsContainer"></div>
+            <div id="drawerInstantResults" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1"></div>
+          </div>
+        </div>
+
+        <div class="scroll-progress-track">
+          <div id="scrollProgressBar" class="scroll-progress-bar"></div>
+        </div>
+      </nav>
+
+      <!-- BANNER CẢNH BÁO SOFT-DELETE 14 NGÀY (ẨN MẶC ĐỊNH) -->
+      <div id="softDeleteBanner" class="hidden bg-[#8F2D19] text-white px-4 py-2.5 text-xs">
+        <div class="max-w-[1140px] mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-base">⚠️</span>
+            <span><strong>Phòng đang chờ giải tán (Còn 14 ngày):</strong> Bạn có thể tải kỷ niệm về máy hoặc hủy yêu cầu bất cứ lúc nào.</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="downloadRoomArchiveZip()" class="bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded font-bold">📦 Tải kỷ niệm (.zip)</button>
+            <button onclick="restoreSoftDeletedRoom()" class="bg-[#F9EFC7] text-paper-ink px-3 py-1 rounded font-extrabold">↺ Giữ lại phòng</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           NỘI DUNG CHÍNH: DẪN DẮT TỰ NHIÊN CHO NGƯỜI DÙNG MỚI
+           ================================================================= -->
+      <main class="main-content-area flex-1 p-4 sm:p-6 lg:p-8">
+        <div class="max-w-[1140px] mx-auto space-y-12">
+
+          <!-- =============================================================
+               PHẦN 1: #section-home (CHÀO MỪNG + LỊCH HẸN HÔM NAY & THỜI TIẾT)
+               ============================================================= -->
+          <section id="section-home" class="scroll-section space-y-6">
+
+            <!-- Bảng Chào Mừng 3 Bước Dành Cho Người Mới (Có thể thu gọn) -->
+            <div id="welcomeOnboardingCard" class="bg-gradient-to-r from-[#FFFDF9] via-[#FFF9F2] to-[#FADCD2]/40 border-2 border-[#DECBB3] rounded-2xl p-5 shadow-xs relative overflow-hidden">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="space-y-1.5 max-w-xl">
+                  <div class="inline-flex items-center gap-1.5 bg-[#F9EFC7] border border-[#DFC98A] px-2.5 py-0.5 rounded-full text-[11px] font-bold text-paper-ink">
+                    <span>🍂</span><span>Chào buổi chiều thu Hà Nội!</span>
+                  </div>
+                  <h1 class="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+                    Hôm nay hai bạn muốn hẹn hò ở đâu?
+                  </h1>
+                  <p class="text-xs sm:text-sm text-paper-muted leading-relaxed">
+                    Chưa biết đi đâu cũng đừng lo! Hãy chọn nhanh một cách bên dưới để DateMate gợi ý lịch trình hợp thời tiết nhất cho hai đứa nhé:
+                  </p>
+                </div>
+
+                <!-- 3 Nút Hành Động Rõ Ràng Nhất Cho Người Dùng Mới -->
+                <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <button onclick="toggleNavbarSearchDrawer(true)" class="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs sm:text-sm px-4 py-3 rounded-xl shadow flex items-center gap-2 transition cursor-pointer">
+                    <span>🔍</span><span>Tìm theo sở thích</span>
+                  </button>
+                  <button onclick="openDateWheelModal()" class="bg-[#FFFDF9] hover:bg-[#FAF4E8] border-2 border-brand-terracotta text-brand-terracottaDark font-bold text-xs sm:text-sm px-4 py-3 rounded-xl shadow-2xs flex items-center gap-2 transition cursor-pointer">
+                    <span>🎯</span><span>Lười chọn? Quay số đi!</span>
+                  </button>
+                  <button onclick="openEnvelopeRsvpModal()" class="bg-[#F9EFC7] hover:bg-[#F5E39E] border border-[#D5BE7E] text-paper-ink font-bold text-xs sm:text-sm px-4 py-3 rounded-xl flex items-center gap-2 transition cursor-pointer">
+                    <span>💌</span><span>Gửi thiệp hẹn</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lưới 2 Cột: Lịch Hẹn Sắp Tới (Trái) & Thời Tiết Hôm Nay (Phải) -->
+            <div class="responsive-2col grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+
+              <!-- CỘT TRÁI (7/12): LỊCH TRÌNH CỦA HAI BẠN (GIAO DIỆN SẠCH, DỄ HIỂU) -->
+              <div class="lg:col-span-7 bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between relative">
+                <!-- Cảnh báo khi người thương vừa cập nhật lịch (409 Conflict) -->
+                <div id="conflict409Alert" class="hidden mb-4 bg-[#FADCD2] border-2 border-brand-terracotta rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+                  <div class="text-xs text-paper-ink">
+                    <strong class="text-brand-terracottaDark block">🔔 Người thương vừa cập nhật lịch hẹn!</strong>
+                    <span>Bấm đồng bộ để xem mốc giờ mới nhất mà người ấy vừa chỉnh nhé (<code>version #<span id="serverVersionNum">4</span></code>).</span>
+                  </div>
+                  <button onclick="resolve409Conflict()" class="bg-brand-terracotta text-white text-xs font-bold px-3 py-1.5 rounded-lg shrink-0">
+                    🔄 Cập nhật ngay
+                  </button>
+                </div>
+
+                <div>
+                  <!-- Header Lịch trình -->
+                  <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-brand-olive/15 text-brand-olive">
+                        📍 Lịch hẹn sắp tới
+                      </span>
+                      <span class="text-xs font-bold text-paper-muted">Chủ Nhật, 01/11</span>
+                      <span class="dev-spec-only text-[11px] font-mono bg-[#EFE5D4] px-2 py-0.5 rounded font-bold text-paper-ink">
+                        version: #<span id="planVersionBadge">3</span>
+                      </span>
+                    </div>
+
+                    <button onclick="openPosterShareModal()" class="text-xs font-bold text-brand-terracotta hover:underline flex items-center gap-1">
+                      <span>🖼️</span><span>Tạo ảnh Story chia sẻ</span>
+                    </button>
+                  </div>
+
+                  <h2 id="planMainTitle" class="font-serif font-extrabold text-lg sm:text-xl text-paper-ink">
+                    Ngắm hoàng hôn Hồ Tây & Cà phê Cầu Long Biên
+                  </h2>
+
+                  <!-- Thanh công cụ thông minh nhưng diễn đạt tự nhiên -->
+                  <div class="flex flex-wrap items-center gap-2 mt-3 p-2 bg-[#FAF4E8] rounded-xl border border-[#E5D8C5] text-xs">
+                    <button onclick="autoScheduleBySunCalc()" class="px-2.5 py-1.5 rounded-lg font-bold bg-[#F9EFC7] border border-[#D5BE7E] text-paper-ink hover:bg-[#F5E39E] transition cursor-pointer">
+                      🌅 Tự xếp giờ khớp Hoàng hôn (16:24)
+                    </button>
+                    <button onclick="toggleRainPlanB()" id="inlineRainPlanBBtn" class="px-2.5 py-1.5 rounded-lg font-bold bg-[#FFFDF9] border border-[#CBB292] text-paper-ink hover:border-brand-terracotta transition cursor-pointer">
+                      ☔ Đổi sang quán Trong nhà (Phòng mưa)
+                    </button>
+                    <button onclick="toggleRushHourMode()" id="rushHourBtn" class="px-2.5 py-1.5 rounded-lg font-semibold bg-[#FFFDF9] border border-[#CBB292] text-paper-muted hover:text-paper-ink transition cursor-pointer">
+                      🛵 Đi giờ thường (25km/h)
+                    </button>
+                  </div>
+
+                  <!-- Danh sách 3 chặng dừng trực quan -->
+                  <div id="timelineStopsContainer" class="space-y-2.5 my-4"></div>
+                </div>
+
+                <!-- Chân thẻ: Checklist chuẩn bị + Tải vào lịch điện thoại -->
+                <div class="pt-3 border-t border-dashed border-[#D8CBB8] flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="toggleChecklistDrawer()" class="text-xs font-bold text-paper-ink bg-[#EFE5D4] hover:bg-[#E2D2B8] px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer">
+                      <span>☑️ Đồ cần chuẩn bị:</span>
+                      <span id="checklistProgressText" class="text-brand-terracotta font-extrabold">2/4 xong</span>
+                    </button>
+                    <span id="rsvpStatusPill" class="text-[11px] font-bold text-brand-olive bg-brand-olive/10 px-2.5 py-1 rounded-full">
+                      💌 Người thương đã chốt!
+                    </span>
+                  </div>
+
+                  <button onclick="downloadICSFile()" class="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+                    <span>📅</span><span>Lưu vào Lịch ĐT (.ics)</span>
+                  </button>
+                </div>
+
+                <!-- Ngăn kéo Checklist -->
+                <div id="checklistDrawer" class="hidden mt-3 pt-3 border-t border-[#E5D8C5]">
+                  <div id="checklistItems" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+                </div>
+              </div>
+
+              <!-- CỘT PHẢI (5/12): BƯU THIẾP THỜI TIẾT & GIỜ VÀNG SĂN ẢNH -->
+              <div class="lg:col-span-5 airmail-postcard">
+                <div class="airmail-inner p-4 sm:p-5 flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-start justify-between gap-2">
+                      <div>
+                        <span class="text-[10px] font-extrabold tracking-widest uppercase text-brand-airmailBlue block">
+                          DỰ BÁO HẸN HÒ HÀ NỘI
+                        </span>
+                        <div class="flex items-baseline gap-2 mt-1">
+                          <span id="weatherTempText" class="font-serif font-extrabold text-3xl text-paper-ink">29°C</span>
+                          <span id="weatherDescText" class="text-xs font-semibold text-paper-muted">
+                            Nắng thu dịu • Khả năng mưa <strong class="text-brand-terracotta">4%</strong>
+                          </span>
+                        </div>
+                      </div>
+                      <div class="border border-dashed border-[#CBB292] bg-[#FAF3E6] p-2 rounded-xl text-center">
+                        <span id="weatherEmojiIcon" class="text-2xl block">🌤️</span>
+                        <span class="text-[9px] font-extrabold text-paper-muted">HÔM NAY</span>
+                      </div>
+                    </div>
+
+                    <!-- Khung Giờ Vàng & Giờ Xanh -->
+                    <div class="grid grid-cols-2 gap-2.5 my-4">
+                      <div class="bg-[#FFF9F2] border border-brand-coral rounded-xl p-3">
+                        <span class="text-[11px] font-bold text-paper-muted block">🌅 Giờ vàng chụp ảnh</span>
+                        <span class="font-serif font-extrabold text-base text-brand-terracotta mt-0.5 block">
+                          16:24 - 17:24
+                        </span>
+                        <span class="text-[10px] text-paper-muted">Nắng chiều ấm áp nhất</span>
+                      </div>
+                      <div class="bg-[#F4F7FA] border border-[#B8C7D6] rounded-xl p-3">
+                        <span class="text-[11px] font-bold text-paper-muted block">🌌 Giờ xanh lên đèn</span>
+                        <span class="font-serif font-extrabold text-base text-brand-airmailBlue mt-0.5 block">
+                          17:24 - 17:54
+                        </span>
+                        <span class="text-[10px] text-paper-muted">Bầu trời xanh thẫm lãng mạn</span>
+                      </div>
+                    </div>
+
+                    <div id="weatherAdviceBox" class="bg-[#F9EFC7]/85 border border-[#DFC98A] rounded-xl p-3 text-xs text-paper-ink leading-relaxed">
+                      💡 <strong>Gợi ý cho hai bạn:</strong> Hôm nay trời ít mây, gió mát, cực kỳ lý tưởng để ngồi cà phê tầng thượng hoặc dạo ven Hồ Tây lúc 16:30!
+                    </div>
+                  </div>
+
+                  <div class="pt-3 mt-3 border-t border-dashed border-[#E2D5C1] flex items-center justify-between text-[11px] text-paper-muted">
+                    <span>Cập nhật tự động theo quận Hà Nội</span>
+                    <span class="font-semibold">Open-Meteo (CC-BY 4.0)</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- =============================================================
+               PHẦN 2: #section-explore (KHÁM PHÁ QUÁN ĐẸP THEO SỞ THÍCH)
+               ============================================================= -->
+          <section id="section-explore" class="scroll-section space-y-4">
+            <div class="explore-header-row flex flex-col md:flex-row md:items-end justify-between gap-3">
+              <div>
+                <span class="text-xs font-bold text-brand-terracotta uppercase tracking-wider">🧭 Gợi ý địa điểm chọn lọc</span>
+                <h2 class="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+                  Khám phá tọa độ hẹn hò hợp gu hai bạn
+                </h2>
+                <p class="text-xs text-paper-muted mt-0.5">Chạm vào từng tấm ảnh để xem bí kíp góc chụp đẹp, cách tạo dáng và gợi ý phối đồ đôi (OOTD)</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="filterPlaces('all')" id="filter-all" class="filter-pill px-3.5 py-1.5 rounded-full text-xs font-bold bg-brand-terracotta text-white cursor-pointer">Tất cả (8)</button>
+                <button onclick="filterPlaces('outdoor')" id="filter-outdoor" class="filter-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#EFE4D2] text-paper-ink cursor-pointer">🌅 Ngắm hoàng hôn</button>
+                <button onclick="filterPlaces('indoor')" id="filter-indoor" class="filter-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#EFE4D2] text-paper-ink cursor-pointer">❄️ Trong nhà mát mẻ</button>
+                <button onclick="filterPlaces('art')" id="filter-art" class="filter-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#EFE4D2] text-paper-ink cursor-pointer">🎨 Nghệ thuật & Gốm</button>
+              </div>
+            </div>
+
+            <!-- Thanh Tìm Kiếm & Chọn Tag Sở Thích Gọn Đẹp -->
+            <div class="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-4 shadow-2xs space-y-3">
+              <div class="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+                <div class="relative flex-1">
+                  <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-terracotta">🔍</span>
+                  <input
+                    id="inlineSearchInput"
+                    type="text"
+                    oninput="handlePreferenceSearchInput(this.value, 'inline')"
+                    placeholder="Tìm nhanh theo sở thích: săn hoàng hôn, làm gốm, cà phê cổ, trượt băng, bảo tàng..."
+                    class="w-full pl-10 pr-24 py-2.5 bg-[#FAF4E8] border border-[#CBB292] focus:border-brand-terracotta rounded-xl text-xs sm:text-sm font-medium text-paper-ink focus:outline-none"
+                  />
+                  <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <button type="button" onclick="clearAllPreferenceFilters()" class="px-2 py-1 rounded bg-[#E5D1B8] text-[11px] font-bold">✕ Xóa</button>
+                    <button type="button" onclick="triggerRandomHobbySuggestion()" class="px-2 py-1 rounded bg-[#F9EFC7] border border-[#D5BE7E] text-[11px] font-bold">🎲 Gợi ý</button>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <select id="inlineDistrictSelect" onchange="handleDistrictFilterChange(this.value)" class="bg-[#FAF4E8] border border-[#CBB292] rounded-xl px-3 py-2.5 text-xs font-bold text-paper-ink">
+                    <option value="all">📍 Tất cả Quận</option>
+                    <option value="Tây Hồ">📍 Quận Tây Hồ</option>
+                    <option value="Hoàn Kiếm">📍 Quận Hoàn Kiếm</option>
+                    <option value="Ba Đình">📍 Quận Ba Đình</option>
+                    <option value="Thanh Xuân">📍 Quận Thanh Xuân</option>
+                    <option value="Đống Đa">📍 Quận Đống Đa</option>
+                  </select>
+                  <select id="inlineBudgetSelect" onchange="handleBudgetFilterChange(this.value)" class="bg-[#FAF4E8] border border-[#CBB292] rounded-xl px-3 py-2.5 text-xs font-bold text-paper-ink">
+                    <option value="all">💰 Mọi mức giá</option>
+                    <option value="free">🌱 Tiết kiệm (&lt;100k)</option>
+                    <option value="mid">☕ Vừa vặn (100-200k)</option>
+                    <option value="high">🥂 Kỷ niệm (&gt;200k)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-1.5" id="inlineHobbyTagsContainer"></div>
+
+              <div class="flex items-center justify-between text-xs pt-1 border-t border-dashed border-[#E2D5C1]">
+                <span id="inlineResultCountText" class="text-paper-muted font-semibold">Đang hiển thị 8 tọa độ</span>
+                <button type="button" onclick="clearAllPreferenceFilters()" class="text-brand-terracotta font-bold hover:underline">↺ Xem tất cả địa điểm</button>
+              </div>
+            </div>
+
+            <!-- Lưới Thẻ Polaroid -->
+            <div id="polaroidGrid" class="responsive-3col grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-1"></div>
+          </section>
+
+          <!-- =============================================================
+               PHẦN 3: #section-couple-games (GOM GỌN QUẸT THẺ + VÉ MÙ + THƯ TÌNH VÀO CHUYỂN TAB MƯỢT MÀ)
+               ============================================================= -->
+          <section id="section-couple-games" class="scroll-section space-y-5">
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-3">
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wider text-brand-terracotta">💞 Tương tác cặp đôi thú vị</span>
+                <h2 class="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+                  Trò Chơi Hợp Gu & Khám Phá Bí Mật Cùng Người Ấy
+                </h2>
+                <p class="text-xs text-paper-muted mt-0.5">Chọn một trò chơi bên dưới để cùng người thương tìm ra điểm hẹn ưng ý nhất:</p>
+              </div>
+
+              <!-- Thanh Chuyển Đổi 3 Trò Chơi (Tránh bày quá nhiều khối làm rối mắt người mới) -->
+              <div class="flex flex-wrap items-center gap-1.5 bg-[#EFE5D4] p-1.5 rounded-2xl border border-[#CBB292]">
+                <button onclick="switchCoupleGameTab('swipe')" id="tabBtn-swipe" class="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-brand-terracotta text-white shadow-xs transition cursor-pointer">
+                  💞 1. Quẹt thẻ Hợp Gu
+                </button>
+                <button onclick="switchCoupleGameTab('blind')" id="tabBtn-blind" class="px-3.5 py-2 rounded-xl text-xs font-bold text-paper-ink hover:bg-[#FFFDF9] transition cursor-pointer">
+                  🎫 2. Vé Mù Bí Mật
+                </button>
+                <button onclick="switchCoupleGameTab('scratch')" id="tabBtn-scratch" class="px-3.5 py-2 rounded-xl text-xs font-bold text-paper-ink hover:bg-[#FFFDF9] transition cursor-pointer">
+                  🗺️ 3. Bản Đồ Cào & Thư Tình
+                </button>
+                <button onclick="switchCoupleGameTab('all')" id="tabBtn-all" class="px-3 py-2 rounded-xl text-xs font-semibold text-paper-muted hover:text-paper-ink transition cursor-pointer">
+                  Xem tất cả
+                </button>
+              </div>
+            </div>
+
+            <!-- KHỐI TAB 1: QUẸT THẺ CHỌN ĐIỂM HẸN (SWIPE-TO-MATCH) -->
+            <div id="section-match" class="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 sm:p-6 shadow-sm space-y-5">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-dashed border-[#D8CBB8] pb-3">
+                <div>
+                  <h3 class="font-serif font-extrabold text-lg text-paper-ink">
+                    💞 Quẹt Thẻ Tìm Điểm Hẹn Chung
+                  </h3>
+                  <p class="text-xs text-paper-muted">Khi cả hai bạn cùng thả tim một quán, pháo hoa sẽ nổ và quán được lưu vào danh sách Hợp Gu!</p>
+                </div>
+                <div class="flex items-center gap-1.5 bg-[#FAF4E8] p-1 rounded-xl border border-[#CBB292]">
+                  <button onclick="setSwipeRoomMode('couple')" id="modeCoupleBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-terracotta text-white transition cursor-pointer">
+                    👩‍❤️‍👨 Đi đôi (2 người)
+                  </button>
+                  <button onclick="setSwipeRoomMode('group')" id="modeGroupBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-paper-ink hover:bg-[#EFE5D4] transition cursor-pointer">
+                    👯‍♂️ Đi nhóm bạn
+                  </button>
+                </div>
+              </div>
+
+              <div class="responsive-2col grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <!-- Bàn Quẹt Thẻ Polaroid -->
+                <div class="lg:col-span-7 kraft-texture rounded-2xl p-4 sm:p-5 border border-[#CBB292] flex flex-col items-center">
+                  <div id="swipeDeckCard" class="w-full max-w-md bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-3.5 shadow-md transition-all duration-300"></div>
+
+                  <div class="flex items-center justify-center gap-4 mt-4 w-full">
+                    <button onclick="handleCardSwipe('nope')" class="bg-[#FFFDF9] hover:bg-stone-100 border border-[#CBB292] text-paper-ink font-bold px-5 py-2.5 rounded-full shadow-xs flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 cursor-pointer">
+                      <span>👈</span><span>Đổi quán khác</span>
+                    </button>
+                    <button onclick="handleCardSwipe('like')" class="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-extrabold px-6 py-2.5 rounded-full shadow-md flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 cursor-pointer">
+                      <span>❤️</span><span>Thích quán này!</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Danh sách Đã Hợp Gu (Ẩn bớt log kỹ thuật trừ khi bật Dev Mode) -->
+                <div class="lg:col-span-5 space-y-4">
+                  <div class="bg-[#FAF4E8] border border-[#D8CBB8] rounded-2xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="font-serif font-extrabold text-base text-paper-ink">🎉 Quán hai bạn cùng thích (<span id="matchedListCount">2</span>)</h4>
+                      <button onclick="simulateIncomingPartnerMatch()" class="text-[11px] font-bold text-brand-terracotta hover:underline cursor-pointer">
+                        + Thử cảm giác Match
+                      </button>
+                    </div>
+                    <div id="matchedPlacesList" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                  </div>
+
+                  <!-- Log ETag chỉ hiện khi bật chế độ kỹ thuật (Dev Overlay) -->
+                  <div class="dev-spec-only bg-[#231A16] text-[#F7F1E5] rounded-xl p-3.5 font-mono text-xs space-y-2 border border-[#4A3931]">
+                    <div class="flex items-center justify-between">
+                      <span class="text-brand-coral font-bold">🔄 Short Polling (3s ETag)</span>
+                      <span id="etagStatusBadge" class="bg-green-900/60 text-green-300 px-2 py-0.5 rounded text-[10px]">304 Not Modified</span>
+                    </div>
+                    <div id="etagConsoleLog" class="text-[11px] text-[#D7C4B0] space-y-1 max-h-20 overflow-y-auto">
+                      <div>[GET /api/v1/user/matches] If-None-Match: "etag-v12" ➔ 304</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- KHỐI TAB 2 & 3: VÉ MÙ HẸN HÒ, BẢN ĐỒ CÀO 7 QUẬN & HỘP THƯ TÌNH (#section-gamification) -->
+            <div id="section-gamification" class="hidden space-y-6">
+              <div class="responsive-3col grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 1. VÉ MÙ HẸN HÒ -->
+                <div id="gameCard-blind" class="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-brand-terracotta text-white">🎫 Vé Mù Hẹn Hò</span>
+                      <select id="blindBudgetSelect" onchange="resetBlindDateTicket()" class="text-xs font-bold bg-[#FAF4E8] border border-[#CBB292] rounded-lg px-2 py-1">
+                        <option value="medium">Vừa vặn (150-300k)</option>
+                        <option value="budget">Tiết kiệm (&lt;150k)</option>
+                        <option value="luxury">Kỷ niệm (&gt;350k)</option>
+                      </select>
+                    </div>
+                    <h3 class="font-serif font-extrabold text-base text-paper-ink">Hành Trình Bí Mật 3 Chặng</h3>
+                    <p class="text-xs text-paper-muted mt-0.5">Các điểm đến tiếp theo sẽ được giữ bí mật cho tới khi hai bạn đặt chân tới điểm hẹn hiện tại!</p>
+
+                    <div id="blindDateStepsContainer" class="space-y-2.5 my-4"></div>
+                  </div>
+
+                  <div class="space-y-2 pt-2 border-t border-dashed border-[#D8CBB8]">
+                    <button onclick="checkInNextBlindStep('gps_auto')" class="w-full bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+                      📍 Tụi mình đã tới nơi! Mở chặng tiếp theo
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 2. BẢN ĐỒ CÀO 7 KHU VỰC HÀ NỘI -->
+                <div id="gameCard-scratch" class="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-brand-olive text-white">🗺️ Bản Đồ Kỷ Niệm</span>
+                      <span id="scratchPercentBadge" class="text-xs font-extrabold text-brand-terracotta">Đã đi: 43% (3/7 quận)</span>
+                    </div>
+                    <h3 class="font-serif font-extrabold text-base text-paper-ink">Chinh Phục 7 Quận Hà Nội</h3>
+                    <p class="text-xs text-paper-muted mt-0.5">Chạm vào lớp nhũ bạc để đánh dấu những khu vực hai bạn đã cùng nhau hẹn hò:</p>
+
+                    <div id="scratchDistrictsGrid" class="grid grid-cols-2 gap-2 my-4"></div>
+                  </div>
+
+                  <div class="w-full bg-[#EFE5D4] h-2.5 rounded-full overflow-hidden">
+                    <div id="scratchProgressBar" class="bg-brand-olive h-full transition-all duration-300" style="width: 43%"></div>
+                  </div>
+                </div>
+
+                <!-- 3. HỘP THƯ TÌNH BÍ MẬT TẠI QUÁN -->
+                <div id="gameCard-secret" class="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-brand-airmailBlue text-white">💌 Thư Tình Ẩn Giấu</span>
+                      <span class="text-xs font-bold text-paper-muted">Bất ngờ tại quán</span>
+                    </div>
+                    <h3 class="font-serif font-extrabold text-base text-paper-ink">Nhắn Lời Yêu Thương Tại Điểm Hẹn</h3>
+                    <p class="text-xs text-paper-muted mt-0.5">Để lại một lời nhắn bí mật ở quán cà phê, người ấy sẽ đọc được khi tới quán!</p>
+
+                    <div id="secretNotesList" class="space-y-2.5 my-3 max-h-48 overflow-y-auto"></div>
+                  </div>
+
+                  <div class="bg-[#FAF4E8] p-2.5 rounded-xl border border-[#D8CBB8] space-y-2">
+                    <select id="newSecretPlaceSelect" class="w-full text-xs font-bold bg-[#FFFDF9] border border-[#CBB292] rounded-lg px-2.5 py-1.5">
+                      <option value="Serein Café Cầu Long Biên">📍 Serein Café Cầu Long Biên</option>
+                      <option value="Bãi đá sông Hồng">📍 Bãi đá sông Hồng</option>
+                      <option value="Bảo Tàng Mỹ Thuật">📍 Bảo Tàng Mỹ Thuật</option>
+                    </select>
+                    <input id="newSecretContentInput" type="text" placeholder="Viết lời nhắn dễ thương cho người ấy..." class="w-full text-xs bg-[#FFFDF9] border border-[#CBB292] rounded-lg px-2.5 py-1.5" />
+                    <button onclick="createNewSecretNote()" class="w-full bg-brand-airmailBlue hover:bg-slate-700 text-white font-bold text-xs py-2 rounded-lg transition cursor-pointer">
+                      💌 Gửi lời nhắn bí mật tại quán
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- =============================================================
+               PHẦN 4: #section-video (VIDEO REVIEW THỰC TẾ KÈM NÚT THÊM VÀO LỊCH)
+               ============================================================= -->
+          <section id="section-video" class="scroll-section space-y-4">
+            <div class="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wider text-brand-terracotta">🎞️ Góc nhìn thực tế</span>
+                <h2 class="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+                  Video Review Không Gian Quán Thực Tế
+                </h2>
+                <p class="text-xs text-paper-muted">Xem trước không gian quán và bấm thêm trực tiếp địa điểm trong video vào lịch hẹn</p>
+              </div>
+            </div>
+
+            <div class="responsive-3col grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div onclick="openVideoModal('Hành trình 1 ngày săn hoàng hôn Cầu Long Biên & Hồ Tây', 'cafe-long-bien')" class="bg-[#1F1916] rounded-2xl p-3 text-white cursor-pointer group shadow-md hover:-translate-y-1 transition">
+                <div class="relative h-44 rounded-xl overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=700&q=80" alt="Video 1" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                  <span class="absolute top-2 left-2 bg-black/70 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">📍 Có ghim địa điểm</span>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-11 h-11 rounded-full bg-brand-terracotta/90 flex items-center justify-center text-white shadow-lg">▶</div>
+                  </div>
+                </div>
+                <h3 class="font-bold text-sm mt-2.5">Top 3 quán cà phê ngắm tàu chạy qua Cầu Long Biên</h3>
+                <p class="text-[11px] text-stone-300 mt-0.5">Chạm để xem video & lưu quán vào lịch</p>
+              </div>
+
+              <div onclick="openVideoModal('Review Bãi đá sông Hồng mùa cỏ lau trắng muốt', 'bai-da-song-hong')" class="bg-[#1F1916] rounded-2xl p-3 text-white cursor-pointer group shadow-md hover:-translate-y-1 transition">
+                <div class="relative h-44 rounded-xl overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=700&q=80" alt="Video 2" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                  <span class="absolute top-2 left-2 bg-black/70 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">📍 Có ghim địa điểm</span>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-11 h-11 rounded-full bg-brand-terracotta/90 flex items-center justify-center text-white shadow-lg">▶</div>
+                  </div>
+                </div>
+                <h3 class="font-bold text-sm mt-2.5">Bí kíp chụp ảnh film giờ vàng tại Bãi đá sông Hồng</h3>
+                <p class="text-[11px] text-stone-300 mt-0.5">Kèm gợi ý các quán đẹp lân cận</p>
+              </div>
+
+              <div onclick="openVideoModal('Date trong nhà bất chấp mưa gió tại Bảo tàng & Bowling', 'royal-city')" class="bg-[#1F1916] rounded-2xl p-3 text-white cursor-pointer group shadow-md hover:-translate-y-1 transition">
+                <div class="relative h-44 rounded-xl overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=700&q=80" alt="Video 3" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                  <span class="absolute top-2 left-2 bg-black/70 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">☔ Gợi ý ngày mưa</span>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-11 h-11 rounded-full bg-brand-terracotta/90 flex items-center justify-center text-white shadow-lg">▶</div>
+                  </div>
+                </div>
+                <h3 class="font-bold text-sm mt-2.5">Gợi ý Date trong nhà mát lạnh khi Hà Nội đổ mưa</h3>
+                <p class="text-[11px] text-stone-300 mt-0.5">Trượt băng Royal City & Bảo tàng Mỹ Thuật</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- =============================================================
+               PHẦN 5: #section-memory (SỔ TAY KỶ NIỆM & THƯỚC PHIM TỰ ĐỘNG)
+               ============================================================= -->
+          <section id="section-memory" class="scroll-section space-y-5 pb-12">
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wider text-brand-terracotta">📸 Lưu giữ khoảnh khắc của hai đứa</span>
+              <h2 class="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+                Sổ Tay Kỷ Niệm & Thước Phim Hẹn Hò Tự Động
+              </h2>
+              <p class="text-xs text-paper-muted mt-0.5">Tải lên những bức ảnh chụp cùng nhau để DateMate tự động dựng thành thước phim lồng nhạc lãng mạn</p>
+            </div>
+
+            <div class="responsive-2col grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <!-- CỘT TRÁI (7/12): THƯỚC PHIM KỶ NIỆM LỒNG NHẠC -->
+              <div class="lg:col-span-7 bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="bg-brand-terracotta text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">🎞️ Phim Kỷ Niệm</span>
+                    <span id="canvasModeLabel" class="text-xs font-semibold text-paper-muted">Chuyển cảnh mượt mà</span>
+                  </div>
+                  <label class="flex items-center gap-1.5 text-xs font-semibold text-paper-muted cursor-pointer">
+                    <input type="checkbox" id="reducedMotionToggle" onchange="toggleReducedMotion(this.checked)" class="accent-brand-terracotta" />
+                    <span>Chuyển ảnh nhẹ nhàng</span>
+                  </label>
+                </div>
+
+                <!-- Khung HTML5 Canvas + Đĩa than xoay tròn -->
+                <div class="relative rounded-2xl overflow-hidden border-2 border-[#CBB292] bg-[#181210]">
+                  <canvas id="memoryVideoCanvas" width="640" height="360" class="w-full h-56 sm:h-64 block object-cover"></canvas>
+
+                  <div class="absolute top-3 right-3 flex items-center gap-2 bg-black/65 backdrop-blur-xs px-2.5 py-1.5 rounded-full border border-white/20 text-white">
+                    <div id="vinylRecordIcon" class="w-7 h-7 rounded-full bg-gradient-to-tr from-stone-900 via-stone-700 to-stone-900 border-2 border-brand-coral flex items-center justify-center vinyl-spin vinyl-paused">
+                      <div class="w-2 h-2 rounded-full bg-brand-terracotta"></div>
+                    </div>
+                    <div class="text-[10px] leading-tight pr-1">
+                      <span class="font-bold block">Giai điệu Mùa Thu Hà Nội</span>
+                      <span id="beatSyncStatus" class="text-amber-300">Bấm Phát để nghe</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Thanh điều khiển Play/Pause -->
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <button onclick="toggleVirtualVideoPlayback()" id="playVirtualVideoBtn" class="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+                      <span>▶️</span><span>Phát Phim & Nhạc Nền</span>
+                    </button>
+                    <button onclick="nextCanvasSlideManual()" class="bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs px-3 py-2.5 rounded-xl transition cursor-pointer">
+                      ⏭️ Ảnh kế tiếp
+                    </button>
+                  </div>
+
+                  <button onclick="generateGeminiAnonymizedScript(false)" class="bg-[#F9EFC7] hover:bg-[#F5E39E] border border-[#D5BE7E] text-paper-ink font-bold text-xs px-3 py-2 rounded-xl transition cursor-pointer">
+                    ✨ Viết lời bình lãng mạn mới
+                  </button>
+                </div>
+
+                <!-- Lời dẫn cảm xúc -->
+                <div class="bg-[#FAF4E8] border border-[#E2D5C1] rounded-xl p-3.5 text-xs space-y-1">
+                  <p id="aiGeneratedCaptionText" class="font-hand text-base sm:text-lg font-bold text-brand-terracotta">
+                    "Chiều thu Hà Nội 29°C dịu dàng, hai tâm hồn lặng ngắm nắng vàng buông xuống nhịp cầu Long Biên..."
+                  </p>
+                  <p class="dev-spec-only font-mono text-[10px] text-paper-muted pt-1">
+                    [Zero-PII Gemini Prompt]: Chỉ gửi hashtag cảm xúc & thời tiết, không gửi dữ liệu cá nhân.
+                  </p>
+                </div>
+              </div>
+
+              <!-- CỘT PHẢI (5/12): TẢI ẢNH KỶ NIỆM ĐƠN GIẢN, THÂN THIỆN -->
+              <div class="lg:col-span-5 bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between space-y-4">
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h3 class="font-serif font-extrabold text-base text-paper-ink">📷 Thêm ảnh vào Album chung</h3>
+                    <span class="text-[11px] font-bold text-brand-olive bg-brand-olive/10 px-2.5 py-0.5 rounded-full">🔒 Riêng tư 100%</span>
+                  </div>
+
+                  <!-- Hộp Bấm Tải Ảnh Thân Thiện Cho End-User -->
+                  <div
+                    onclick="simulateProtectedUpload('valid')"
+                    class="border-2 border-dashed border-brand-coral hover:border-brand-terracotta bg-[#FFF9F5] hover:bg-[#FFF2EB] rounded-2xl p-5 text-center cursor-pointer transition space-y-1.5"
+                  >
+                    <div class="w-10 h-10 rounded-full bg-brand-peach/70 text-brand-terracotta mx-auto flex items-center justify-center text-lg">
+                      ➕
+                    </div>
+                    <p class="font-bold text-xs sm:text-sm text-paper-ink">Bấm để thêm ảnh kỷ niệm mới</p>
+                    <p class="text-[11px] text-paper-muted">Tự động tối ưu dung lượng & ghép vào thước phim bên cạnh</p>
+                  </div>
+
+                  <!-- Thanh dung lượng phòng nhẹ nhàng -->
+                  <div class="bg-[#FAF4E8] border border-[#E2D5C1] rounded-xl p-3 space-y-1.5">
+                    <div class="flex justify-between text-xs font-semibold">
+                      <span class="text-paper-muted">Bộ nhớ Album phòng đôi:</span>
+                      <span id="quotaBytesText" class="text-paper-ink font-bold">8.4 MB / 25.0 MB</span>
+                    </div>
+                    <div class="w-full bg-[#E5D8C5] h-2 rounded-full overflow-hidden">
+                      <div id="quotaBytesBar" class="bg-brand-terracotta h-full transition-all duration-300" style="width: 34%"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-paper-muted">
+                      <span>Đã lưu: <strong id="quotaCountText" class="text-paper-ink">4 / 50 bức ảnh</strong></span>
+                      <span id="navQuotaMini" class="hidden">8.4/25MB</span>
+                      <span>Tự động xóa thông tin vị trí (EXIF)</span>
+                    </div>
+                  </div>
+
+                  <!-- Checkbox đồng thuận Nghị định 13/2023/NĐ-CP gọn gàng -->
+                  <label class="flex items-start gap-2 p-2.5 rounded-xl bg-[#FAF4E8] border border-[#E2D5C1] cursor-pointer text-xs">
+                    <input type="checkbox" id="decree13ConsentCheckbox" checked onchange="toggleDecree13Consent(this.checked)" class="mt-0.5 accent-brand-terracotta" />
+                    <span class="text-[11px] text-paper-muted leading-relaxed">
+                      Tôi đồng ý lưu trữ ảnh bảo mật trong phòng đôi và tự động xóa vĩnh viễn sau 14 ngày nếu giải tán phòng (Nghị định 13/2023/NĐ-CP).
+                    </span>
+                  </label>
+
+                  <!-- Log kỹ thuật chỉ hiện khi mở bảng QA hoặc bật Dev Specs -->
+                  <div id="uploadSecurityLog" class="dev-spec-only bg-[#231A16] text-green-300 font-mono text-[11px] p-2.5 rounded-xl">
+                    [Sharp Guard] Sẵn sàng kiểm tra Magic Bytes & X-Content-Type-Options: nosniff.
+                  </div>
+                </div>
+
+                <!-- Danh sách ảnh kỷ niệm trong phòng -->
+                <div>
+                  <p class="text-xs font-bold text-paper-muted mb-2">Ảnh trong cuốn phim của hai bạn (Chạm để xem):</p>
+                  <div id="uploadedPhotosMiniGrid" class="grid grid-cols-4 gap-2"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </main>
+
+      <!-- MOBILE BOTTOM NAVIGATION BAR -->
+      <nav class="mobile-bottom-nav hidden fixed bottom-0 left-0 right-0 z-40 kraft-texture border-t-2 border-[#CBB292] px-2 py-1.5 justify-around items-center shadow-2xl">
+        <a href="#section-home" onclick="scrollToSection(event, 'section-home')" class="flex flex-col items-center text-[11px] font-bold text-brand-terracotta">
+          <span>📅</span><span>Kế hoạch</span>
+        </a>
+        <button type="button" onclick="toggleNavbarSearchDrawer(true)" class="flex flex-col items-center text-[11px] font-bold text-paper-ink">
+          <span>🔍</span><span>Tìm quán</span>
+        </button>
+        <a href="#section-couple-games" onclick="scrollToSection(event, 'section-couple-games')" class="flex flex-col items-center -mt-4 bg-brand-terracotta text-white w-11 h-11 rounded-full justify-center shadow-lg">
+          <span>💞</span>
+        </a>
+        <a href="#section-explore" onclick="scrollToSection(event, 'section-explore')" class="flex flex-col items-center text-[11px] font-bold text-paper-ink">
+          <span>🧭</span><span>Khám phá</span>
+        </a>
+        <a href="#section-memory" onclick="scrollToSection(event, 'section-memory')" class="flex flex-col items-center text-[11px] font-bold text-paper-ink">
+          <span>📸</span><span>Kỷ niệm</span>
+        </a>
+      </nav>
+
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       2. NÚT NỔI & NGĂN KÉO CÔNG CỤ QA / DEVELOPER (TÁCH BIỆT KHỎI GIAO DIỆN NGƯỜI DÙNG)
+       ===================================================================== -->
+  <div class="fixed bottom-4 left-4 z-50">
+    <!-- Nút bấm mở Bảng QA & Chuyển đổi màn hình -->
+    <button
+      onclick="toggleQaFloatingPanel()"
+      class="bg-[#1B1411] hover:bg-brand-terracotta text-[#F7F1E5] border-2 border-[#CBB292] px-3.5 py-2 rounded-full shadow-2xl flex items-center gap-2 text-xs font-extrabold transition cursor-pointer"
+      title="Mở bộ công cụ kiểm thử kỹ thuật & Chuyển đổi màn hình Desktop/Tablet/Mobile"
+    >
+      <span>🛠️</span>
+      <span>Công cụ Test QA & Giao diện</span>
+    </button>
+
+    <!-- Hộp công cụ QA có thể đóng/mở gọn gàng -->
+    <div id="qaFloatingPanel" class="hidden mt-2 w-80 sm:w-96 bg-[#1B1411]/95 backdrop-blur-md border-2 border-[#CBB292] rounded-2xl p-4 text-[#F7F1E5] shadow-2xl space-y-3">
+      <div class="flex items-center justify-between border-b border-[#3D2E27] pb-2">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase bg-brand-terracotta px-2 py-0.5 rounded">QA & Dev Sandbox</span>
+          <p class="text-xs font-bold mt-1">Kiểm thử tính năng & Chuyển khung nhìn</p>
+        </div>
+        <button onclick="toggleQaFloatingPanel()" class="w-7 h-7 rounded-full bg-[#2D221D] text-xs font-bold">✕</button>
+      </div>
+
+      <!-- Chuyển đổi Viewport Desktop / Tablet / Mobile -->
+      <div class="space-y-1">
+        <span class="text-[11px] text-[#D7C4B0] font-semibold block">1. Xem thử trên các thiết bị:</span>
+        <div class="grid grid-cols-3 gap-1.5 bg-[#2B201B] p-1 rounded-xl border border-[#46352D]">
+          <button onclick="setViewportMode('desktop')" id="btn-vp-desktop" class="vp-btn py-1.5 rounded-lg text-[11px] font-bold bg-brand-terracotta text-white transition">
+            🖥️ Desktop
+          </button>
+          <button onclick="setViewportMode('tablet')" id="btn-vp-tablet" class="vp-btn py-1.5 rounded-lg text-[11px] font-bold text-[#D7C4B0] hover:text-white transition">
+            📱 Tablet
+          </button>
+          <button onclick="setViewportMode('mobile')" id="btn-vp-mobile" class="vp-btn py-1.5 rounded-lg text-[11px] font-bold text-[#D7C4B0] hover:text-white transition">
+            📲 Mobile
+          </button>
+        </div>
+      </div>
+
+      <!-- Công tắc bật/tắt thông số kỹ thuật -->
+      <label class="flex items-center justify-between p-2 rounded-xl bg-[#2B201B] border border-[#46352D] text-xs cursor-pointer">
+        <span>👁️ Hiển thị Log & Thông số kỹ thuật</span>
+        <input type="checkbox" onchange="document.body.classList.toggle('show-dev-specs', this.checked)" class="accent-brand-terracotta" />
+      </label>
+
+      <!-- Các kịch bản Test Edge-Case theo Master Plan -->
+      <div class="space-y-1.5">
+        <span class="text-[11px] text-[#D7C4B0] font-semibold block">2. Bấm giả lập nhanh các kịch bản kỹ thuật:</span>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+          <button onclick="trigger409ConflictSimulation()" class="bg-[#2D221D] hover:bg-brand-terracotta p-2 rounded-lg border border-[#4A3931] font-semibold text-left transition">
+            ⚡ Test Lỗi 409 Conflict
+          </button>
+          <button onclick="toggleRainPlanB()" class="bg-[#2D221D] hover:bg-brand-airmailBlue p-2 rounded-lg border border-[#4A3931] font-semibold text-left transition">
+            🌧️ Test Báo Mưa Plan B
+          </button>
+          <button onclick="simulateIncomingPartnerMatch()" class="bg-[#2D221D] hover:bg-brand-olive p-2 rounded-lg border border-[#4A3931] font-semibold text-left transition">
+            💞 Test Match Mới (ETag)
+          </button>
+          <button onclick="openSoloConflictModal()" class="bg-[#2D221D] hover:bg-brand-mustard p-2 rounded-lg border border-[#4A3931] font-semibold text-left transition">
+            🔀 Test Gộp Phòng Solo
+          </button>
+          <button onclick="simulateProtectedUpload('bomb'); document.body.classList.add('show-dev-specs');" class="bg-[#2D221D] hover:bg-red-800 p-2 rounded-lg border border-[#4A3931] font-semibold text-left transition">
+            💣 Test Ảnh Bomb &gt;16MP
+          </button>
+          <button onclick="simulateProtectedUpload('quota'); document.body.classList.add('show-dev-specs');" class="bg-[#2D221D] hover:bg-amber-800 p-2 rounded-lg border border-[#4A3931] font-semibold text-left transition">
+            🚫 Test Vượt Quota 25MB
+          </button>
+          <button onclick="generateGeminiAnonymizedScript(true)" class="bg-[#2D221D] hover:bg-brand-terracotta p-2 rounded-lg border border-[#4A3931] font-semibold text-left transition">
+            🤖 Test Gemini Lỗi 429
+          </button>
+          <button onclick="openRoomSecurityModal()" class="bg-[#2D221D] hover:bg-brand-terracotta p-2 rounded-lg border border-[#4A3931] font-semibold text-left transition">
+            🔑 Test Rotate Key &amp; Xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 1: QUẢN LÝ PHÒNG, RECOVERY KEY ROTATION & SOFT-DELETE 14 NGÀY
+       ===================================================================== -->
+  <div id="roomSecurityModal" class="fixed inset-0 z-50 hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-dashed border-[#CBB292] pb-3">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-brand-terracotta text-white">Phase 0a & 0b • Zero-Auth Session</span>
+          <h3 class="font-serif font-extrabold text-lg text-paper-ink mt-1">Quản Lý Phòng Đôi & Khóa Khôi Phục</h3>
+        </div>
+        <button onclick="closeModal('roomSecurityModal')" class="w-8 h-8 rounded-full bg-[#E5D1B8] font-bold">✕</button>
+      </div>
+
+      <!-- Mã mời ngắn 8 ký tự -->
+      <div class="bg-[#FFFDF9] border border-[#CBB292] rounded-xl p-3 space-y-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-paper-muted">Mã mời ghép đôi (Băm SHA-256 trong DB):</span>
+          <span class="text-[11px] text-brand-olive font-bold">Tối đa 2/2 thành viên</span>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <code id="shortInviteCodeText" class="font-mono font-extrabold text-base text-brand-terracotta bg-[#FAF4E8] px-3 py-1.5 rounded border border-[#D8CBB8] flex-1">DM-X7K9-P2M4</code>
+          <button onclick="copyTextWithToast(document.getElementById('shortInviteCodeText').innerText, 'Đã sao chép mã mời phòng!')" class="bg-brand-terracotta text-white text-xs font-bold px-3 py-2 rounded-lg">
+            📋 Copy mã
+          </button>
+        </div>
+      </div>
+
+      <!-- Khóa Khôi Phục (Recovery Key Rotation) -->
+      <div class="bg-[#FFFDF9] border-2 border-brand-coral rounded-xl p-3.5 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-extrabold text-paper-ink">🔑 Khóa Khôi Phục (`Recovery Key` Base62):</span>
+          <span class="text-[10px] bg-[#F9EFC7] px-2 py-0.5 rounded font-bold">Chỉ lưu SHA-256 Hash</span>
+        </div>
+        <p class="text-[11px] text-paper-muted">Khi dùng khóa này đăng nhập trên thiết bị mới, hệ thống bắt buộc <strong>Xoay Key (Rotate Key)</strong> ngay lập tức để vô hiệu hóa khóa cũ.</p>
+        <div class="bg-[#231A16] text-amber-300 font-mono text-xs p-2.5 rounded-lg break-all" id="recoveryKeyDisplay">
+          dm_rec_k9X2mQpL8vRt5wNz4yB1jFa3Sd6eHg0c
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+          <button onclick="rotateRecoveryKeyNow()" class="flex-1 bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2 px-3 rounded-lg transition">
+            🔄 Test Phục Hồi & Xoay Key Mới (Rotate Key)
+          </button>
+          <button onclick="copyTextWithToast(document.getElementById('recoveryKeyDisplay').innerText, 'Đã lưu Recovery Key!')" class="bg-[#EFE5D4] text-paper-ink font-bold text-xs py-2 px-3 rounded-lg">
+            📋 Lưu vào Notes
+          </button>
+        </div>
+      </div>
+
+      <!-- Xuất file .zip & Giải tán phòng 14 ngày -->
+      <div class="pt-2 border-t border-dashed border-[#CBB292] flex flex-wrap items-center justify-between gap-2">
+        <button onclick="downloadRoomArchiveZip()" class="bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs px-3.5 py-2 rounded-xl">
+          📦 Tải toàn bộ Kỷ niệm (.zip)
+        </button>
+        <button onclick="triggerSoftDeleteRoom()" class="bg-red-100 hover:bg-red-200 text-red-800 font-bold text-xs px-3.5 py-2 rounded-xl border border-red-300">
+          🗑️ Yêu cầu giải tán phòng (Soft-Delete 14 ngày)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 2: THIỆP MỜI PHONG BÌ SÁP & SCOPED RSVP (KHÔNG CẤP SESSION PHÒNG)
+       ===================================================================== -->
+  <div id="envelopeRsvpModal" class="fixed inset-0 z-50 hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#8F2D19] text-white">Scoped Invite Token • Hạn 72h</span>
+        <button onclick="closeModal('envelopeRsvpModal')" class="w-8 h-8 rounded-full bg-[#E5D1B8] font-bold">✕</button>
+      </div>
+
+      <!-- Phong bì thư đóng dấu sáp đỏ mận -->
+      <div class="bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-4 text-center relative shadow-inner space-y-2">
+        <div class="w-12 h-12 rounded-full bg-[#8F2D19] text-amber-200 border-2 border-amber-300 mx-auto flex items-center justify-center font-serif font-extrabold text-lg shadow-md">
+          💌
+        </div>
+        <h3 class="font-serif font-extrabold text-lg text-paper-ink">Thiệp Mời Lịch Trình Hẹn Hò</h3>
+        <p class="text-xs text-paper-muted">Chế độ Khách xem thiệp (RSVP): Chỉ xem tóm tắt chặng, <strong>tuyệt đối không cấp Session phòng</strong> và không xem được kho ảnh riêng tư.</p>
+
+        <div class="bg-[#FAF4E8] border border-dashed border-[#CBB292] rounded-xl p-3 text-left text-xs space-y-1">
+          <p class="font-bold text-paper-ink">📅 CN, 01/11 • Ngắm hoàng hôn Hồ Tây & Cầu Long Biên</p>
+          <p class="text-paper-muted">16:30 Serein Café ➔ 17:35 Chụp Giờ Vàng ➔ 18:30 Dạo Hồ Tây</p>
+        </div>
+
+        <input id="rsvpResponderName" type="text" value="Người thương 💕" class="w-full text-xs bg-[#FAF4E8] border border-[#CBB292] rounded-lg px-3 py-2 font-semibold" placeholder="Tên của bạn..." />
+        <input id="rsvpChangeNote" type="text" class="w-full text-xs bg-[#FAF4E8] border border-[#CBB292] rounded-lg px-3 py-2" placeholder="Ghi chú thêm (VD: Đón mình lúc 16:15 nhé)..." />
+
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button onclick="submitGuestRsvp('confirmed')" class="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2.5 rounded-xl shadow">
+            ❤️ Chốt luôn!
+          </button>
+          <button onclick="submitGuestRsvp('change_requested')" class="bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs py-2.5 rounded-xl">
+            ✍️ Xin đổi giờ xíu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 3: XUẤT POSTER STORY (/p/share/[shareToken]) & THU HỒI LINK
+       ===================================================================== -->
+  <div id="posterShareModal" class="fixed inset-0 z-50 hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-brand-airmailBlue text-white">GET /p/share/[shareToken]</span>
+        <button onclick="closeModal('posterShareModal')" class="w-8 h-8 rounded-full bg-[#E5D1B8] font-bold">✕</button>
+      </div>
+
+      <!-- Khung xem trước Poster hoặc Trang đã thu hồi -->
+      <div id="posterPreviewCard" class="kraft-texture border-2 border-paper-ink rounded-2xl p-4 space-y-3 shadow-lg">
+        <div class="bg-[#FFFDF9] p-3.5 rounded-xl border border-[#CBB292] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-hand text-base font-bold text-brand-terracotta">DateMate Scrapbook Story</span>
+            <span class="text-[10px] font-mono bg-[#EFE5D4] px-2 py-0.5 rounded">no-referrer • noindex</span>
+          </div>
+          <h4 class="font-serif font-extrabold text-base text-paper-ink">Chiều Thu Hà Nội & Hoàng Hôn Hồ Tây</h4>
+          <div id="posterStopsDetails" class="text-xs text-paper-muted space-y-1 border-l-2 border-dashed border-brand-terracotta pl-2.5">
+            <p>☕ 16:30 — Serein Café Cầu Long Biên (Hoàn Kiếm)</p>
+            <p>📸 17:35 — Săn Giờ Vàng Bãi đá sông Hồng (Tây Hồ)</p>
+            <p>🌅 18:35 — Dạo bộ đường Thanh Niên</p>
+          </div>
+          <div class="pt-2 border-t border-dashed border-[#D8CBB8] flex items-center justify-between text-[11px]">
+            <span>🔗 Link tĩnh không chứa <code>roomId</code></span>
+            <span class="font-mono font-bold text-brand-terracotta">/p/share/sh_9xK2mP8q</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Công tắc Privacy & Nút Thu hồi link -->
+      <div class="space-y-2.5">
+        <label class="flex items-center gap-2 text-xs font-bold text-paper-ink cursor-pointer">
+          <input type="checkbox" id="posterPrivacyToggle" onchange="togglePosterPrivacy(this.checked)" class="accent-brand-terracotta" />
+          <span>🕵️ Ẩn mốc giờ và địa điểm chính xác trên ảnh Poster</span>
+        </label>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="showToast('📸 Đã kết xuất ảnh Poster .png (Font tiếng Việt nhúng Base64 sắc nét)!')" class="bg-brand-terracotta text-white font-bold text-xs py-2.5 rounded-xl">
+            📥 Tải ảnh Story (.png)
+          </button>
+          <button onclick="revokePosterShareLink()" class="bg-red-100 hover:bg-red-200 text-red-800 font-bold text-xs py-2.5 rounded-xl border border-red-300">
+            🚫 Thu hồi link chia sẻ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 4: CẢNH BÁO XUNG ĐỘT PHÒNG SOLO CÓ DỮ LIỆU KHI BẤM LINK MỜI
+       ===================================================================== -->
+  <div id="soloConflictModal" class="fixed inset-0 z-50 hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-brand-mustard text-white">Mục 2.5 • Chống mất dữ liệu phòng Solo</span>
+      <h3 class="font-serif font-extrabold text-lg text-paper-ink">Bạn đang có dữ liệu tại phòng cá nhân hiện tại!</h3>
+      <p class="text-xs text-paper-muted leading-relaxed">
+        Phòng solo của bạn đang có <strong>1 lịch trình</strong> và <strong>2 ghi chú kỷ niệm</strong>. Trước khi chuyển sang phòng đôi mới cùng người ấy, bạn muốn xử lý thế nào?
+      </p>
+      <div class="space-y-2">
+        <button onclick="closeModal('soloConflictModal'); showToast('✅ Đã hợp nhất lịch trình từ phòng Solo vào phòng Đôi mới!');" class="w-full bg-brand-terracotta text-white font-bold text-xs py-2.5 rounded-xl">
+          🔄 Hợp nhất lịch trình vào phòng đôi mới
+        </button>
+        <button onclick="downloadRoomArchiveZip(); closeModal('soloConflictModal');" class="w-full bg-[#EFE5D4] text-paper-ink font-bold text-xs py-2.5 rounded-xl">
+          📦 Tải file sao lưu .zip trước khi đổi phòng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 5: CẨM NANG ĐỊA ĐIỂM CHI TIẾT & VIDEO HOTSPOTS MODAL & VÒNG QUAY
+       ===================================================================== -->
+  <div id="guideModal" class="fixed inset-0 z-50 hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto" id="guideModalContent"></div>
+  </div>
+
+  <div id="videoModal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#1F1916] border-2 border-[#CBB292] rounded-2xl max-w-lg w-full p-4 text-white space-y-3">
+      <div class="flex items-center justify-between">
+        <span id="videoModalTitle" class="font-serif font-bold text-sm text-amber-200">Video Review & Pin Tags</span>
+        <button onclick="closeModal('videoModal')" class="w-7 h-7 rounded-full bg-white/15 text-xs">✕</button>
+      </div>
+      <div class="relative h-56 rounded-xl overflow-hidden bg-black flex flex-col justify-between p-3" style="background-image: url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80'); background-size: cover;">
+        <!-- Pin Tag lơ lửng trên Video -->
+        <div class="bg-[#FFFDF9]/95 text-paper-ink p-2.5 rounded-xl shadow-lg flex items-center justify-between gap-2 max-w-xs border border-brand-terracotta">
+          <div class="text-xs">
+            <span class="text-[10px] font-extrabold text-brand-terracotta block">📍 PIN TAG @ 00:42</span>
+            <strong id="videoPinSpotName">Serein Café Cầu Long Biên</strong>
+          </div>
+          <button onclick="addVideoPinSpotToSchedule()" class="bg-brand-terracotta text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shrink-0">
+            + Vào lịch
+          </button>
+        </div>
+        <div class="bg-black/70 px-3 py-1.5 rounded-lg text-[11px] text-amber-200">
+          💡 Gợi ý cùng quận: Hẻm Từ Hoa Hồ Tây • Phố bích họa Phùng Hưng
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="wheelModal" class="fixed inset-0 z-50 hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-sm w-full p-5 text-center space-y-3">
+      <h3 class="font-serif font-extrabold text-lg text-paper-ink">🎯 Rút Quẻ Hẹn Hò Hôm Nay</h3>
+      <div id="wheelResultBox" class="bg-[#FFFDF9] border-2 border-dashed border-brand-terracotta rounded-xl p-4 font-serif font-bold text-base text-brand-terracotta">
+        Bấm nút bên dưới để chọn ngẫu nhiên!
+      </div>
+      <div class="flex gap-2">
+        <button onclick="spinRandomPlace()" class="flex-1 bg-brand-terracotta text-white font-bold text-xs py-2.5 rounded-xl">🎲 Quay ngay!</button>
+        <button onclick="closeModal('wheelModal')" class="bg-[#E5D1B8] text-paper-ink font-bold text-xs px-4 py-2.5 rounded-xl">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastBox" class="fixed bottom-5 right-5 z-50 hidden bg-[#231A16] text-[#FFFDF9] border-2 border-brand-coral px-4 py-2.5 rounded-xl shadow-2xl text-xs font-bold"></div>
+
+  <!-- =====================================================================
+       JAVASCRIPT LOGIC (ĐẦY ĐỦ 6 PHASE TRONG MASTER PLAN)
+       ===================================================================== -->
+  <script>
+    // 1. DỮ LIỆU ĐỊA ĐIỂM & TAG SỞ THÍCH
+    const hobbyTagsCatalog = [
+      { id: 'sunset', label: '🌅 Săn hoàng hôn' },
+      { id: 'photo', label: '📸 Chụp ảnh thơ mộng' },
+      { id: 'indoor', label: '❄️ Indoor mát mẻ' },
+      { id: 'cafe', label: '☕ Cà phê view đẹp' },
+      { id: 'art', label: '🎨 Nghệ thuật & Workshop' },
+      { id: 'quiet', label: '🤫 Yên tĩnh tâm sự' },
+      { id: 'budget', label: '💸 Hạt dẻ (<100k)' },
+      { id: 'active', label: '🎳 Vận động vui nhộn' }
+    ];
+
+    const placesData = [
+      {
+        id: 'bai-da-song-hong',
+        title: 'Bãi đá sông Hồng',
+        district: 'Tây Hồ',
+        category: 'outdoor',
+        budgetTier: 'mid',
+        hobbies: ['sunset', 'photo', 'quiet'],
+        bestTime: '16:24 - 17:24',
+        price: '100k - 150k',
+        tags: ['#Chụp ảnh', '#Picnic', '#Hoàng hôn'],
+        image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80',
+        description: 'Đồng cỏ lau trắng muốt ven sông lộng gió cực hợp trải thảm picnic đôi ngắm mặt trời lặn.',
+        photoSpots: ['Cánh đồng cỏ lau ngược nắng lúc 16:45', 'Tiệm cà phê gỗ du mục sát bờ sông'],
+        poses: 'Chạy nắm tay nhau giữa đồng cỏ lau hoặc tựa vai nhau trên thảm picnic.',
+        outfit: 'Váy maxi kem/trắng cho nữ, sơ mi linen be cho nam.'
+      },
+      {
+        id: 'cafe-long-bien',
+        title: 'Serein Café Cầu Long Biên',
+        district: 'Hoàn Kiếm',
+        category: 'outdoor',
+        budgetTier: 'free',
+        hobbies: ['sunset', 'cafe', 'photo', 'budget'],
+        bestTime: '16:15 - 17:45',
+        price: '60k - 110k',
+        tags: ['#Hoàng hôn', '#Cà phê cổ', '#Tàu lửa'],
+        image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
+        description: 'Ban công biệt thự Pháp cổ nhìn thẳng ra cầu Long Biên lịch sử và đoàn tàu chạy qua lúc chiều tà.',
+        photoSpots: ['Ban công tầng 4 lấy trọn nhịp cầu Long Biên', 'Góc nâng ly trà khi tàu chạy qua lúc 17:10'],
+        poses: 'Nâng tách trà chiều chạm nhẹ vào nhau.',
+        outfit: 'Tông màu trầm ấm: Đỏ rượu, cam đất hoặc kem sữa.'
+      },
+      {
+        id: 'royal-city',
+        title: 'Bowling & Trượt Băng Royal City',
+        district: 'Thanh Xuân',
+        category: 'indoor',
+        budgetTier: 'mid',
+        hobbies: ['indoor', 'active', 'photo'],
+        bestTime: 'Mọi khung giờ (Plan B)',
+        price: '100k - 180k',
+        tags: ['#Indoor', '#Trượt băng', '#Vui chơi'],
+        image: 'https://images.unsplash.com/photo-1545232972-90766021656f?auto=format&fit=crop&w=800&q=80',
+        description: 'Tổ hợp ném bowling và sân trượt băng trong nhà mát lạnh bất chấp ngày mưa hay nắng gắt.',
+        photoSpots: ['Đường băng Bowling neon', 'Khoảnh khắc nắm tay giữ thăng bằng trên sân băng'],
+        poses: 'Buộc dây giày trượt cho nhau hoặc đập tay ăn mừng cú Strike.',
+        outfit: 'Áo hoodie/sweater năng động kèm quần jeans.'
+      },
+      {
+        id: 'bao-tang-my-thuat',
+        title: 'Bảo Tàng Mỹ Thuật Việt Nam',
+        district: 'Ba Đình',
+        category: 'art',
+        budgetTier: 'free',
+        hobbies: ['art', 'photo', 'indoor', 'quiet', 'budget'],
+        bestTime: '14:00 - 17:00',
+        price: '40k/vé',
+        tags: ['#Bảo tàng', '#Indoor', '#Lãng mạn'],
+        image: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=800&q=80',
+        description: 'Kiến trúc Pháp cổ Đông Dương với hành lang gỗ lim và cửa sổ chớp xanh cực tình.',
+        photoSpots: ['Khung cửa sổ chớp xanh nhìn ra sân lá vàng', 'Cầu thang gỗ xoắn tầng 2'],
+        poses: 'Đứng cạnh nhau cùng ngắm một bức tranh sơn mài, chụp từ phía sau.',
+        outfit: 'Phong cách cổ điển Academia: Gile len, sơ mi, chân váy dài.'
+      },
+      {
+        id: 'workshop-gom',
+        title: 'Workshop Làm Gốm Bát Tràng Thu Nhỏ',
+        district: 'Tây Hồ',
+        category: 'art',
+        budgetTier: 'mid',
+        hobbies: ['art', 'indoor', 'quiet', 'photo'],
+        bestTime: '09:00 - 18:00',
+        price: '150k - 220k',
+        tags: ['#Làm gốm', '#Thủ công', '#Indoor'],
+        image: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=800&q=80',
+        description: 'Cùng nhau tự tay chuốt gốm, nặn cốc đôi và khắc tên kỷ niệm mang về nhà.',
+        photoSpots: ['Bàn xoay gốm ngập nắng bên khung cửa gỗ'],
+        poses: 'Đeo tạp dề đôi, cùng đặt tay lên bàn xoay gốm.',
+        outfit: 'Trang phục linen mộc mạc, thoải mái.'
+      },
+      {
+        id: 'lotte-sky',
+        title: 'Đài Quan Sát Lotte Sky 65',
+        district: 'Ba Đình',
+        category: 'indoor',
+        budgetTier: 'high',
+        hobbies: ['indoor', 'sunset', 'photo'],
+        bestTime: '17:00 - 19:30',
+        price: '180k - 230k',
+        tags: ['#Indoor', '#View tầng 65', '#Giờ xanh'],
+        image: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=800&q=80',
+        description: 'Ngắm trọn Hà Nội lên đèn từ tầng 65 trên sàn kính trong suốt Sky Walk.',
+        photoSpots: ['Sàn kính Sky Walk lúc thành phố lên đèn Blue Hour'],
+        poses: 'Chụp bóng ngược sáng trước tấm kính lớn nhìn xuống Hồ Tây.',
+        outfit: 'Lịch sự, sang trọng cho buổi tối hẹn hò.'
+      },
+      {
+        id: 'complex-01',
+        title: 'Tổ Hợp Sáng Tạo Complex 01',
+        district: 'Đống Đa',
+        category: 'art',
+        budgetTier: 'free',
+        hobbies: ['art', 'cafe', 'photo', 'budget'],
+        bestTime: '15:00 - 18:30',
+        price: '50k - 100k',
+        tags: ['#Photobooth', '#Cà phê', '#Workshop'],
+        image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80',
+        description: 'Nhà máy in cũ cải tạo thành tổ hợp photobooth Hàn Quốc, tiệm sách và làm nến thơm.',
+        photoSpots: ['Bức tường gạch đỏ cổ điển', 'Buồng chụp ảnh lấy ngay Photobooth'],
+        poses: 'Khoe dải ảnh 4 khung vừa chụp trước cửa tiệm.',
+        outfit: 'Streetwear trẻ trung năng động.'
+      },
+      {
+        id: 'hem-tu-hoa',
+        title: 'Hẻm Từ Hoa & Trà Chiều Ven Hồ Tây',
+        district: 'Tây Hồ',
+        category: 'outdoor',
+        budgetTier: 'free',
+        hobbies: ['sunset', 'cafe', 'quiet', 'photo', 'budget'],
+        bestTime: '16:30 - 18:15',
+        price: '45k - 85k',
+        tags: ['#Hồ Tây', '#Yên tĩnh', '#Hoàng hôn'],
+        image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
+        description: 'Con hẻm nhỏ dẫn thẳng ra mặt nước Hồ Tây bình yên để nhâm nhi trà cam quế.',
+        photoSpots: ['Con dốc nhỏ nhìn thẳng ra mặt hồ lấp lánh nắng chiều'],
+        poses: 'Ngồi tựa vai nhau nhìn ra mặt hồ.',
+        outfit: 'Cardigan mỏng màu pastel dịu mắt.'
+      }
+    ];
+
+    // 2. TRẠNG THÁI HỆ THỐNG (TIMELINE, NOTICES, SWIPE, GAMIFICATION, CANVAS, QUOTA)
+    let planVersion = 3;
+    let isRushHour = false;
+    let isRainPlanB = false;
+
+    let timelineStops = [
+      { id: 's1', name: 'Serein Café Cầu Long Biên', outdoorName: 'Serein Café Cầu Long Biên', indoorName: 'Trà chiều Bảo Tàng Mỹ Thuật (#Indoor)', startMin: 990, duration: 50, distanceKm: 3.2, pinned: false },
+      { id: 's2', name: 'Chụp Giờ Vàng Bãi đá sông Hồng', outdoorName: 'Chụp Giờ Vàng Bãi đá sông Hồng', indoorName: 'Workshop Làm Gốm Bát Tràng (#Indoor)', startMin: 1055, duration: 55, distanceKm: 4.5, pinned: false },
+      { id: 's3', name: 'Dạo bộ & Kem Hồ Tây', outdoorName: 'Dạo bộ & Kem Hồ Tây', indoorName: 'Đài Quan Sát Lotte Sky 65 (#Indoor)', startMin: 1130, duration: 60, distanceKm: 2.8, pinned: false }
+    ];
+
+    let checklistData = [
+      { id: 1, text: 'Sạc đầy pin máy ảnh & điện thoại', done: true },
+      { id: 2, text: 'Đặt trước bàn ban công tầng 4 quán cà phê', done: true },
+      { id: 3, text: 'Mang theo áo khoác cardigan mỏng', done: false },
+      { id: 4, text: 'Chuẩn bị một bó hoa nhỏ bất ngờ', done: false }
+    ];
+
+    let roomNotices = [
+      { id: 'n1', type: 'new_match', title: '💞 Match mới: Bãi đá sông Hồng!', content: 'Cả hai bạn đều đã thả tim địa điểm này.', read: false, time: '2 phút trước' },
+      { id: 'n2', type: 'plan_rsvp', title: '💌 Phản hồi thiệp mời RSVP', content: 'Người thương đã bấm "Chốt luôn! ❤️" cho lịch hẹn Chủ Nhật.', read: false, time: '15 phút trước' },
+      { id: 'n3', type: 'secret_note_unlocked', title: '🔓 Hộp thư tình tại Serein Café', content: 'Có 1 bức thư tình bí mật đang chờ bạn Check-in để mở khóa.', read: false, time: '1 giờ trước' }
+    ];
+
+    // Tìm kiếm sở thích
+    let searchQuery = '';
+    let selectedHobbyTags = [];
+    let selectedDistrict = 'all';
+    let selectedBudget = 'all';
+    let currentCategoryFilter = 'all';
+
+    // Swipe-to-Match
+    let swipeRoomMode = 'couple';
+    let currentSwipeIndex = 0;
+    let etagVersion = 12;
+    let matchedPlaces = [
+      { title: 'Bãi đá sông Hồng', district: 'Tây Hồ', time: 'Đã Match 2/2 ❤️' },
+      { title: 'Serein Café Cầu Long Biên', district: 'Hoàn Kiếm', time: 'Đã Match 2/2 ❤️' }
+    ];
+
+    // Gamification: Vé mù, Bản đồ cào 7 quận, Thư tình
+    let blindDateCurrentStep = 1;
+    const blindDateSteps = [
+      { step: 1, title: 'Chặng 1: Cà phê Tầng Thượng Phố Cổ', hint: 'Gợi ý: Nơi ngắm đoàn tàu lửa chạy qua cầu trăm tuổi', place: 'Serein Café Cầu Long Biên (Hoàn Kiếm)' },
+      { step: 2, title: 'Chặng 2: Tọa độ Săn Hoàng Hôn Ven Sông', hint: 'Gợi ý: Cánh đồng cỏ lau trắng muốt quận Tây Hồ', place: 'Bãi đá sông Hồng (Tây Hồ)' },
+      { step: 3, title: 'Chặng 3: Bữa Tối Ánh Nến Trên Cao', hint: 'Gợi ý: Tầng 65 nhìn toàn cảnh Hà Nội lên đèn', place: 'Đài Quan Sát Lotte Sky 65 (Ba Đình)' }
+    ];
+
+    let hanoiDistrictsScratch = [
+      { id: 'tay-ho', name: 'Quận Tây Hồ', count: '6/8 quán', scratched: true },
+      { id: 'hoan-kiem', name: 'Quận Hoàn Kiếm', count: '5/7 quán', scratched: true },
+      { id: 'ba-dinh', name: 'Quận Ba Đình', count: '4/6 quán', scratched: true },
+      { id: 'dong-da', name: 'Quận Đống Đa', count: '3/6 quán', scratched: false },
+      { id: 'thanh-xuan', name: 'Quận Thanh Xuân', count: '2/5 quán', scratched: false },
+      { id: 'hai-ba-trung', name: 'Quận Hai Bà Trưng', count: '2/5 quán', scratched: false },
+      { id: 'cau-giay', name: 'Quận Cầu Giấy', count: '1/4 quán', scratched: false }
+    ];
+
+    let secretNotesData = [
+      { id: 'sn1', place: 'Serein Café Cầu Long Biên', hint: 'Nhìn xuống nhịp cầu sắt bên trái bàn số 4...', content: 'Cảm ơn cậu vì đã luôn nắm tay tớ đi qua những ngày nắng đẹp nhất Hà Nội! 💕', unlocked: false },
+      { id: 'sn2', place: 'Bãi đá sông Hồng', hint: 'Mở khi đứng giữa đồng cỏ lau lúc 17:00', content: 'Chúc mừng kỷ niệm 100 ngày tụi mình bên nhau!', unlocked: true }
+    ];
+
+    // Virtual Video Canvas & Upload Quota
+    let storageUsedMB = 8.4;
+    let photoCount = 4;
+    let hasDecree13Consent = true;
+    let isCanvasPlaying = false;
+    let isReducedMotion = false;
+    let currentCanvasSlide = 0;
+    let canvasSlideProgress = 0;
+    let audioCtx = null;
+    let beatInterval = null;
+
+    let memoryPhotosList = [
+      { url: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=900&q=80', caption: 'Hoàng hôn Cầu Long Biên • 16:45' },
+      { url: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=900&q=80', caption: 'Nắm tay dạo Bãi đá sông Hồng • 17:20' },
+      { url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80', caption: 'Trà chiều phố cổ Hà Nội • 18:00' },
+      { url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80', caption: 'Đêm gió mát ven Hồ Tây • 19:30' }
+    ];
+    let loadedCanvasImages = [];
+
+    // =====================================================================
+    // KHỞI CHẠY ỨNG DỤNG
+    // =====================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      renderTimelineStops();
+      renderChecklist();
+      renderNoticesList();
+      renderHobbyTagChips();
+      renderPolaroidCards();
+      renderDrawerInstantResults();
+      renderSwipeCard();
+      renderMatchedPlacesList();
+      renderBlindDateSteps();
+      renderScratchMap();
+      renderSecretNotes();
+      initVirtualVideoCanvas();
+      renderUploadedPhotosMiniGrid();
+      initScrollspy();
+
+      // Phím tắt '/' mở nhanh ô tìm kiếm sở thích
+      window.addEventListener('keydown', (e) => {
+        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (e.key === '/' && tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
+          e.preventDefault();
+          toggleNavbarSearchDrawer(true);
+        }
+      });
+    });
+
+    // =====================================================================
+    // PHẦN 1: TIMELINE SUNCALC, CÔNG THỨC HAVERSINE HÀ NỘI, AUTO-RIPPLE & 409
+    // =====================================================================
+    function formatMinutesToHHMM(totalMin) {
+      const normalized = ((totalMin % 1440) + 1440) % 1440;
+      const h = Math.floor(normalized / 60);
+      const m = normalized % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    function calculateHanoiTravelMinutes(distanceKm) {
+      const speedKmh = isRushHour ? 15 : 25;
+      const travel = Math.round(((distanceKm * 1.35) / speedKmh) * 60) + 10;
+      return travel;
+    }
+
+    function renderTimelineStops() {
+      const container = document.getElementById('timelineStopsContainer');
+      if (!container) return;
+
+      container.innerHTML = timelineStops.map((stop, idx) => {
+        const travelMin = calculateHanoiTravelMinutes(stop.distanceKm);
+        const startStr = formatMinutesToHHMM(stop.startMin);
+        const endStr = formatMinutesToHHMM(stop.startMin + stop.duration);
+
+        return `
+          <div class="bg-[#FAF4E8] border ${stop.pinned ? 'border-brand-terracotta' : 'border-[#E2D5C1]'} rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition">
+            <div class="space-y-0.5">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="bg-brand-terracotta text-white text-[11px] font-extrabold px-2 py-0.5 rounded-md">${startStr} - ${endStr}</span>
+                <span class="font-bold text-xs sm:text-sm text-paper-ink">${stop.name}</span>
+                ${stop.pinned ? '<span class="text-[10px] bg-[#F9EFC7] border border-[#D5BE7E] px-1.5 py-0.2 rounded font-bold text-brand-terracotta">📌 Giữ cố định giờ</span>' : ''}
+              </div>
+              <p class="text-[11px] text-paper-muted">
+                🛵 Thời gian di chuyển & gửi xe: ~<strong>${travelMin} phút</strong> (${stop.distanceKm} km)
+              </p>
+            </div>
+
+            <div class="flex items-center gap-1 shrink-0">
+              <button onclick="rippleShiftStop(${idx}, -15)" class="bg-[#FFFDF9] hover:bg-brand-peach border border-[#CBB292] text-paper-ink font-bold text-xs px-2.5 py-1 rounded-lg cursor-pointer" title="Lùi 15 phút">
+                -15p
+              </button>
+              <button onclick="rippleShiftStop(${idx}, 15)" class="bg-[#FFFDF9] hover:bg-brand-peach border border-[#CBB292] text-paper-ink font-bold text-xs px-2.5 py-1 rounded-lg cursor-pointer" title="Tăng thêm 15 phút">
+                +15p
+              </button>
+              <button onclick="togglePinStopTime(${idx})" class="px-2 py-1 rounded-lg text-xs font-bold cursor-pointer ${stop.pinned ? 'bg-brand-terracotta text-white' : 'bg-[#EFE5D4] text-paper-ink'}" title="Giữ cố định giờ chặng này">
+                📌
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const verBadge = document.getElementById('planVersionBadge');
+      if (verBadge) verBadge.textContent = planVersion;
+    }
+
+    function rippleShiftStop(index, deltaMinutes) {
+      timelineStops[index].startMin += deltaMinutes;
+      for (let i = index + 1; i < timelineStops.length; i++) {
+        if (!timelineStops[i].pinned) {
+          timelineStops[i].startMin += deltaMinutes;
+        }
+      }
+      planVersion++;
+      renderTimelineStops();
+      showToast(`⏱️ Đã dời lịch ${deltaMinutes > 0 ? '+' : ''}${deltaMinutes} phút và tự động khớp lại các chặng sau!`);
+    }
+
+    function togglePinStopTime(index) {
+      timelineStops[index].pinned = !timelineStops[index].pinned;
+      renderTimelineStops();
+      showToast(timelineStops[index].pinned ? '📌 Đã khóa cố định giờ chặng này!' : '🔓 Đã mở khóa giờ chặng này.');
+    }
+
+    function toggleRushHourMode() {
+      isRushHour = !isRushHour;
+      const btn = document.getElementById('rushHourBtn');
+      if (btn) {
+        btn.textContent = isRushHour
+          ? '🚦 Giờ tan tầm (15km/h)'
+          : '🛵 Đi giờ thường (25km/h)';
+        btn.classList.toggle('!bg-brand-peach', isRushHour);
+      }
+      renderTimelineStops();
+      showToast(isRushHour ? '🚦 Đã tính trừ hao thêm thời gian kẹt xe giờ tan tầm!' : '🛵 Đã chuyển về thời gian di chuyển giờ thông thoáng.');
+    }
+
+    function toggleRainPlanB() {
+      isRainPlanB = !isRainPlanB;
+      timelineStops.forEach(s => {
+        s.name = isRainPlanB ? s.indoorName : s.outdoorName;
+      });
+      planVersion++;
+      renderTimelineStops();
+
+      const tempEl = document.getElementById('weatherTempText');
+      const descEl = document.getElementById('weatherDescText');
+      const iconEl = document.getElementById('weatherEmojiIcon');
+      const adviceEl = document.getElementById('weatherAdviceBox');
+      const inlineBtn = document.getElementById('inlineRainPlanBBtn');
+
+      if (isRainPlanB) {
+        if (tempEl) tempEl.textContent = '24°C';
+        if (descEl) descEl.innerHTML = 'Có mưa rào • Khả năng mưa <strong class="text-brand-terracotta">85%</strong>';
+        if (iconEl) iconEl.textContent = '🌧️';
+        if (adviceEl) adviceEl.innerHTML = '☔ <strong>Trời báo mưa:</strong> DateMate đã tự động đổi lịch hẹn sang các địa điểm <strong>Trong nhà ấm áp</strong> để hai bạn yên tâm đi chơi!';
+        if (inlineBtn) inlineBtn.textContent = '☀️ Quay lại lịch trình Ngoài trời';
+        showToast('☔ Đã chuyển toàn bộ điểm hẹn sang phương án Trong nhà (Phòng mưa)!');
+      } else {
+        if (tempEl) tempEl.textContent = '29°C';
+        if (descEl) descEl.innerHTML = 'Nắng thu dịu • Khả năng mưa <strong class="text-brand-terracotta">4%</strong>';
+        if (iconEl) iconEl.textContent = '🌤️';
+        if (adviceEl) adviceEl.innerHTML = '💡 <strong>Gợi ý cho hai bạn:</strong> Hôm nay trời ít mây, gió mát, cực kỳ lý tưởng để ngồi cà phê tầng thượng hoặc dạo ven Hồ Tây lúc 16:30!';
+        if (inlineBtn) inlineBtn.textContent = '☔ Đổi sang quán Trong nhà (Phòng mưa)';
+        showToast('☀️ Đã khôi phục lịch trình ngắm hoàng hôn ngoài trời.');
+      }
+    }
+
+    function autoScheduleBySunCalc() {
+      timelineStops[0].startMin = 975; // 16:15
+      timelineStops[1].startMin = 1005; // 16:45 đúng Giờ Vàng SunCalc
+      timelineStops[2].startMin = 1075; // 17:55
+      planVersion++;
+      renderTimelineStops();
+      showToast('🌅 Đã tự động căn chỉnh lịch trình khớp với khung Giờ Vàng ngắm hoàng hôn (16:24 - 17:24)!');
+    }
+
+    function trigger409ConflictSimulation() {
+      document.getElementById('serverVersionNum').textContent = planVersion + 1;
+      document.getElementById('conflict409Alert').classList.remove('hidden');
+      scrollToSection(null, 'section-home');
+      showToast('🔔 Giả lập: Người thương vừa chỉnh sửa lịch hẹn cùng lúc!');
+    }
+
+    function resolve409Conflict() {
+      planVersion++;
+      document.getElementById('conflict409Alert').classList.add('hidden');
+      renderTimelineStops();
+      showToast(`✅ Đã cập nhật lịch hẹn mới nhất từ người thương!`);
+    }
+
+    // Chuyển đổi Tab trong khu vực Trò Chơi Cặp Đôi để giao diện luôn gọn gàng
+    function switchCoupleGameTab(tabName) {
+      const matchSec = document.getElementById('section-match');
+      const gameSec = document.getElementById('section-gamification');
+      const cardBlind = document.getElementById('gameCard-blind');
+      const cardScratch = document.getElementById('gameCard-scratch');
+      const cardSecret = document.getElementById('gameCard-secret');
+
+      ['swipe', 'blind', 'scratch', 'all'].forEach(t => {
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (btn) {
+          btn.className = t === tabName
+            ? 'px-3.5 py-2 rounded-xl text-xs font-extrabold bg-brand-terracotta text-white shadow-xs transition cursor-pointer'
+            : 'px-3.5 py-2 rounded-xl text-xs font-bold text-paper-ink hover:bg-[#FFFDF9] transition cursor-pointer';
+        }
+      });
+
+      if (tabName === 'swipe') {
+        matchSec.classList.remove('hidden');
+        gameSec.classList.add('hidden');
+      } else if (tabName === 'blind') {
+        matchSec.classList.add('hidden');
+        gameSec.classList.remove('hidden');
+        cardBlind.classList.remove('hidden');
+        cardScratch.classList.remove('hidden');
+        cardSecret.classList.remove('hidden');
+      } else if (tabName === 'scratch') {
+        matchSec.classList.add('hidden');
+        gameSec.classList.remove('hidden');
+        cardBlind.classList.remove('hidden');
+        cardScratch.classList.remove('hidden');
+        cardSecret.classList.remove('hidden');
+      } else {
+        matchSec.classList.remove('hidden');
+        gameSec.classList.remove('hidden');
+      }
+    }
+
+    function toggleQaFloatingPanel() {
+      const panel = document.getElementById('qaFloatingPanel');
+      if (panel) panel.classList.toggle('hidden');
+    }
+
+    function rippleShiftStop(index, deltaMinutes) {
+      timelineStops[index].startMin += deltaMinutes;
+      for (let i = index + 1; i < timelineStops.length; i++) {
+        if (!timelineStops[i].pinned) {
+          timelineStops[i].startMin += deltaMinutes;
+        }
+      }
+      planVersion++;
+      renderTimelineStops();
+      showToast(`⏱️ Auto-Ripple (${deltaMinutes > 0 ? '+' : ''}${deltaMinutes}p): Đã đẩy dây chuyền các chặng sau (version #${planVersion})!`);
+    }
+
+    function togglePinStopTime(index) {
+      timelineStops[index].pinned = !timelineStops[index].pinned;
+      renderTimelineStops();
+      showToast(timelineStops[index].pinned ? '📌 Đã ghim cố định giờ chặng này!' : '🔓 Đã bỏ ghim giờ chặng này.');
+    }
+
+    function toggleRushHourMode() {
+      isRushHour = !isRushHour;
+      const btn = document.getElementById('rushHourBtn');
+      if (btn) {
+        btn.textContent = isRushHour
+          ? '🚦 Cao điểm 17h-19h (15 km/h + 10p gửi xe)'
+          : '🛵 Giờ thường (25 km/h + 10p gửi xe)';
+        btn.classList.toggle('!bg-brand-peach', isRushHour);
+      }
+      renderTimelineStops();
+      showToast(isRushHour ? '🚦 Đã bật công thức Giờ cao điểm Hà Nội (15 km/h)!' : '🛵 Đã chuyển về vận tốc Giờ thường (25 km/h).');
+    }
+
+    function toggleRainPlanB() {
+      isRainPlanB = !isRainPlanB;
+      timelineStops.forEach(s => {
+        s.name = isRainPlanB ? s.indoorName : s.outdoorName;
+      });
+      planVersion++;
+      renderTimelineStops();
+
+      const tempEl = document.getElementById('weatherTempText');
+      const descEl = document.getElementById('weatherDescText');
+      const iconEl = document.getElementById('weatherEmojiIcon');
+      const adviceEl = document.getElementById('weatherAdviceBox');
+      const inlineBtn = document.getElementById('inlineRainPlanBBtn');
+
+      if (isRainPlanB) {
+        if (tempEl) tempEl.textContent = '24°C';
+        if (descEl) descEl.innerHTML = 'Mưa rào rải rác • Mưa <strong class="text-brand-terracotta">85%</strong>';
+        if (iconEl) iconEl.textContent = '🌧️';
+        if (adviceEl) adviceEl.innerHTML = '☔ <strong>Cảnh báo Open-Meteo (Mưa 85%):</strong> Hệ thống đã tự động kích hoạt <strong>Plan B (#Indoor)</strong> để bảo vệ buổi hẹn của hai bạn!';
+        if (inlineBtn) inlineBtn.textContent = '🌧️ Đang bật Plan B (#Indoor chống mưa)';
+        showToast('🌧️ Open-Meteo báo mưa 85%! Đã tự động hoán đổi lịch trình sang Plan B (#Indoor).');
+      } else {
+        if (tempEl) tempEl.textContent = '29°C';
+        if (descEl) descEl.innerHTML = 'Nắng thu dịu • Mưa <strong class="text-brand-terracotta">4%</strong>';
+        if (iconEl) iconEl.textContent = '🌤️';
+        if (adviceEl) adviceEl.innerHTML = '💡 <strong>Gợi ý tự động:</strong> Xác suất mưa thấp (4%), cực hợp săn hoàng hôn ngoài trời ở Cầu Long Biên hoặc Hồ Tây!';
+        if (inlineBtn) inlineBtn.textContent = '☀️ Trời nắng đẹp (Chế độ Outdoor)';
+        showToast('☀️ Đã khôi phục lịch trình ngắm hoàng hôn ngoài trời (Outdoor).');
+      }
+    }
+
+    function autoScheduleBySunCalc() {
+      timelineStops[0].startMin = 975; // 16:15
+      timelineStops[1].startMin = 1005; // 16:45 đúng Giờ Vàng SunCalc
+      timelineStops[2].startMin = 1075; // 17:55
+      planVersion++;
+      renderTimelineStops();
+      showToast('🌅 Đã tự động xếp lịch khớp chuẩn Giờ Vàng SunCalc Hà Nội (16:24 - 17:24)!');
+    }
+
+    function trigger409ConflictSimulation() {
+      document.getElementById('serverVersionNum').textContent = planVersion + 1;
+      document.getElementById('conflict409Alert').classList.remove('hidden');
+      showToast('⚠️ Mô phỏng lỗi 409 CONFLICT: Đối phương vừa cập nhật lịch trình!');
+    }
+
+    function resolve409Conflict() {
+      planVersion++;
+      document.getElementById('conflict409Alert').classList.add('hidden');
+      renderTimelineStops();
+      showToast(`✅ Đã đồng bộ lịch trình lên version #${planVersion} thành công!`);
+    }
+
+    // Checklist & Xuất ICS
+    function toggleChecklistDrawer() {
+      document.getElementById('checklistDrawer').classList.toggle('hidden');
+    }
+
+    function renderChecklist() {
+      const box = document.getElementById('checklistItems');
+      const prog = document.getElementById('checklistProgressText');
+      if (!box) return;
+      const doneCount = checklistData.filter(i => i.done).length;
+      if (prog) prog.textContent = `${doneCount}/${checklistData.length} xong`;
+
+      box.innerHTML = checklistData.map(item => `
+        <label class="flex items-center gap-2 p-2 rounded-lg bg-[#FAF4E8] border border-[#E2D5C1] cursor-pointer text-xs">
+          <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleCheckItem(${item.id})" class="accent-brand-terracotta" />
+          <span class="${item.done ? 'line-through text-paper-muted' : 'font-semibold text-paper-ink'}">${item.text}</span>
+        </label>
+      `).join('');
+    }
+
+    function toggleCheckItem(id) {
+      const item = checklistData.find(i => i.id === id);
+      if (item) item.done = !item.done;
+      renderChecklist();
+    }
+
+    function downloadICSFile() {
+      const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//DateMate Hanoi//Scrapbook Multi-Stop Plan//VI',
+        'BEGIN:VEVENT',
+        'SUMMARY:DateMate: Ngắm hoàng hôn Hồ Tây & Cầu Long Biên',
+        'DESCRIPTION:Lịch trình đa chặng tự động tính theo SunCalc Hà Nội.',
+        'LOCATION:Serein Cafe & Hồ Tây, Hà Nội',
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'datemate-hanoi-plan.ics';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('📅 Đã tải xuống file lịch đa chặng chuẩn RFC 5545 (.ics)!');
+    }
+
+    // =====================================================================
+    // PHẦN 2: TÌM KIẾM SỞ THÍCH & RENDER THẺ POLAROID
+    // =====================================================================
+    function normalizeVN(str) {
+      return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim();
+    }
+
+    function toggleNavbarSearchDrawer(forceState) {
+      const drawer = document.getElementById('navbarSearchDrawer');
+      const input = document.getElementById('navSearchInput');
+      if (!drawer) return;
+      const open = typeof forceState === 'boolean' ? forceState : !drawer.classList.contains('is-open');
+      drawer.classList.toggle('is-open', open);
+      if (open && input) {
+        setTimeout(() => {
+          input.focus();
+          input.classList.remove('input-focus-pulse');
+          void input.offsetWidth;
+          input.classList.add('input-focus-pulse');
+        }, 50);
+      }
+    }
+
+    function scrollToExploreResults() {
+      toggleNavbarSearchDrawer(false);
+      scrollToSection(null, 'section-explore');
+    }
+
+    function renderHobbyTagChips() {
+      const html = hobbyTagsCatalog.map(t => {
+        const active = selectedHobbyTags.includes(t.id);
+        return `<button type="button" onclick="toggleHobbyTag('${t.id}')" class="hobby-tag-chip ${active ? 'active' : ''}">${t.label}</button>`;
+      }).join('');
+      const c1 = document.getElementById('drawerHobbyTagsContainer');
+      const c2 = document.getElementById('inlineHobbyTagsContainer');
+      if (c1) c1.innerHTML = html;
+      if (c2) c2.innerHTML = html;
+    }
+
+    function toggleHobbyTag(tagId) {
+      if (selectedHobbyTags.includes(tagId)) {
+        selectedHobbyTags = selectedHobbyTags.filter(x => x !== tagId);
+      } else {
+        selectedHobbyTags.push(tagId);
+      }
+      renderHobbyTagChips();
+      renderPolaroidCards();
+      renderDrawerInstantResults();
+    }
+
+    function handlePreferenceSearchInput(val, source) {
+      searchQuery = val || '';
+      const navIn = document.getElementById('navSearchInput');
+      const inlIn = document.getElementById('inlineSearchInput');
+      if (source !== 'navbar' && navIn) navIn.value = searchQuery;
+      if (source !== 'inline' && inlIn) inlIn.value = searchQuery;
+      renderPolaroidCards();
+      renderDrawerInstantResults();
+    }
+
+    function handleDistrictFilterChange(val) {
+      selectedDistrict = val;
+      renderPolaroidCards();
+      renderDrawerInstantResults();
+    }
+
+    function handleBudgetFilterChange(val) {
+      selectedBudget = val;
+      renderPolaroidCards();
+      renderDrawerInstantResults();
+    }
+
+    function filterPlaces(cat) {
+      currentCategoryFilter = cat;
+      renderPolaroidCards();
+    }
+
+    function triggerRandomHobbySuggestion() {
+      const samples = ['hoàng hôn', 'làm gốm', 'cà phê cổ', 'trượt băng', 'bảo tàng'];
+      const pick = samples[Math.floor(Math.random() * samples.length)];
+      handlePreferenceSearchInput(pick, 'both');
+      showToast(`🎲 Đang thử gợi ý sở thích: "${pick}"`);
+    }
+
+    function clearAllPreferenceFilters() {
+      searchQuery = '';
+      selectedHobbyTags = [];
+      selectedDistrict = 'all';
+      selectedBudget = 'all';
+      currentCategoryFilter = 'all';
+      handlePreferenceSearchInput('', 'both');
+      renderHobbyTagChips();
+      renderPolaroidCards();
+      renderDrawerInstantResults();
+    }
+
+    function getFilteredPlaces() {
+      const q = normalizeVN(searchQuery);
+      return placesData.filter(p => {
+        if (currentCategoryFilter !== 'all' && p.category !== currentCategoryFilter) return false;
+        if (selectedDistrict !== 'all' && p.district !== selectedDistrict) return false;
+        if (selectedBudget !== 'all' && p.budgetTier !== selectedBudget) return false;
+        if (selectedHobbyTags.length > 0 && !selectedHobbyTags.every(t => p.hobbies.includes(t))) return false;
+        if (q) {
+          const hay = normalizeVN(`${p.title} ${p.district} ${p.description} ${p.tags.join(' ')}`);
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderDrawerInstantResults() {
+      const box = document.getElementById('drawerInstantResults');
+      if (!box) return;
+      const list = getFilteredPlaces().slice(0, 4);
+      box.innerHTML = list.map(p => `
+        <div onclick="openGuideModal('${p.id}')" class="bg-[#FFFDF9] border border-[#D5C5B0] hover:border-brand-terracotta rounded-xl p-2 flex items-center gap-2 cursor-pointer">
+          <img src="${p.image}" class="w-11 h-11 rounded-lg object-cover shrink-0" />
+          <div class="min-w-0 flex-1">
+            <p class="font-bold text-xs text-paper-ink truncate">${p.title}</p>
+            <p class="text-[10px] text-paper-muted">📍 ${p.district} • ${p.price}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderPolaroidCards() {
+      const grid = document.getElementById('polaroidGrid');
+      const countEl = document.getElementById('inlineResultCountText');
+      if (!grid) return;
+      const list = getFilteredPlaces();
+      if (countEl) countEl.innerHTML = `Đang hiển thị <strong class="text-brand-terracotta">${list.length}</strong> / ${placesData.length} tọa độ hẹn hò`;
+
+      if (list.length === 0) {
+        grid.innerHTML = `<div class="col-span-full bg-[#FFFDF9] border-2 border-dashed border-[#CBB292] rounded-2xl p-8 text-center text-xs">Không tìm thấy địa điểm khớp bộ lọc. <button onclick="clearAllPreferenceFilters()" class="text-brand-terracotta font-bold underline">Đặt lại bộ lọc</button></div>`;
+        return;
+      }
+
+      grid.innerHTML = list.map(p => `
+        <article class="polaroid-card flex flex-col justify-between">
+          <div class="washi-tape"></div>
+          <div>
+            <div onclick="openGuideModal('${p.id}')" class="relative h-44 rounded-lg overflow-hidden cursor-pointer bg-stone-200">
+              <img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover hover:scale-105 transition duration-500" />
+              <span class="absolute top-2.5 left-2.5 bg-brand-olive/95 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">✨ ${p.bestTime}</span>
+              <span class="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-semibold px-2 py-0.5 rounded">📍 ${p.district}</span>
+            </div>
+            <div class="mt-3">
+              <h3 onclick="openGuideModal('${p.id}')" class="font-serif font-extrabold text-base text-paper-ink hover:text-brand-terracotta cursor-pointer">${p.title}</h3>
+              <p class="text-xs text-paper-muted mt-1 line-clamp-2">${p.description}</p>
+              <div class="flex flex-wrap gap-1 mt-2">
+                <span class="text-[11px] font-bold bg-[#FADCD2]/70 text-brand-terracottaDark px-2 py-0.5 rounded">${p.price}</span>
+                ${p.tags.map(t => `<span class="text-[11px] bg-[#EFE6D8] text-paper-ink px-2 py-0.5 rounded">${t}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-5 gap-2 mt-3 pt-2.5 border-t border-dashed border-[#E5D8C5]">
+            <button onclick="openGuideModal('${p.id}')" class="col-span-3 bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs py-2 rounded-lg">📖 Cẩm nang & OOTD</button>
+            <button onclick="addPlaceToTimeline('${p.id}')" class="col-span-2 bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2 rounded-lg">+ Vào lịch</button>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function openGuideModal(placeId) {
+      const p = placesData.find(x => x.id === placeId) || placesData[0];
+      const box = document.getElementById('guideModalContent');
+      box.innerHTML = `
+        <div class="flex items-center justify-between border-b border-dashed border-[#CBB292] pb-2">
+          <h3 class="font-serif font-extrabold text-lg text-paper-ink">${p.title}</h3>
+          <button onclick="closeModal('guideModal')" class="w-8 h-8 rounded-full bg-[#E5D1B8] font-bold">✕</button>
+        </div>
+        <img src="${p.image}" class="w-full h-48 object-cover rounded-xl" />
+        <div class="space-y-2 text-xs">
+          <div class="bg-[#FFFDF9] p-3 rounded-xl border border-[#D8CBB8]">
+            <strong class="text-brand-terracotta block mb-1">📸 Góc chụp thần thánh:</strong>
+            <ul class="list-disc pl-4 space-y-1 text-paper-ink">${p.photoSpots.map(s => `<li>${s}</li>`).join('')}</ul>
+          </div>
+          <div class="bg-[#FFFDF9] p-3 rounded-xl border border-[#D8CBB8]">
+            <strong class="text-brand-olive block mb-1">👩‍❤️‍👨 Gợi ý tạo dáng cặp đôi:</strong>
+            <p>${p.poses}</p>
+          </div>
+          <div class="bg-[#FFFDF9] p-3 rounded-xl border border-[#D8CBB8]">
+            <strong class="text-brand-airmailBlue block mb-1">👗 Phối đồ đôi (OOTD):</strong>
+            <p>${p.outfit}</p>
+          </div>
+        </div>
+      `;
+      document.getElementById('guideModal').classList.remove('hidden');
+    }
+
+    function addPlaceToTimeline(placeId) {
+      const p = placesData.find(x => x.id === placeId);
+      if (!p) return;
+      const lastStop = timelineStops[timelineStops.length - 1];
+      const nextStart = lastStop ? lastStop.startMin + lastStop.duration + 25 : 990;
+      timelineStops.push({
+        id: 's-' + Date.now(),
+        name: p.title,
+        outdoorName: p.title,
+        indoorName: p.title + ' (#Indoor)',
+        startMin: nextStart,
+        duration: 50,
+        distanceKm: 3.1,
+        pinned: false
+      });
+      planVersion++;
+      renderTimelineStops();
+      showToast(`✅ Đã thêm "${p.title}" vào Bản đồ lịch trình (version #${planVersion})!`);
+    }
+
+    // =====================================================================
+    // PHẦN 3: QUẸT THẺ SWIPE-TO-MATCH & SHORT POLLING ETAG 3S
+    // =====================================================================
+    function setSwipeRoomMode(mode) {
+      swipeRoomMode = mode;
+      document.getElementById('modeCoupleBtn').className = mode === 'couple'
+        ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-terracotta text-white transition'
+        : 'px-3 py-1.5 rounded-lg text-xs font-bold text-paper-ink hover:bg-[#EFE5D4] transition';
+      document.getElementById('modeGroupBtn').className = mode === 'group'
+        ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-terracotta text-white transition'
+        : 'px-3 py-1.5 rounded-lg text-xs font-bold text-paper-ink hover:bg-[#EFE5D4] transition';
+      renderSwipeCard();
+      showToast(mode === 'couple' ? '👩‍❤️‍👨 Đã chuyển sang chế độ Cặp đôi (2/2 lượt thích)!' : '👯‍♂️ Đã chuyển sang chế độ Hội nhóm (Đa số ≥ 50%)!');
+    }
+
+    function renderSwipeCard() {
+      const card = document.getElementById('swipeDeckCard');
+      if (!card) return;
+      const p = placesData[currentSwipeIndex % placesData.length];
+      const ruleText = swipeRoomMode === 'couple' ? 'Cần 2/2 thành viên thả tim' : 'Chế độ Nhóm: Cần ≥ 50% (2/4 thành viên) thả tim';
+
+      card.innerHTML = `
+        <div class="relative h-52 rounded-xl overflow-hidden">
+          <img src="${p.image}" class="w-full h-full object-cover" />
+          <span class="absolute top-2.5 left-2.5 bg-black/75 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">📍 ${p.district} • ${p.price}</span>
+          <span class="absolute bottom-2 right-2 bg-brand-terracotta text-white text-[10px] font-extrabold px-2 py-0.5 rounded">${ruleText}</span>
+        </div>
+        <div class="mt-3">
+          <h3 class="font-serif font-extrabold text-lg text-paper-ink">${p.title}</h3>
+          <p class="text-xs text-paper-muted mt-1">${p.description}</p>
+        </div>
+      `;
+    }
+
+    function handleCardSwipe(choice) {
+      const p = placesData[currentSwipeIndex % placesData.length];
+      currentSwipeIndex++;
+      renderSwipeCard();
+
+      if (choice === 'like') {
+        simulateIncomingPartnerMatch(p.title, p.district);
+      } else {
+        appendEtagLog(`[POST /api/v1/user/swipes] choice=nope (${p.title}) ➔ 200 OK`);
+      }
+    }
+
+    function appendEtagLog(line) {
+      const log = document.getElementById('etagConsoleLog');
+      if (!log) return;
+      const div = document.createElement('div');
+      div.textContent = line;
+      log.prepend(div);
+    }
+
+    function simulateIncomingPartnerMatch(customTitle, customDistrict) {
+      const p = placesData[Math.floor(Math.random() * placesData.length)];
+      const title = customTitle || p.title;
+      const district = customDistrict || p.district;
+      etagVersion++;
+
+      const badge = document.getElementById('etagStatusBadge');
+      if (badge) {
+        badge.textContent = '200 OK (is_seen: false)';
+        badge.className = 'bg-amber-500 text-stone-950 font-extrabold px-2 py-0.5 rounded text-[10px]';
+      }
+
+      appendEtagLog(`[ETag "v${etagVersion}"] Phát hiện Match mới "${title}" (is_seen=FALSE) ➔ Bắn Confetti & POST /matches/seen!`);
+
+      matchedPlaces.unshift({
+        title,
+        district,
+        time: swipeRoomMode === 'couple' ? 'Vừa Match 2/2 ❤️' : 'Vừa Match Nhóm (3/4) 🎉'
+      });
+      renderMatchedPlacesList();
+
+      roomNotices.unshift({
+        id: 'n-' + Date.now(),
+        type: 'new_match',
+        title: `🎉 Match mới: ${title}!`,
+        content: `Đồng bộ qua Polling ETag #v${etagVersion}. Đã sẵn sàng thêm vào lịch trình.`,
+        read: false,
+        time: 'Vừa xong'
+      });
+      renderNoticesList();
+      showToast(`🎉 CHÚC MỪNG MATCH MỚI: "${title}"!`);
+    }
+
+    function renderMatchedPlacesList() {
+      const box = document.getElementById('matchedPlacesList');
+      const countEl = document.getElementById('matchedListCount');
+      if (countEl) countEl.textContent = matchedPlaces.length;
+      if (!box) return;
+      box.innerHTML = matchedPlaces.map(m => `
+        <div class="bg-[#FFFDF9] border border-[#CBB292] rounded-lg p-2.5 flex items-center justify-between text-xs">
+          <div>
+            <strong class="text-paper-ink block">${m.title}</strong>
+            <span class="text-[11px] text-paper-muted">📍 ${m.district} • ${m.time}</span>
+          </div>
+          <span class="text-brand-terracotta font-extrabold text-[11px]">✓ Đã khớp</span>
+        </div>
+      `).join('');
+    }
+
+    // =====================================================================
+    // PHẦN 4: VÉ MÙ HẸN HÒ, BẢN ĐỒ CÀO 7 QUẬN & HỘP THƯ TÌNH BÍ MẬT
+    // =====================================================================
+    function renderBlindDateSteps() {
+      const box = document.getElementById('blindDateStepsContainer');
+      if (!box) return;
+      box.innerHTML = blindDateSteps.map(s => {
+        const unlocked = s.step <= blindDateCurrentStep;
+        return `
+          <div class="p-2.5 rounded-xl border ${unlocked ? 'bg-[#FAF4E8] border-brand-terracotta' : 'bg-stone-200/70 border-stone-300 opacity-75'} text-xs">
+            <div class="flex items-center justify-between font-bold">
+              <span>${s.title}</span>
+              <span>${unlocked ? '🔓 Đã mở' : '🔒 Server Locked'}</span>
+            </div>
+            <p class="text-[11px] text-paper-muted mt-0.5">${s.hint}</p>
+            ${unlocked ? `<p class="text-[11px] font-extrabold text-brand-terracotta mt-1">📍 Tọa độ: ${s.place}</p>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function checkInNextBlindStep(method) {
+      if (blindDateCurrentStep < 3) {
+        blindDateCurrentStep++;
+        renderBlindDateSteps();
+        showToast(`🔓 Check-in (${method}) thành công! Server đã trả về tọa độ Chặng #${blindDateCurrentStep}.`);
+      } else {
+        showToast('🎉 Hai bạn đã hoàn thành trọn vẹn cả 3 chặng trên Vé Mù Hẹn Hò!');
+      }
+    }
+
+    function resetBlindDateTicket() {
+      blindDateCurrentStep = 1;
+      renderBlindDateSteps();
+      showToast('🎫 Đã tạo Vé Mù Hẹn Hò mới và khóa các trạm tiếp theo trên Server!');
+    }
+
+    function renderScratchMap() {
+      const grid = document.getElementById('scratchDistrictsGrid');
+      const badge = document.getElementById('scratchPercentBadge');
+      const bar = document.getElementById('scratchProgressBar');
+      if (!grid) return;
+
+      const unlockedCount = hanoiDistrictsScratch.filter(d => d.scratched).length;
+      const pct = Math.round((unlockedCount / hanoiDistrictsScratch.length) * 100);
+      if (badge) badge.textContent = `Đã mở: ${pct}% (${unlockedCount}/7 quận)`;
+      if (bar) bar.style.width = `${pct}%`;
+
+      grid.innerHTML = hanoiDistrictsScratch.map((d, idx) => `
+        <button
+          onclick="scratchDistrictTile(${idx})"
+          class="p-2.5 rounded-xl border text-left transition ${
+            d.scratched
+              ? 'bg-[#FAF4E8] border-brand-olive text-paper-ink'
+              : 'bg-gradient-to-br from-stone-300 via-stone-400 to-stone-300 border-stone-500 text-stone-800 hover:brightness-105'
+          }"
+        >
+          <div class="flex items-center justify-between text-xs font-extrabold">
+            <span>${d.name}</span>
+            <span>${d.scratched ? '✅' : '🪙 Cào'}</span>
+          </div>
+          <span class="text-[10px] block mt-0.5">${d.scratched ? `Check-in: ${d.count}` : 'Chạm để cào lớp nhũ bạc'}</span>
+        </button>
+      `).join('');
+    }
+
+    function scratchDistrictTile(index) {
+      hanoiDistrictsScratch[index].scratched = !hanoiDistrictsScratch[index].scratched;
+      renderScratchMap();
+      if (hanoiDistrictsScratch[index].scratched) {
+        showToast(`🪙 Đã cào mở khóa ${hanoiDistrictsScratch[index].name} trên Bản đồ Hà Nội!`);
+      }
+    }
+
+    function renderSecretNotes() {
+      const box = document.getElementById('secretNotesList');
+      if (!box) return;
+      box.innerHTML = secretNotesData.map((n, i) => `
+        <div class="p-2.5 rounded-xl border ${n.unlocked ? 'bg-[#FFF9F2] border-brand-coral' : 'bg-[#EFE5D4] border-[#CBB292]'} text-xs space-y-1">
+          <div class="flex items-center justify-between font-bold">
+            <span>📍 ${n.place}</span>
+            ${
+              n.unlocked
+                ? '<span class="text-[10px] text-brand-olive font-extrabold">🔓 Đã mở khóa</span>'
+                : `<button onclick="unlockSecretNote(${i})" class="bg-brand-terracotta text-white text-[10px] px-2 py-0.5 rounded font-bold">📍 Check-in mở thư</button>`
+            }
+          </div>
+          <p class="text-[11px] text-paper-muted italic">Gợi ý: ${n.hint}</p>
+          ${n.unlocked ? `<p class="font-hand text-sm font-bold text-brand-terracotta pt-1">"${n.content}"</p>` : '<p class="text-[11px] text-stone-500">🔒 Nội dung thư đang được mã hóa cho tới khi Check-in tại quán.</p>'}
+        </div>
+      `).join('');
+    }
+
+    function unlockSecretNote(idx) {
+      secretNotesData[idx].unlocked = true;
+      renderSecretNotes();
+      showToast('💌 Đã xác thực Check-in tại quán và mở khóa Hộp thư tình bí mật!');
+    }
+
+    function createNewSecretNote() {
+      const place = document.getElementById('newSecretPlaceSelect').value;
+      const input = document.getElementById('newSecretContentInput');
+      const text = (input.value || '').trim() || 'Mãi bên nhau như chiều thu Hà Nội hôm nay nhé! ❤️';
+      secretNotesData.unshift({
+        id: 'sn-' + Date.now(),
+        place,
+        hint: 'Check-in tại quán để đọc lời nhắn của người thương',
+        content: text,
+        unlocked: false
+      });
+      input.value = '';
+      renderSecretNotes();
+      showToast(`🔒 Đã giấu bức thư tình bí mật tại "${place}"!`);
+    }
+
+    // =====================================================================
+    // PHẦN 5: VIRTUAL VIDEO CANVAS 60FPS, NHẠC BEAT-SYNC & SHARP UPLOAD GUARD
+    // =====================================================================
+    function initVirtualVideoCanvas() {
+      const canvas = document.getElementById('memoryVideoCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      memoryPhotosList.forEach((item, idx) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = item.url;
+        img.onload = () => {
+          loadedCanvasImages[idx] = img;
+        };
+      });
+
+      function renderLoop() {
+        ctx.fillStyle = '#1D1512';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const currentImg = loadedCanvasImages[currentCanvasSlide % memoryPhotosList.length];
+        const meta = memoryPhotosList[currentCanvasSlide % memoryPhotosList.length];
+
+        if (currentImg && currentImg.complete) {
+          if (isCanvasPlaying) {
+            canvasSlideProgress += 0.0025;
+            if (canvasSlideProgress >= 1) {
+              canvasSlideProgress = 0;
+              currentCanvasSlide = (currentCanvasSlide + 1) % memoryPhotosList.length;
+            }
+          }
+
+          const scale = isReducedMotion ? 1.0 : 1.0 + canvasSlideProgress * 0.14;
+          const offsetX = isReducedMotion ? 0 : -canvasSlideProgress * 22;
+          const offsetY = isReducedMotion ? 0 : -canvasSlideProgress * 12;
+
+          ctx.save();
+          ctx.translate(canvas.width / 2 + offsetX, canvas.height / 2 + offsetY);
+          ctx.scale(scale, scale);
+          ctx.drawImage(currentImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+          ctx.restore();
+        }
+
+        // Khung viền phim cổ điển & Phụ đề kỷ niệm
+        ctx.fillStyle = 'rgba(24, 18, 16, 0.62)';
+        ctx.fillRect(0, canvas.height - 54, canvas.width, 54);
+        ctx.fillStyle = '#FAF4E8';
+        ctx.font = 'bold 15px "Be Vietnam Pro", sans-serif';
+        ctx.fillText(meta ? meta.caption : 'Khoảnh khắc hẹn hò Hà Nội', 18, canvas.height - 22);
+
+        requestAnimationFrame(renderLoop);
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    function toggleVirtualVideoPlayback() {
+      isCanvasPlaying = !isCanvasPlaying;
+      const btn = document.getElementById('playVirtualVideoBtn');
+      const vinyl = document.getElementById('vinylRecordIcon');
+      const beatLabel = document.getElementById('beatSyncStatus');
+
+      if (isCanvasPlaying) {
+        if (btn) btn.innerHTML = '<span>⏸️</span><span>Tạm dừng Video & Nhạc</span>';
+        if (vinyl) vinyl.classList.remove('vinyl-paused');
+        if (beatLabel) beatLabel.textContent = 'Beatmap: 85 BPM Sync';
+        startWebAudioBeatLoop();
+        showToast('🎵 Đang phát Virtual Video Canvas 60fps đồng bộ nhịp beatmap.json!');
+      } else {
+        if (btn) btn.innerHTML = '<span>▶️</span><span>Phát Video & Nhạc Beat-Sync</span>';
+        if (vinyl) vinyl.classList.add('vinyl-paused');
+        if (beatLabel) beatLabel.textContent = 'Beatmap: Đã dừng';
+        stopWebAudioBeatLoop();
+      }
+    }
+
+    function startWebAudioBeatLoop() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const notes = [261.63, 329.63, 392.00, 523.25];
+        let step = 0;
+        clearInterval(beatInterval);
+        beatInterval = setInterval(() => {
+          if (!isCanvasPlaying) return;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = notes[step % notes.length];
+          gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.45);
+          step++;
+        }, 700);
+      } catch (err) {
+        // Fallback nếu trình duyệt chặn âm thanh
+      }
+    }
+
+    function stopWebAudioBeatLoop() {
+      if (beatInterval) clearInterval(beatInterval);
+    }
+
+    function nextCanvasSlideManual() {
+      currentCanvasSlide = (currentCanvasSlide + 1) % memoryPhotosList.length;
+      canvasSlideProgress = 0;
+    }
+
+    function toggleReducedMotion(enabled) {
+      isReducedMotion = enabled;
+      document.getElementById('canvasModeLabel').textContent = enabled
+        ? 'Hiệu ứng: Crossfade tĩnh (Reduced Motion)'
+        : 'Hiệu ứng: Ken Burns Pan/Zoom 60fps';
+      showToast(enabled ? '♿ Đã chuyển Canvas sang chế độ Crossfade tĩnh (prefers-reduced-motion).' : '🎞️ Đã bật lại chuyển động Ken Burns 60fps.');
+    }
+
+    function generateGeminiAnonymizedScript(simulate429) {
+      const out = document.getElementById('aiGeneratedCaptionText');
+      if (simulate429) {
+        out.textContent = '"[Fallback Heuristic Template - HTTP 429]: Hoàng hôn buông nhẹ trên phố cổ, lưu giữ trọn vẹn nụ cười của hai ta ngày thu Hà Nội."';
+        showToast('🛡️ Gemini gặp HTTP 429 Rate Limit ➔ Đã tự động kích hoạt Fallback Heuristic Template thành công!');
+      } else {
+        const samples = [
+          '"Nắng chiều 29°C nhuộm vàng nhịp cầu Long Biên, từng bức ảnh lưu lại khoảnh khắc bình yên nhất của tụi mình."',
+          '"Giữa gió thu Hồ Tây dịu mát, một buổi hẹn không vội vã với hương cà phê và ánh hoàng hôn rực rỡ."'
+        ];
+        out.textContent = samples[Math.floor(Math.random() * samples.length)];
+        showToast('✨ Gemini SDK đã sinh lời dẫn mới từ metadata ẩn danh (Zero PII)!');
+      }
+    }
+
+    // Upload Sharp Guard & Nghị định 13/2023
+    function toggleDecree13Consent(checked) {
+      hasDecree13Consent = checked;
+      showToast(checked ? '☑️ Đã ghi nhận đồng thuận Nghị định 13/2023/NĐ-CP (consent_version: 2026.1).' : '⚠️ Bạn đã tắt đồng thuận Nghị định 13/2023 — Tính năng Upload sẽ bị khóa!');
+    }
+
+    function simulateProtectedUpload(mode) {
+      const log = document.getElementById('uploadSecurityLog');
+      if (!hasDecree13Consent) {
+        log.className = 'bg-red-950 text-red-300 font-mono text-[11px] p-2.5 rounded-xl';
+        log.textContent = '[403 CONSENT_REQUIRED] Từ chối Upload: Người dùng chưa tích chọn đồng thuận Nghị định 13/2023/NĐ-CP!';
+        showToast('🚫 Vui lòng tích đồng thuận Nghị định 13/2023 trước khi tải ảnh lên!');
+        return;
+      }
+
+      if (mode === 'bomb') {
+        log.className = 'bg-red-950 text-red-300 font-mono text-[11px] p-2.5 rounded-xl';
+        log.textContent = '[400 IMAGE_TOO_LARGE] Sharp Guard chặn đứng Decompression Bomb (20.000x20.000 = 400MP > giới hạn 16MP)!';
+        showToast('💣 Sharp Guard đã chặn thành công ảnh Decompression Bomb (>16MP)!');
+        return;
+      }
+
+      if (mode === 'quota' || storageUsedMB + 2.1 > 25) {
+        log.className = 'bg-amber-950 text-amber-300 font-mono text-[11px] p-2.5 rounded-xl';
+        log.textContent = '[400 QUOTA_EXCEEDED] Atomic SQL Guard: Dung lượng vượt trần 25MB/phòng. Đã Rollback!';
+        showToast('🚫 Chặn Upload: Vượt hạn mức 25MB của phòng!');
+        return;
+      }
+
+      storageUsedMB = +(storageUsedMB + 2.1).toFixed(1);
+      photoCount++;
+      memoryPhotosList.push({
+        url: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=900&q=80',
+        caption: `Ảnh kỷ niệm mới #${photoCount} (Đã strip EXIF & nén WebP)`
+      });
+
+      const pct = Math.min(100, Math.round((storageUsedMB / 25) * 100));
+      document.getElementById('quotaBytesText').textContent = `${storageUsedMB} MB / 25.0 MB`;
+      document.getElementById('quotaBytesBar').style.width = `${pct}%`;
+      document.getElementById('quotaCountText').textContent = `${photoCount} / 50 ảnh`;
+      document.getElementById('navQuotaMini').textContent = `${storageUsedMB}/25MB`;
+
+      log.className = 'bg-[#231A16] text-green-300 font-mono text-[11px] p-2.5 rounded-xl';
+      log.textContent = `[200 OK] Đã xóa sạch EXIF, re-encode sang WebP và lưu ngoài web root: /data/datemate_storage/uploads/rooms/rm_01/img_${Date.now()}.webp`;
+      renderUploadedPhotosMiniGrid();
+      showToast('✅ Upload thành công! Ảnh đã được re-encode .webp và thêm vào Canvas.');
+    }
+
+    function renderUploadedPhotosMiniGrid() {
+      const grid = document.getElementById('uploadedPhotosMiniGrid');
+      if (!grid) return;
+      grid.innerHTML = memoryPhotosList.slice(0, 4).map((p, i) => `
+        <div onclick="currentCanvasSlide=${i}; canvasSlideProgress=0;" class="relative h-14 rounded-lg overflow-hidden border border-[#CBB292] cursor-pointer">
+          <img src="${p.url}" class="w-full h-full object-cover" />
+          <span class="absolute bottom-0 right-0 bg-black/70 text-white text-[9px] px-1">.webp</span>
+        </div>
+      `).join('');
+    }
+
+    // =====================================================================
+    // PHẦN 6: THÔNG BÁO NỘI BỘ, XOAY RECOVERY KEY, RSVP, POSTER & VIEWPORT
+    // =====================================================================
+    function toggleNoticesDropdown() {
+      document.getElementById('noticesDropdownPanel').classList.toggle('hidden');
+    }
+
+    function renderNoticesList() {
+      const box = document.getElementById('noticesListContainer');
+      const badge = document.getElementById('unreadNoticeBadge');
+      if (!box) return;
+      const unread = roomNotices.filter(n => !n.read).length;
+      if (badge) {
+        badge.textContent = unread;
+        badge.classList.toggle('hidden', unread === 0);
+      }
+
+      box.innerHTML = roomNotices.map(n => `
+        <div class="py-2 px-1.5 ${n.read ? 'opacity-65' : 'bg-[#FFF9F2]'} rounded-lg text-xs">
+          <div class="flex items-center justify-between font-bold text-paper-ink">
+            <span>${n.title}</span>
+            <span class="text-[10px] text-paper-muted">${n.time}</span>
+          </div>
+          <p class="text-[11px] text-paper-muted mt-0.5">${n.content}</p>
+        </div>
+      `).join('');
+    }
+
+    function markAllNoticesRead() {
+      roomNotices.forEach(n => n.read = true);
+      renderNoticesList();
+      showToast('✓ Đã đánh dấu đọc toàn bộ thông báo trong room_notices!');
+    }
+
+    function rotateRecoveryKeyNow() {
+      const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let rand = 'dm_rec_';
+      for (let i = 0; i < 32; i++) rand += chars[Math.floor(Math.random() * chars.length)];
+      document.getElementById('recoveryKeyDisplay').textContent = rand;
+      showToast('🔄 Đã Xoay Khóa Khôi Phục (Rotate Key) mới và vô hiệu hóa khóa cũ trong DB!');
+    }
+
+    function triggerSoftDeleteRoom() {
+      closeModal('roomSecurityModal');
+      document.getElementById('softDeleteBanner').classList.remove('hidden');
+      roomNotices.unshift({
+        id: 'n-del-' + Date.now(),
+        type: 'room_delete_pending',
+        title: '⚠️ Yêu cầu giải tán phòng (Soft-Delete 14 ngày)',
+        content: 'Bạn có thể hủy yêu cầu bất cứ lúc nào trong 14 ngày hoặc tải file .zip kỷ niệm.',
+        read: false,
+        time: 'Vừa xong'
+      });
+      renderNoticesList();
+      showToast('⚠️ Đã kích hoạt chế độ chờ giải tán phòng 14 ngày (Soft-Delete)!');
+    }
+
+    function restoreSoftDeletedRoom() {
+      document.getElementById('softDeleteBanner').classList.add('hidden');
+      showToast('🎉 Đã hủy yêu cầu xóa phòng (POST /api/v1/user/rooms/restore)!');
+    }
+
+    function downloadRoomArchiveZip() {
+      showToast('📦 Đang đóng gói và tải xuống datemate-memories-archive.zip!');
+    }
+
+    function submitGuestRsvp(status) {
+      const name = document.getElementById('rsvpResponderName').value || 'Người thương';
+      const pill = document.getElementById('rsvpStatusPill');
+      if (pill) {
+        pill.textContent = status === 'confirmed'
+          ? `💌 RSVP: ${name} đã Chốt luôn! ❤️`
+          : `✍️ RSVP: ${name} xin đổi giờ xíu`;
+      }
+      closeModal('envelopeRsvpModal');
+      showToast(status === 'confirmed' ? '❤️ Đã gửi phản hồi RSVP "Chốt luôn!" vào phòng!' : '✍️ Đã gửi yêu cầu đổi giờ lịch hẹn!');
+    }
+
+    function togglePosterPrivacy(hideExact) {
+      const box = document.getElementById('posterStopsDetails');
+      if (!box) return;
+      box.innerHTML = hideExact
+        ? '<p>☕ Chiều thu — Tiệm cà phê cổ khu vực Hoàn Kiếm</p><p>📸 Hoàng hôn — Tọa độ ven sông quận Tây Hồ</p><p>🌅 Tối — Dạo phố lộng gió</p>'
+        : '<p>☕ 16:30 — Serein Café Cầu Long Biên (Hoàn Kiếm)</p><p>📸 17:35 — Săn Giờ Vàng Bãi đá sông Hồng (Tây Hồ)</p><p>🌅 18:35 — Dạo bộ đường Thanh Niên</p>';
+    }
+
+    function revokePosterShareLink() {
+      const preview = document.getElementById('posterPreviewCard');
+      preview.innerHTML = `
+        <div class="bg-[#FFFDF9] p-5 rounded-xl border-2 border-dashed border-brand-terracotta text-center space-y-2">
+          <span class="text-3xl block">✉️</span>
+          <h4 class="font-serif font-extrabold text-base text-paper-ink">Lịch trình này đã hết hạn hoặc được thu hồi</h4>
+          <p class="text-xs text-paper-muted">Chủ nhân căn phòng đã thu hồi link chia sẻ công khai này. Hãy tự lên kế hoạch hẹn hò của riêng bạn tại DateMate!</p>
+        </div>
+      `;
+      showToast('🚫 Đã thu hồi shareToken! Mọi truy cập vào link cũ sẽ hiện thiệp báo hết hạn.');
+    }
+
+    function openVideoModal(title, placeId) {
+      const p = placesData.find(x => x.id === placeId) || placesData[0];
+      document.getElementById('videoModalTitle').textContent = title;
+      document.getElementById('videoPinSpotName').textContent = p.title;
+      document.getElementById('videoModal').dataset.placeId = p.id;
+      document.getElementById('videoModal').classList.remove('hidden');
+    }
+
+    function addVideoPinSpotToSchedule() {
+      const placeId = document.getElementById('videoModal').dataset.placeId || 'cafe-long-bien';
+      addPlaceToTimeline(placeId);
+      closeModal('videoModal');
+    }
+
+    function openDateWheelModal() {
+      document.getElementById('wheelModal').classList.remove('hidden');
+    }
+
+    function spinRandomPlace() {
+      const p = placesData[Math.floor(Math.random() * placesData.length)];
+      document.getElementById('wheelResultBox').innerHTML = `🎉 <strong>${p.title}</strong><br><span class="text-xs text-paper-muted">📍 ${p.district} • ${p.price}</span>`;
+    }
+
+    function openRoomSecurityModal() { document.getElementById('roomSecurityModal').classList.remove('hidden'); }
+    function openEnvelopeRsvpModal() { document.getElementById('envelopeRsvpModal').classList.remove('hidden'); }
+    function openPosterShareModal() { document.getElementById('posterShareModal').classList.remove('hidden'); }
+    function openSoloConflictModal() { document.getElementById('soloConflictModal').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function setViewportMode(mode) {
+      const wrap = document.getElementById('viewportContainer');
+      wrap.className = `viewport-wrapper mode-${mode} flex-1`;
+      ['desktop', 'tablet', 'mobile'].forEach(m => {
+        const btn = document.getElementById(`btn-vp-${m}`);
+        if (btn) {
+          btn.className = m === mode
+            ? 'vp-btn px-2.5 py-1 rounded text-[11px] font-semibold bg-brand-terracotta text-white transition'
+            : 'vp-btn px-2.5 py-1 rounded text-[11px] font-semibold text-[#D7C4B0] hover:text-white transition';
+        }
+      });
+    }
+
+    function scrollToSection(e, id) {
+      if (e) e.preventDefault();
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function initScrollspy() {
+      const sections = ['section-home', 'section-explore', 'section-couple-games', 'section-memory'];
+      window.addEventListener('scroll', () => {
+        const docH = document.documentElement.scrollHeight - window.innerHeight;
+        const pct = docH > 0 ? Math.min(100, (window.scrollY / docH) * 100) : 0;
+        const bar = document.getElementById('scrollProgressBar');
+        if (bar) bar.style.width = `${pct}%`;
+
+        let current = 'section-home';
+        sections.forEach(secId => {
+          const el = document.getElementById(secId);
+          if (el && window.scrollY >= el.offsetTop - 180) current = secId;
+        });
+
+        document.querySelectorAll('.nav-craft-tab[data-section]').forEach(tab => {
+          tab.classList.toggle('active', tab.dataset.section === current);
+        });
+      });
+    }
+
+    function copyTextWithToast(text, msg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast(msg);
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const box = document.getElementById('toastBox');
+      if (!box) return;
+      box.textContent = msg;
+      box.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => box.classList.add('hidden'), 3200);
+    }
+  </script>
+</body>
+</html>

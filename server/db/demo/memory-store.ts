@@ -1,5 +1,5 @@
 import type { ChecklistItem, DatePlan, MemoryNote, PlanStop, Room, RoomMember } from "@/server/db/schema";
-import type { MatchRecord } from "@/server/db/repositories/types";
+import type { MatchRecord, PlanRsvpRecord, RoomNoticeRecord, UploadRecord } from "@/server/db/repositories/types";
 import type { SwipeChoice } from "@/lib/constants/user";
 
 interface MemorySwipe {
@@ -21,6 +21,12 @@ interface MemoryStore {
   matches: Map<string, MatchRecord & { roomId: string }>;
   savedByMember: Map<string, Map<string, Date>>;
   memoryNotes: Map<string, MemoryNote>;
+  uploads: Map<string, UploadRecord>;
+  notices: Map<string, RoomNoticeRecord>;
+  rsvps: Map<string, PlanRsvpRecord>;
+  placeCheckins: Map<string, import("@/server/db/repositories/types").PlaceCheckinRecord>;
+  blindDateTickets: Map<string, import("@/server/db/repositories/types").BlindDateTicketRecord>;
+  secretNotes: Map<string, import("@/server/db/repositories/types").SecretNoteRecord>;
 }
 
 function createEmptyStore(): MemoryStore {
@@ -34,6 +40,12 @@ function createEmptyStore(): MemoryStore {
     matches: new Map(),
     savedByMember: new Map(),
     memoryNotes: new Map(),
+    uploads: new Map(),
+    notices: new Map(),
+    rsvps: new Map(),
+    placeCheckins: new Map(),
+    blindDateTickets: new Map(),
+    secretNotes: new Map(),
   };
 }
 

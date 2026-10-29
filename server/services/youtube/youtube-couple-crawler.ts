@@ -2,11 +2,15 @@ import { reserveQuota } from "./quota-ledger";
 import * as fs from "fs";
 import * as path from "path";
 
+export type TargetAudience = "couple" | "group" | "family" | "solo" | "all";
+
 export interface CoupleCrawlInput {
-  category: string; // e.g. "món ăn", "quán cafe", "địa điểm chill", "chụp ảnh", "khách sạn", "địa điểm đi chơi"
+  category: string; // e.g. "món ăn", "quán cafe", "địa điểm chill", "chụp ảnh", "khách sạn", "địa điểm đi chơi", "workshop", "khu vui chơi"
   location: string; // e.g. "Hà Nội", "Đà Lạt", "TP.HCM", "Đà Nẵng"
-  coupleKeywords?: string[]; // e.g. ["cặp đôi", "hẹn hò", "đi date", "2 người", "riêng tư"]
-  maxResultsPerQuery?: number; // default 10
+  audience?: TargetAudience; // Phân nhóm đối tượng
+  coupleKeywords?: string[]; // Từ khóa tùy chọn
+  customQueries?: string[]; // Truy vấn chỉ định trực tiếp
+  maxResultsPerQuery?: number; // default 8
 }
 
 export interface CrawledCoupleVideo {
@@ -89,42 +93,73 @@ export class YouTubeCoupleReviewCrawler {
   }
 
   /**
-   * Tạo các biến thể từ khóa tối ưu cho tìm kiếm video hẹn hò / cặp đôi theo chuẩn yêu cầu
+   * Tạo các biến thể từ khóa tối ưu cho tìm kiếm video theo nhóm đối tượng, danh mục và địa điểm
    */
   public generateSearchQueries(
     category: string,
     location: string,
-    customKeywords?: string[]
+    customKeywords?: string[],
+    audience: TargetAudience = "couple"
   ): Array<{ query: string; focus: string }> {
-    const defaultCoupleKeywords = [
-      "cho cặp đôi",
-      "hẹn hò",
-      "đi date",
-      "2 người",
-      "lãng mạn",
-      "riêng tư",
-    ];
+    // 1. Từ khóa theo nhóm người (Audience Focus)
+    const audienceKeywordsMap: Record<TargetAudience, string[]> = {
+      couple: ["cho cặp đôi", "hẹn hò", "đi date", "2 người", "lãng mạn", "riêng tư"],
+      group: ["nhóm bạn", "hội bạn", "đi đông người", "tụ tập bạn bè", "nhóm bạn cuối tuần", "vui nhộn"],
+      family: ["cho gia đình", "ấm cúng", "có chỗ chơi trẻ em", "gia đình cuối tuần", "phù hợp trẻ nhỏ"],
+      solo: ["1 mình", "yên tĩnh làm việc", "healing một mình", "đọc sách chill"],
+      all: ["cặp đôi", "hẹn hò", "nhóm bạn", "gia đình", "chill 2 người"],
+    };
 
-    const coupleKeywords = customKeywords && customKeywords.length > 0 ? customKeywords : defaultCoupleKeywords;
+    const targetKeywords =
+      customKeywords && customKeywords.length > 0
+        ? customKeywords
+        : audienceKeywordsMap[audience] || audienceKeywordsMap.couple;
+
     const queries: Array<{ query: string; focus: string }> = [];
 
-    // 1. Dạng query trực tiếp theo template: "review {category} {location} {kw}"
-    for (const kw of coupleKeywords) {
+    // 2. Dạng query trực tiếp theo template: "review {category} {location} {kw}"
+    for (const kw of targetKeywords) {
       queries.push({
         query: `review ${category} ${location} ${kw}`.trim(),
         focus: kw,
       });
     }
 
-    // 2. Dạng query tự nhiên chuyên biệt cho các intent hẹn hò phổ biến
-    const intentTemplates = [
-      { t: `review địa điểm đi date ${location}`, f: "đi date" },
-      { t: `review địa điểm chill ${location} 2 người`, f: "2 người" },
-      { t: `review các món ăn ngon ${location} hẹn hò`, f: "hẹn hò" },
-      { t: `review quán cafe view đẹp ${location} cặp đôi`, f: "cặp đôi" },
-      { t: `review khách sạn homestay lãng mạn ${location} cho 2 người`, f: "lãng mạn" },
-      { t: `review chụp ảnh check-in sống ảo ${location} cặp đôi`, f: "chụp ảnh cặp đôi" },
-    ];
+    // 3. Dạng query tự nhiên chuyên biệt theo intent hoạt động vui chơi, ăn uống, chill
+    const intentTemplates: Array<{ t: string; f: string }> = [];
+
+    if (audience === "group") {
+      intentTemplates.push(
+        { t: `review địa điểm đi chơi ${location} cho nhóm bạn đông người`, f: "nhóm bạn" },
+        { t: `review khu vui chơi giải trí ${location} cuối tuần`, f: "vui chơi" },
+        { t: `review quán nướng lẩu ${location} tụ tập bạn bè`, f: "tụ tập bạn bè" },
+        { t: `review trải nghiệm bắn cung bowling boardgame ${location}`, f: "trải nghiệm nhóm" },
+        { t: `review cắm trại glamping dã ngoại ${location} nhóm bạn`, f: "cắm trại dã ngoại" }
+      );
+    } else if (audience === "family") {
+      intentTemplates.push(
+        { t: `review địa điểm đi chơi ${location} cho gia đình có trẻ nhỏ`, f: "gia đình" },
+        { t: `review quán ăn gia đình ${location} ấm cúng ngon miệng`, f: "ẩm thực gia đình" },
+        { t: `review khu sinh thái công viên ${location} gia đình cuối tuần`, f: "dã ngoại gia đình" }
+      );
+    } else if (audience === "solo") {
+      intentTemplates.push(
+        { t: `review quán cafe yên tĩnh ${location} làm việc đọc sách 1 mình`, f: "solo working" },
+        { t: `review địa điểm chill ${location} một mình healing`, f: "healing" }
+      );
+    } else {
+      // Mặc định Cặp đôi (Couple) & Hẹn hò
+      intentTemplates.push(
+        { t: `review địa điểm đi date ${location}`, f: "đi date" },
+        { t: `review địa điểm chill ${location} 2 người`, f: "2 người" },
+        { t: `review các món ăn ngon ${location} hẹn hò`, f: "hẹn hò" },
+        { t: `review quán cafe view đẹp ${location} cặp đôi`, f: "cặp đôi" },
+        { t: `review workshop làm gốm làm nến vẽ tranh ${location} cho cặp đôi`, f: "workshop hẹn hò" },
+        { t: `review rooftop bar ngắm hoàng hôn ${location} lãng mạn`, f: "rooftop lãng mạn" },
+        { t: `review khách sạn homestay lãng mạn ${location} cho 2 người`, f: "lãng mạn" },
+        { t: `review chụp ảnh check-in sống ảo ${location} cặp đôi`, f: "chụp ảnh cặp đôi" }
+      );
+    }
 
     for (const item of intentTemplates) {
       if (!queries.some((q) => q.query.toLowerCase() === item.t.toLowerCase())) {
@@ -148,10 +183,10 @@ export class YouTubeCoupleReviewCrawler {
       }
     }
 
-    // Nếu location là Hà Nội, kiểm tra có ngữ cảnh liên quan tới Việt Nam / Hà Nội hoặc hẹn hò
+    // Nếu location là Hà Nội, kiểm tra có ngữ cảnh liên quan tới Việt Nam / Hà Nội hoặc hoạt động địa điểm
     if (targetLocation.toLowerCase().includes("hà nội")) {
       const hanoiContext =
-        /hà nội|hanoi|phố cổ|hồ tây|hoàn kiếm|ba đình|tây hồ|long biên|cầu giấy|đống đa|hai bà trưng|quán|quận|đi date|hẹn hò|cặp đôi|2 người|chill/.test(
+        /hà nội|hanoi|phố cổ|hồ tây|hoàn kiếm|ba đình|tây hồ|long biên|cầu giấy|đống đa|hai bà trưng|thanh xuân|hà đông|nam từ liêm|bắc từ liêm|ba vì|sóc sơn|quán|quận|đi date|hẹn hò|cặp đôi|2 người|nhóm bạn|hội bạn|gia đình|trẻ em|đi chơi|vui chơi|chill|workshop|check-in|sống ảo|ăn gì|uống gì|homestay|bắn cung|bowling|board game|chèo sup|camping|dã ngoại/.test(
           text
         );
       if (!hanoiContext) {
@@ -163,17 +198,29 @@ export class YouTubeCoupleReviewCrawler {
   }
 
   /**
-   * Cào video theo một input (Category + Location + Focus)
+   * Cào video theo một input (Category + Location + Audience + Focus)
    */
   public async crawlReviewsForInput(
     input: CoupleCrawlInput,
     seenVideoIds: Set<string> = new Set()
   ): Promise<CrawledCoupleVideo[]> {
-    const { category, location, coupleKeywords, maxResultsPerQuery = 10 } = input;
-    const queries = this.generateSearchQueries(category, location, coupleKeywords);
+    const { category, location, audience = "couple", coupleKeywords, customQueries, maxResultsPerQuery = 8 } = input;
+    const queries = this.generateSearchQueries(category, location, coupleKeywords, audience);
+
+    // Bổ sung các custom queries trực tiếp nếu được cung cấp
+    if (customQueries && customQueries.length > 0) {
+      for (const cq of customQueries) {
+        if (!queries.some((q) => q.query.toLowerCase() === cq.toLowerCase())) {
+          queries.push({ query: cq, focus: audience });
+        }
+      }
+    }
+
     const crawledVideos: CrawledCoupleVideo[] = [];
 
-    console.log(`\n🎯 [Couple Crawler] Bắt đầu cào danh mục: "${category}" tại "${location}" (${queries.length} queries)...`);
+    console.log(
+      `\n🎯 [Couple Crawler] Bắt đầu cào danh mục: "${category}" [Nhóm: ${audience}] tại "${location}" (${queries.length} queries)...`
+    );
 
     for (const qObj of queries) {
       const query = qObj.query;

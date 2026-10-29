@@ -80,17 +80,29 @@ export async function createPlan(session: MemberSession, input: CreatePlanBody):
       startTime: input.startTime,
     }),
     note: input.note ?? null,
+    shareToken: null,
+    shareExpiresAt: null,
+    version: 1,
     createdAt: now,
     updatedAt: now,
     updatedBy: session.memberId,
   };
+
+  const [h, m] = (input.startTime || "00:00").split(":").map(Number);
+  const startMinute = (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+
   const firstStop = input.placeId
     ? {
         id: nanoid(21),
+        roomId: session.roomId,
         placeId: input.placeId,
         customName: null,
         plannedTime: input.startTime,
         durationMin: DEFAULT_STOP_DURATION_MIN,
+        dayOffset: 0,
+        startMinute,
+        travelMinutes: 15,
+        isPinnedTime: false,
         note: null,
       }
     : null;

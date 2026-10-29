@@ -133,6 +133,7 @@ export const updateStopBodySchema = z
     customName: z.string().trim().min(1).max(150),
     plannedTime: timeOfDaySchema.nullable(),
     durationMin: z.number().int().min(5).max(720),
+    isPinnedTime: z.boolean(),
     note: z.string().trim().max(500).nullable(),
   })
   .partial()
@@ -175,6 +176,7 @@ export const swipeBodySchema = z
 
 export const deckQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(MAX_DECK_SIZE).default(DEFAULT_DECK_SIZE),
+  hobby: z.string().trim().max(30).optional(),
 });
 
 export const suggestQuerySchema = z.object({

@@ -3,6 +3,7 @@ import {
   varchar,
   text,
   int,
+  tinyint,
   boolean,
   datetime,
   date,
@@ -24,6 +25,9 @@ export const datePlans = mysqlTable(
     isSecret: boolean("is_secret").notNull().default(false),
     revealAt: datetime("reveal_at"),
     note: text("note"),
+    shareToken: varchar("share_token", { length: 64 }).unique(),
+    shareExpiresAt: datetime("share_expires_at"),
+    version: int("version").notNull().default(1),
     createdAt: datetime("created_at").notNull(),
     updatedAt: datetime("updated_at").notNull(),
     updatedBy: varchar("updated_by", { length: 21 }),
@@ -38,14 +42,20 @@ export const planStops = mysqlTable(
   {
     id: varchar("id", { length: 21 }).primaryKey(),
     planId: varchar("plan_id", { length: 21 }).notNull(),
+    roomId: varchar("room_id", { length: 21 }).notNull(),
     placeId: varchar("place_id", { length: 21 }),
     customName: varchar("custom_name", { length: 150 }),
     sortOrder: int("sort_order").notNull().default(0),
     plannedTime: varchar("planned_time", { length: 10 }),
     durationMin: int("duration_min").notNull().default(60),
+    dayOffset: tinyint("day_offset").notNull().default(0),
+    startMinute: int("start_minute").notNull().default(0),
+    travelMinutes: int("travel_minutes").notNull().default(15),
+    isPinnedTime: boolean("is_pinned_time").notNull().default(false),
     note: text("note"),
   },
   (table) => [
+    index("idx_plan_stops_room_id").on(table.roomId),
     index("idx_plan_stops_plan_sort").on(table.planId, table.sortOrder),
   ]
 );
@@ -65,7 +75,25 @@ export const checklistItems = mysqlTable(
   ]
 );
 
+export const planRsvps = mysqlTable(
+  "plan_rsvps",
+  {
+    id: varchar("id", { length: 21 }).primaryKey(),
+    planId: varchar("plan_id", { length: 21 }).notNull(),
+    roomId: varchar("room_id", { length: 21 }).notNull(),
+    responderName: varchar("responder_name", { length: 60 }).notNull(),
+    status: mysqlEnum("status", ["confirmed", "change_requested"]).notNull(),
+    changeNote: text("change_note"),
+    createdAt: datetime("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_plan_rsvps_plan").on(table.planId),
+  ]
+);
+
 export type DatePlan = typeof datePlans.$inferSelect;
 export type NewDatePlan = typeof datePlans.$inferInsert;
 export type PlanStop = typeof planStops.$inferSelect;
 export type ChecklistItem = typeof checklistItems.$inferSelect;
+export type PlanRsvp = typeof planRsvps.$inferSelect;
+export type NewPlanRsvp = typeof planRsvps.$inferInsert;

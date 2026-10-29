@@ -15,6 +15,9 @@ export interface PlanSummaryDto {
   isSecret: boolean;
   isSecretLocked: boolean;
   revealAt: Date | null;
+  version: number;
+  shareToken: string | null;
+  shareExpiresAt: Date | null;
   createdBy: string;
   updatedAt: Date;
   updatedBy: string | null;
@@ -27,6 +30,10 @@ export interface PlanStopDto {
   sortOrder: number;
   plannedTime: string | null;
   durationMin: number;
+  dayOffset: number;
+  startMinute: number;
+  travelMinutes: number;
+  isPinnedTime: boolean;
   note: string | null;
 }
 
@@ -57,6 +64,9 @@ export function toPlanSummaryDto(plan: DatePlan, memberId: string, now: Date): P
     isSecret: plan.isSecret,
     isSecretLocked: isLocked,
     revealAt: plan.revealAt,
+    version: plan.version ?? 1,
+    shareToken: plan.shareToken ?? null,
+    shareExpiresAt: plan.shareExpiresAt ?? null,
     createdBy: plan.createdBy,
     updatedAt: plan.updatedAt,
     updatedBy: plan.updatedBy,
@@ -71,6 +81,10 @@ export function toPlanStopDto(stop: PlanStop): PlanStopDto {
     sortOrder: stop.sortOrder,
     plannedTime: stop.plannedTime,
     durationMin: stop.durationMin,
+    dayOffset: stop.dayOffset ?? 0,
+    startMinute: stop.startMinute ?? 0,
+    travelMinutes: stop.travelMinutes ?? 15,
+    isPinnedTime: stop.isPinnedTime ?? false,
     note: stop.note,
   };
 }

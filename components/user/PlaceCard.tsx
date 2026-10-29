@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Image from "next/image";
 import { HanoiPlace } from "@/lib/mock-data";
 import { useApp } from "@/context/AppContext";
@@ -22,6 +22,18 @@ export function PlaceCard({ place, compact = false, index = 0, featured }: Place
   } = useApp();
 
   const [imgError, setImgError] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+
+  const imageList = useMemo(() => {
+    const imgs = (place.media || [])
+      .filter((m) => m.type === "image" && m.url)
+      .map((m) => ({ url: m.url, caption: m.caption }));
+    if (imgs.length > 0) return imgs;
+    if (place.coverUrl) return [{ url: place.coverUrl, caption: place.name }];
+    return [];
+  }, [place.media, place.coverUrl, place.name]);
+
+  const currentPhoto = imageList[photoIndex] || imageList[0];
   const saved = isPlaceSaved(place.slug) || isPlaceSaved(place.id);
   const inSchedule = isPlaceInUpcomingPlan(place.id);
 
@@ -120,15 +132,16 @@ export function PlaceCard({ place, compact = false, index = 0, featured }: Place
       )}
 
       <div>
-        {/* Khung ảnh trong thẻ Polaroid */}
+        {/* Khung ảnh trong thẻ Polaroid (Hỗ trợ lướt xem 3-5 góc ảnh Unsplash) */}
         <div
           onClick={handleOpenDetail}
-          className="relative rounded overflow-hidden aspect-[16/10] bg-[#E5D1B8] cursor-pointer"
+          className="relative rounded overflow-hidden aspect-[16/10] bg-[#E5D1B8] cursor-pointer group/photo"
         >
-          {place.coverUrl && !imgError ? (
+          {currentPhoto?.url && !imgError ? (
             <Image
-              src={place.coverUrl}
-              alt={place.name}
+              key={currentPhoto.url}
+              src={currentPhoto.url}
+              alt={currentPhoto.caption || place.name}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
               className="object-cover group-hover:scale-105 transition duration-500"
@@ -141,10 +154,10 @@ export function PlaceCard({ place, compact = false, index = 0, featured }: Place
             </div>
           )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20 pointer-events-none" />
 
           {/* Nhãn thời gian gợi ý góc trên trái */}
-          <div className="absolute top-2.5 left-2.5 bg-[#5F7355]/90 backdrop-blur-xs text-[#FAF4E8] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow">
+          <div className="absolute top-2.5 left-2.5 bg-[#5F7355]/90 backdrop-blur-xs text-[#FAF4E8] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow z-10">
             <span>✨</span>
             <span>{bestTime}</span>
           </div>
@@ -155,7 +168,7 @@ export function PlaceCard({ place, compact = false, index = 0, featured }: Place
               e.stopPropagation();
               toggleSavePlace(place.slug);
             }}
-            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full ${
+            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full z-10 ${
               saved ? "bg-brand-terracotta text-white" : "bg-[#FFFDF9]/90 text-paper-ink"
             } flex items-center justify-center shadow hover:scale-110 transition active:scale-90`}
             title={saved ? "Bỏ lưu địa điểm" : "Lưu vào yêu thích"}
@@ -175,11 +188,59 @@ export function PlaceCard({ place, compact = false, index = 0, featured }: Place
             </svg>
           </button>
 
+          {/* Nút lướt ảnh trái / phải (khi có nhiều hơn 1 ảnh) */}
+          {imageList.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPhotoIndex((prev) => (prev - 1 + imageList.length) % imageList.length);
+                }}
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/75 text-white flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition z-10 text-sm font-bold shadow"
+                aria-label="Góc ảnh trước"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPhotoIndex((prev) => (prev + 1) % imageList.length);
+                }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/75 text-white flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition z-10 text-sm font-bold shadow"
+                aria-label="Góc ảnh sau"
+              >
+                ›
+              </button>
+
+              {/* Dấu chấm tròn tiến trình ảnh */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10 pointer-events-none">
+                {imageList.map((_, dotIdx) => (
+                  <span
+                    key={dotIdx}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      dotIdx === photoIndex ? "w-3.5 bg-white shadow-xs" : "w-1.5 bg-white/50"
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
           {/* Nhãn Quận kèm Ghim Kẹp Giấy góc dưới trái */}
-          <div className="absolute bottom-2.5 left-2.5 bg-[#E6D4BC]/95 border border-[#362721] text-paper-ink text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow">
+          <div className="absolute bottom-2.5 left-2.5 bg-[#E6D4BC]/95 border border-[#362721] text-paper-ink text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow z-10">
             <span>📎</span>
             <span>{district}</span>
           </div>
+
+          {/* Badge góc ảnh ở góc dưới phải (nếu có từ 2 ảnh trở lên) */}
+          {imageList.length > 1 && (
+            <div className="absolute bottom-2.5 right-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow z-10">
+              <span>📷</span>
+              <span>{photoIndex + 1}/{imageList.length}</span>
+            </div>
+          )}
         </div>
 
         {/* Nội dung chữ bên dưới tấm ảnh Polaroid */}

@@ -25,6 +25,7 @@ import { autoPublishMatchedVideos } from "@/server/services/pipeline/auto-publis
 import { runYoutubeMaintenanceCron } from "./youtube-maintenance-cron";
 import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
 import { assertNotBlocklisted } from "@/server/services/admin/governance.policy";
+import { getCuratedUnsplashGalleryForPlace } from "@/lib/media/unsplash-gallery-pool";
 import { eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -298,9 +299,9 @@ export async function runDailyPipeline(
       .replace(/^-+|-+$/g, "");
     const slug = `${baseSlug}-${newPlaceId.slice(-6)}`;
 
-    const img1 = pool[i % pool.length];
-    const img2 = pool[(i + 1) % pool.length];
     const isFood = category === "food";
+    const gallery = getCuratedUnsplashGalleryForPlace(category, newPlaceId, 4);
+    const coverPhoto = gallery[0];
 
     // Insert Place
     await db.insert(places).values({
@@ -323,7 +324,7 @@ export async function runDailyPipeline(
         : ["thư thái", "chụp ảnh", "tâm tình"],
       tags: ["auto_pipeline", "hanoi_places", category, area.toLowerCase()],
       indoor: category !== "nature",
-      coverUrl: img1.url,
+      coverUrl: coverPhoto.url,
       summary: `${candidate.name} tại ${area}, điểm hẹn hò ấm cúng và thích hợp cho cặp đôi.`,
       tier: "B",
       status: "published",
@@ -384,36 +385,24 @@ export async function runDailyPipeline(
       sourceLinks: ["https://datemate.vn"],
     });
 
-    // Insert PlaceMedia (HD Images)
-    await db.insert(placeMedia).values({
-      id: `med_${nanoid(16)}`,
-      placeId: newPlaceId,
-      type: "image",
-      url: img1.url,
-      platform: "unsplash",
-      embedId: null,
-      caption: `${candidate.name} - ${img1.caption}`,
-      credit: img1.credit,
-      sourceUrl: img1.url,
-      licenseNote: "Unsplash Free License",
-      license: "licensed",
-      sortOrder: 0,
-    });
-
-    await db.insert(placeMedia).values({
-      id: `med_${nanoid(16)}`,
-      placeId: newPlaceId,
-      type: "image",
-      url: img2.url,
-      platform: "unsplash",
-      embedId: null,
-      caption: `${candidate.name} - ${img2.caption}`,
-      credit: img2.credit,
-      sourceUrl: img2.url,
-      licenseNote: "Unsplash Free License",
-      license: "licensed",
-      sortOrder: 1,
-    });
+    // Insert 4 Distinct Unsplash Photos (Overview, Table, Detail, Aesthetic)
+    for (let sortOrder = 0; sortOrder < gallery.length; sortOrder++) {
+      const photo = gallery[sortOrder];
+      await db.insert(placeMedia).values({
+        id: `med_${nanoid(16)}`,
+        placeId: newPlaceId,
+        type: "image",
+        url: photo.url,
+        platform: "unsplash",
+        embedId: null,
+        caption: `${candidate.name} - ${photo.caption}`,
+        credit: photo.credit,
+        sourceUrl: photo.url,
+        licenseNote: "Unsplash Free License",
+        license: "licensed",
+        sortOrder,
+      });
+    }
 
     // Cập nhật candidate status
     await db

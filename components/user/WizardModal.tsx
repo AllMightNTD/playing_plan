@@ -327,7 +327,7 @@ export function WizardModal() {
                 3 Gợi ý hợp gu nhất cho hai bạn hôm nay:
               </h4>
 
-              <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+              <div className="space-y-3">
                 {scoredPlaces.map((item) => (
                   <div
                     key={item.place.id}

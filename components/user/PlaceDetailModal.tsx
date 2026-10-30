@@ -125,7 +125,7 @@ export function PlaceDetailModal() {
           <button
             type="button"
             onClick={close}
-            className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E6D7C3] hover:bg-brand-terracotta hover:text-white text-paper-ink font-extrabold flex items-center justify-center transition"
+            className="shrink-0 w-11 h-11 sm:w-10 sm:h-10 min-w-[44px] min-h-[44px] rounded-full bg-[#E6D7C3] hover:bg-brand-terracotta hover:text-white text-paper-ink font-extrabold flex items-center justify-center transition"
             aria-label="Đóng"
           >
             ✕
@@ -398,11 +398,11 @@ export function PlaceDetailModal() {
           >
             📖 Mở cẩm nang chi tiết →
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => toggleSavePlace(place.slug)}
-              className={`px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl text-xs font-bold border transition flex items-center justify-center ${
+              className={`flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl text-xs font-bold border transition flex items-center justify-center ${
                 saved
                   ? "bg-brand-terracotta text-white border-brand-terracotta"
                   : "bg-[#FFFDF9] text-paper-ink border-[#CBB292] hover:border-brand-terracotta"
@@ -414,7 +414,7 @@ export function PlaceDetailModal() {
               type="button"
               onClick={() => quickAddPlaceToPlan(place)}
               disabled={inSchedule}
-              className={`px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center justify-center ${
+              className={`flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center justify-center ${
                 inSchedule
                   ? "bg-brand-olive text-white cursor-default"
                   : "bg-brand-terracotta hover:bg-brand-terracottaDark text-white shadow"

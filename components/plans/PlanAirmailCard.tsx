@@ -6,7 +6,7 @@ import {
   Edit3,
   Phone,
   Mail,
-  History,
+  Clock,
   Send,
   Check,
 } from "lucide-react";
@@ -66,12 +66,16 @@ export function PlanAirmailCard({
   className = "",
 }: PlanAirmailCardProps) {
   // --- Local note state with debounce save ---
-  const [noteText, setNoteText] = useState(planNote || "");
+  const [noteText, setNoteText] = useState(
+    planNote || "Mặc đồ tone be/nâu vintage cho hợp màu nắng thu Hà Nội nhé!"
+  );
   const [isSavingNote, setIsSavingNote] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    setNoteText(planNote || "");
+    if (planNote) {
+      setNoteText(planNote);
+    }
   }, [planNote]);
 
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -105,7 +109,7 @@ export function PlanAirmailCard({
     name: partner?.name || "Người thương 💕",
     phone: partner?.phone || "",
     email: partner?.email || "",
-    lastSync: partner?.lastSync || "Vừa xong",
+    lastSync: partner?.lastSync || "2 phút trước",
   });
 
   useEffect(() => {
@@ -114,7 +118,7 @@ export function PlanAirmailCard({
         name: partner.name || "Người thương 💕",
         phone: partner.phone || "",
         email: partner.email || "",
-        lastSync: partner.lastSync || "Vừa xong",
+        lastSync: partner.lastSync || "2 phút trước",
       });
       setPartnerForm({
         name: partner.name || "Người thương 💕",
@@ -131,7 +135,7 @@ export function PlanAirmailCard({
       name: partnerForm.name.trim() || "Người thương 💕",
       phone: partnerForm.phone.trim(),
       email: partnerForm.email.trim(),
-      lastSync: "Vừa cập nhật",
+      lastSync: "Vừa xong",
     }));
     setIsEditingPartner(false);
   };
@@ -157,14 +161,14 @@ export function PlanAirmailCard({
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-[11px] font-extrabold tracking-wider text-[#7d6856] uppercase">
-                DỰ BÁO HẸN HÒ HÀ NỘI • {formatVietnameseDate(planDate)}
+                {`DỰ BÁO HẸN HÒ HÀ NỘI • ${formatVietnameseDate(planDate)}`}
               </p>
               <div className="mt-1 flex items-baseline gap-2 flex-wrap">
                 <span className="text-3xl font-black text-[#231915]">
                   {`${weatherTemp}°C`}
                 </span>
                 <span className="text-xs font-semibold text-[#5c4738]">
-                  {weatherDesc} • Khả năng mưa{" "}
+                  {`${weatherDesc} • Khả năng mưa `}
                   <strong className="text-[#c84b31]">{`${rainProb}%`}</strong>
                 </span>
               </div>
@@ -216,7 +220,7 @@ export function PlanAirmailCard({
               Kết nối Người thương (SĐT / Email)
             </h3>
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#2b6e44] bg-[#e8f4ec] px-2 py-0.5 rounded-full">
-              ● Đã đồng bộ ({partnerData.lastSync})
+              {`● Đã đồng bộ (${partnerData.lastSync})`}
             </span>
           </div>
 
@@ -361,7 +365,7 @@ export function PlanAirmailCard({
         <div className="border-t border-[#eee5d7] pt-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-extrabold uppercase tracking-wider text-[#5c4738] flex items-center gap-1.5">
-              <History className="w-3.5 h-3.5 text-[#c84b31]" />
+              <Clock className="w-3.5 h-3.5 text-[#c84b31]" />
               Lịch trình lưu theo mốc thời gian
             </span>
             <span className="text-[11px] font-bold text-[#785118]">

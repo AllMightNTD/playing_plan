@@ -6,14 +6,11 @@ import {
   Clock,
   Edit3,
   Trash2,
-  Sparkles,
   Navigation,
   GripVertical,
   StickyNote,
   ArrowUp,
   ArrowDown,
-  Check,
-  ChevronRight,
   Plus,
   Send,
   AlertTriangle,
@@ -24,7 +21,6 @@ import {
   computePlanTimeline,
   computeItineraryStats,
   formatVietnameseDate,
-  optimizeItinerarySequence,
 } from "@/lib/plan-optimizer";
 import { reorderStopsOptimistic, deleteStopOptimistic } from "@/lib/optimistic-timeline";
 import { AddStopModal, type AddStopPayload } from "./modals/AddStopModal";
@@ -55,36 +51,16 @@ export function PlanTimeline({
   places = [],
   onRefresh,
   onOpenPlaceDetail,
-  onShareStory,
   onNotifyPartner,
-  goldenHourStart = "16:23",
-  partnerContact = "Người thương 💕",
   className = "",
 }: PlanTimelineProps) {
   // Local stops for 0ms optimistic UI
   const [localStops, setLocalStops] = useState<PlanStopDto[]>(plan.stops);
-  const [localTitle, setLocalTitle] = useState(plan.title);
-  const [localDate, setLocalDate] = useState(plan.planDate);
-  const [localStartTime, setLocalStartTime] = useState(plan.startTime || "15:00");
+  const [localStartTime] = useState(plan.startTime || "15:00");
 
   useEffect(() => {
     setLocalStops(plan.stops);
-    setLocalTitle(plan.title);
-    setLocalDate(plan.planDate);
-    setLocalStartTime(plan.startTime || "15:00");
-  }, [plan]);
-
-  // Header metadata editing state
-  const [isEditingHeader, setIsEditingHeader] = useState(false);
-  const [headerForm, setHeaderForm] = useState({
-    title: plan.title,
-    planDate: plan.planDate,
-    startTime: plan.startTime || "15:00",
-  });
-  const [isSavingHeader, setIsSavingHeader] = useState(false);
-
-  // Partner update banner state (shown if version conflict or explicitly triggered)
-  const [showPartnerBanner, setShowPartnerBanner] = useState(false);
+  }, [plan.stops]);
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -94,26 +70,18 @@ export function PlanTimeline({
   const [editingNoteStopId, setEditingNoteStopId] = useState<string | null>(null);
   const [tempNoteText, setTempNoteText] = useState("");
 
-  // Detailed stop editing state
+  // Detailed stop editing state (matches Demo Image 2)
   const [editingStopId, setEditingStopId] = useState<string | null>(null);
   const [editStopForm, setEditStopForm] = useState<{
     name: string;
+    category: string;
     duration: number;
     isLocked: boolean;
     lockedStartTime: string;
     note: string;
   } | null>(null);
 
-  // AI Optimizer preview state
-  const [aiPreview, setAiPreview] = useState<{
-    recommendedStartTime: string;
-    reason: string;
-    stops: Array<{ id: string; name: string; icon: string }>;
-  } | null>(null);
-  const [isApplyingAi, setIsApplyingAi] = useState(false);
-
   // Quick actions loading
-  const [isAutoScheduling, setIsAutoScheduling] = useState(false);
   const [isApplyingPlanB, setIsApplyingPlanB] = useState(false);
 
   // Modals state
@@ -122,7 +90,7 @@ export function PlanTimeline({
   const [showDeletePlanModal, setShowDeletePlanModal] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
 
-  // Lookup place information from catalog
+  // Lookup place information from catalog and enrich stops
   const enrichedStops = useMemo(() => {
     return localStops.map((stop) => {
       const place = stop.placeId ? places.find((p) => p.id === stop.placeId) : undefined;
@@ -132,6 +100,18 @@ export function PlanTimeline({
       const address = place?.address || place?.area || "Hà Nội";
       const isIndoor = place?.indoor ?? true;
 
+      // Extract plan B note if present
+      let displayNote = stop.note || "";
+      let planBNote = "";
+      if (displayNote.includes("[Plan B Mưa]")) {
+        const parts = displayNote.split("\n");
+        const bPart = parts.find((p) => p.includes("[Plan B Mưa]"));
+        if (bPart) {
+          planBNote = bPart;
+          displayNote = parts.filter((p) => !p.includes("[Plan B Mưa]")).join("\n").trim();
+        }
+      }
+
       return {
         ...stop,
         name,
@@ -139,6 +119,8 @@ export function PlanTimeline({
         icon,
         address,
         isIndoor,
+        planBNote,
+        note: displayNote,
         lat: place?.lat ?? null,
         lng: place?.lng ?? null,
         duration: stop.durationMin,
@@ -156,38 +138,6 @@ export function PlanTimeline({
   const itineraryStats = useMemo(() => {
     return computeItineraryStats(computedTimeline);
   }, [computedTimeline]);
-
-  // Save header metadata (title, date, startTime)
-  const handleSaveHeader = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSavingHeader) return;
-    setIsSavingHeader(true);
-    setLocalTitle(headerForm.title);
-    setLocalDate(headerForm.planDate);
-    setLocalStartTime(headerForm.startTime);
-    setIsEditingHeader(false);
-
-    try {
-      const res = await fetch(`/api/v1/user/plans/${plan.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: headerForm.title.trim(),
-          planDate: headerForm.planDate,
-          startTime: headerForm.startTime,
-        }),
-      });
-      if (res.status === 409) {
-        setShowPartnerBanner(true);
-      }
-      await onRefresh();
-    } catch (err) {
-      console.error(err);
-      await onRefresh();
-    } finally {
-      setIsSavingHeader(false);
-    }
-  };
 
   // Reorder stops (Drag & Drop + Mobile Arrows)
   const handleReorder = async (fromIdx: number, toIdx: number) => {
@@ -234,7 +184,6 @@ export function PlanTimeline({
 
   // Ripple shift duration (-15p / +15p)
   const handleRippleShift = async (stopId: string, shiftMinutes: 15 | -15) => {
-    // Optimistic UI update
     setLocalStops((prev) =>
       prev.map((s) =>
         s.id === stopId ? { ...s, durationMin: Math.max(15, s.durationMin + shiftMinutes) } : s
@@ -255,18 +204,35 @@ export function PlanTimeline({
     }
   };
 
-  // Toggle pin/locked time
-  const handleTogglePin = async (stop: (typeof enrichedStops)[number]) => {
-    const nextPinned = !stop.isPinnedTime;
+  // Toggle pin
+  const handleTogglePin = async (
+    stopId: string,
+    currentPinned: boolean,
+    currentStartTimeStr: string
+  ) => {
+    const nextPinned = !currentPinned;
+    const nextTime = nextPinned ? currentStartTimeStr : null;
+
     setLocalStops((prev) =>
-      prev.map((s) => (s.id === stop.id ? { ...s, isPinnedTime: nextPinned } : s))
+      prev.map((s) =>
+        s.id === stopId
+          ? {
+              ...s,
+              isPinnedTime: nextPinned,
+              plannedTime: nextTime,
+            }
+          : s
+      )
     );
 
     try {
-      const res = await fetch(`/api/v1/user/plans/${plan.id}/stops/${stop.id}`, {
+      const res = await fetch(`/api/v1/user/plans/${plan.id}/stops/${stopId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPinnedTime: nextPinned }),
+        body: JSON.stringify({
+          isPinnedTime: nextPinned,
+          plannedTime: nextTime,
+        }),
       });
       if (!res.ok) throw new Error("Toggle pin failed");
       await onRefresh();
@@ -276,7 +242,7 @@ export function PlanTimeline({
     }
   };
 
-  // Save quick stop note
+  // Save quick note
   const handleSaveQuickNote = async (stopId: string) => {
     const nextNote = tempNoteText.trim() || null;
     setLocalStops((prev) =>
@@ -298,14 +264,18 @@ export function PlanTimeline({
     }
   };
 
-  // Detailed stop editing
-  const handleStartDetailedEdit = (stop: (typeof enrichedStops)[number]) => {
+  // Detailed stop editing (Image 2)
+  const handleStartDetailedEdit = (
+    stop: (typeof enrichedStops)[number],
+    startTimeStr: string
+  ) => {
     setEditingStopId(stop.id);
     setEditStopForm({
       name: stop.name,
+      category: stop.category || "coffee",
       duration: stop.durationMin,
       isLocked: stop.isPinnedTime,
-      lockedStartTime: stop.plannedTime || "16:00",
+      lockedStartTime: stop.plannedTime || startTimeStr,
       note: stop.note || "",
     });
   };
@@ -382,23 +352,6 @@ export function PlanTimeline({
     }
   };
 
-  // Auto-schedule golden hour
-  const handleAutoSchedule = async () => {
-    if (isAutoScheduling) return;
-    setIsAutoScheduling(true);
-    try {
-      const res = await fetch(`/api/v1/user/plans/${plan.id}/auto-schedule`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Auto-schedule failed");
-      await onRefresh();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsAutoScheduling(false);
-    }
-  };
-
   // Indoor Plan B
   const handlePlanB = async () => {
     if (isApplyingPlanB) return;
@@ -413,47 +366,6 @@ export function PlanTimeline({
       console.error(err);
     } finally {
       setIsApplyingPlanB(false);
-    }
-  };
-
-  // AI Optimizer
-  const handleGenerateAiSequence = () => {
-    const result = optimizeItinerarySequence(enrichedStops);
-    setAiPreview({
-      recommendedStartTime: result.recommendedStartTime,
-      reason: result.reason,
-      stops: result.stops.map((s) => ({
-        id: (s as (typeof enrichedStops)[number]).id,
-        name: (s as (typeof enrichedStops)[number]).name,
-        icon: (s as (typeof enrichedStops)[number]).icon,
-      })),
-    });
-  };
-
-  const handleApplyAiSequence = async () => {
-    if (!aiPreview || isApplyingAi) return;
-    setIsApplyingAi(true);
-
-    try {
-      const stopIds = aiPreview.stops.map((s) => s.id);
-      // Reorder stops
-      await fetch(`/api/v1/user/plans/${plan.id}/stops/reorder`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stopIds }),
-      });
-      // Update plan start time
-      await fetch(`/api/v1/user/plans/${plan.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startTime: aiPreview.recommendedStartTime }),
-      });
-      setAiPreview(null);
-      await onRefresh();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsApplyingAi(false);
     }
   };
 
@@ -521,288 +433,27 @@ export function PlanTimeline({
   const totalChecklistCount = plan.checklist.length;
 
   return (
-    <div
-      className={`bg-[#fdfbf7] border border-[#e2d6c3] rounded-2xl p-4 sm:p-6 vintage-shadow ${className}`.trim()}
-    >
-      {/* 1. HEADER LỊCH HẸN */}
-      <div className="border-b border-[#eee5d7] pb-4 mb-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 bg-[#e8f4ec] text-[#2b6e44] text-xs font-bold px-2.5 py-1 rounded-full border border-[#bce0c8]">
-              📍 Lịch hẹn sắp tới
-            </span>
-
-            {/* Quick date & time button */}
-            <button
-              type="button"
-              onClick={() => {
-                setHeaderForm({
-                  title: localTitle,
-                  planDate: localDate,
-                  startTime: localStartTime,
-                });
-                setIsEditingHeader(true);
-              }}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#5c4738] bg-[#f5efe6] hover:bg-[#ebe0d0] px-2.5 py-1 rounded-full border border-[#dcd0be] transition"
-              title="Bấm để đổi ngày & giờ bắt đầu"
-            >
-              <Calendar className="w-3.5 h-3.5 text-[#c84b31]" />
-              <span>{formatVietnameseDate(localDate)}</span>
-              <span>•</span>
-              <Clock className="w-3.5 h-3.5 text-[#c84b31]" />
-              <span>{`Bắt đầu ${localStartTime}`}</span>
-              <Edit3 className="w-3 h-3 opacity-60" />
-            </button>
-          </div>
-
-          {/* Action buttons: Story / Edit / Delete */}
-          <div className="flex items-center gap-2">
-            {onShareStory && (
-              <button
-                type="button"
-                onClick={onShareStory}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#c84b31] hover:text-[#a3361f] bg-[#fff5f2] hover:bg-[#ffe8e2] px-2.5 py-1 rounded-lg border border-[#f5c6bc] transition"
-              >
-                🖼️ Tạo ảnh Story chia sẻ
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setHeaderForm({
-                  title: localTitle,
-                  planDate: localDate,
-                  startTime: localStartTime,
-                });
-                setIsEditingHeader(!isEditingHeader);
-              }}
-              className="p-1.5 rounded-lg text-[#6e5645] hover:bg-[#f2eae0] transition"
-              title="Sửa tiêu đề & ngày giờ lịch hẹn"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowDeletePlanModal(true)}
-              className="p-1.5 rounded-lg text-[#b93829] hover:bg-[#fdeceb] transition"
-              title="Xóa lịch hẹn này"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Inline form to edit Title, Date & StartTime */}
-        {isEditingHeader ? (
-          <form
-            onSubmit={handleSaveHeader}
-            className="mt-3 bg-[#f7f2ea] border border-[#dfd2c0] rounded-xl p-3.5 space-y-3"
-          >
-            <div>
-              <label
-                htmlFor="plan-title-input"
-                className="block text-xs font-semibold text-[#6e5645] mb-1"
-              >
-                Tên buổi hẹn hò
-              </label>
-              <input
-                id="plan-title-input"
-                type="text"
-                required
-                value={headerForm.title}
-                onChange={(e) =>
-                  setHeaderForm((prev) => ({ ...prev, title: e.target.value }))
-                }
-                className="w-full px-3 py-1.5 rounded-lg border border-[#d5c5b0] bg-white text-sm font-bold text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
-                placeholder="Nhập tên buổi hẹn..."
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label
-                  htmlFor="plan-date-input"
-                  className="block text-xs font-semibold text-[#6e5645] mb-1"
-                >
-                  Chọn ngày hẹn
-                </label>
-                <input
-                  id="plan-date-input"
-                  type="date"
-                  required
-                  value={headerForm.planDate}
-                  onChange={(e) =>
-                    setHeaderForm((prev) => ({ ...prev, planDate: e.target.value }))
-                  }
-                  className="w-full px-3 py-1.5 rounded-lg border border-[#d5c5b0] bg-white text-sm text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="plan-start-time-input"
-                  className="block text-xs font-semibold text-[#6e5645] mb-1"
-                >
-                  Giờ bắt đầu chặng đầu tiên
-                </label>
-                <input
-                  id="plan-start-time-input"
-                  type="time"
-                  required
-                  value={headerForm.startTime}
-                  onChange={(e) =>
-                    setHeaderForm((prev) => ({ ...prev, startTime: e.target.value }))
-                  }
-                  className="w-full px-3 py-1.5 rounded-lg border border-[#d5c5b0] bg-white text-sm text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setIsEditingHeader(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#6e5645] hover:bg-[#e8dfd3]"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={isSavingHeader}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#c84b31] text-white hover:bg-[#b03e26] flex items-center gap-1"
-              >
-                <Check className="w-3.5 h-3.5" />
-                {isSavingHeader ? "Đang lưu..." : "Lưu lịch hẹn"}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <h1
-            onClick={() => {
-              setHeaderForm({
-                title: localTitle,
-                planDate: localDate,
-                startTime: localStartTime,
-              });
-              setIsEditingHeader(true);
-            }}
-            className="text-xl sm:text-2xl font-extrabold text-[#231915] cursor-pointer hover:text-[#c84b31] transition"
-            title="Bấm để sửa tên lịch hẹn"
-          >
-            {localTitle}
-          </h1>
-        )}
+    <div className={`space-y-4 ${className}`.trim()}>
+      {/* 1. NÚT ĐỔI SANG QUÁN TRONG NHÀ (PHÒNG MƯA) TRÊN CÙNG THEO DEMO */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={handlePlanB}
+          disabled={isApplyingPlanB}
+          className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#fdfbf7] hover:bg-[#f2ece1] text-[#3d2d24] border border-[#d6c7b2] px-3.5 py-2 rounded-full transition shadow-xs disabled:opacity-50"
+        >
+          🌧️ Đổi sang quán Trong nhà (Phòng mưa)
+        </button>
       </div>
 
-      {/* 2. BANNER CẬP NHẬT TỪ NGƯỜI THƯƠNG */}
-      {showPartnerBanner && (
-        <div className="mb-4 bg-[#fceae6] border border-[#df8a79] rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <p className="text-xs sm:text-sm font-bold text-[#b83723] flex items-center gap-1.5">
-              <span>⚠️</span> {partnerContact} vừa cập nhật lịch hẹn!
-            </p>
-            <p className="text-xs text-[#593a34]">
-              Bấm cập nhật để xem mốc giờ mới nhất và lời nhắn mà người ấy vừa chỉnh nhé.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={async () => {
-              setShowPartnerBanner(false);
-              await onRefresh();
-            }}
-            className="shrink-0 bg-[#c84b31] hover:bg-[#ad3b23] text-white text-xs font-bold px-4 py-2 rounded-full shadow-xs transition flex items-center justify-center gap-1.5"
-          >
-            🔄 Cập nhật ngay
-          </button>
-        </div>
-      )}
-
-      {/* 3. THANH CÔNG CỤ AI GỢI Ý & CHIPS THÔNG MINH */}
-      <div className="mb-4 space-y-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleGenerateAiSequence}
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-gradient-to-r from-[#c84b31] to-[#d96b38] hover:from-[#b33e25] hover:to-[#c45b2b] text-white px-3.5 py-2 rounded-full shadow-xs transition"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            ✨ Hệ thống gợi ý lịch trình hợp lý
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAutoSchedule}
-            disabled={isAutoScheduling}
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#fdf3dc] hover:bg-[#f9e7be] text-[#5c4018] border border-[#e3c383] px-3 py-1.5 rounded-full transition disabled:opacity-50"
-          >
-            🌅 Tự xếp giờ khớp Hoàng hôn ({goldenHourStart})
-          </button>
-
-          <button
-            type="button"
-            onClick={handlePlanB}
-            disabled={isApplyingPlanB}
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#fdfbf7] hover:bg-[#f2ece1] text-[#3d2d24] border border-[#d6c7b2] px-3 py-1.5 rounded-full transition disabled:opacity-50"
-          >
-            🌧️ Đổi sang quán Trong nhà (Phòng mưa)
-          </button>
-        </div>
-
-        {/* Hộp xem trước Gợi ý lịch trình hợp lý từ Hệ thống */}
-        {aiPreview && (
-          <div className="bg-[#fffbeb] border-2 border-[#e3b34c] rounded-xl p-3.5 space-y-2.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#8c5811]">
-                <Sparkles className="w-4 h-4 text-[#d98218]" />
-                ĐỀ XUẤT LỊCH TRÌNH HỢP LÝ TỪ DATEMATE:
-              </div>
-              <button
-                type="button"
-                onClick={() => setAiPreview(null)}
-                className="text-xs text-[#8c5811] hover:underline"
-              >
-                Đóng
-              </button>
-            </div>
-            <p className="text-xs text-[#594224] leading-relaxed">{aiPreview.reason}</p>
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-[#3d2d24]">
-              {aiPreview.stops.map((s, i) => (
-                <React.Fragment key={s.id}>
-                  <span className="bg-white border border-[#e6d5b8] px-2 py-1 rounded-md">
-                    {i + 1}. {s.icon} {s.name}
-                  </span>
-                  {i < aiPreview.stops.length - 1 && (
-                    <ChevronRight className="w-3.5 h-3.5 text-[#a68a64]" />
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setAiPreview(null)}
-                className="px-3 py-1 rounded-lg text-xs font-semibold text-[#6e5645] hover:bg-[#f2e5c9]"
-              >
-                Giữ nguyên lịch cũ
-              </button>
-              <button
-                type="button"
-                onClick={handleApplyAiSequence}
-                disabled={isApplyingAi}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#c84b31] text-white hover:bg-[#ad3b23] flex items-center gap-1 disabled:opacity-50"
-              >
-                <Check className="w-3.5 h-3.5" />
-                {isApplyingAi ? "Đang áp dụng..." : "Áp dụng lịch trình này"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* HƯỚNG DẪN KÉO THẢ */}
-      <div className="flex items-center justify-between text-xs text-[#7d6856] mb-3 px-1">
+      {/* 2. THANH MẸO KÉO THẢ & NÚT THÊM CHẶNG MỚI */}
+      <div className="flex items-center justify-between text-xs text-[#7d6856] px-1">
         <span className="flex items-center gap-1.5">
           <GripVertical className="w-3.5 h-3.5 text-[#b09b84]" />
-          Mẹo: Giữ biểu tượng <b>⋮⋮</b> để kéo thả đổi thứ tự hoặc bấm <b>+15p / -15p</b> để
-          chỉnh mốc giờ
+          <span>
+            Mẹo: Giữ biểu tượng <b>⋮⋮</b> để kéo thả đổi thứ tự hoặc bấm <b>+15p / -15p</b> để
+            chỉnh mốc giờ
+          </span>
         </span>
         <button
           type="button"
@@ -813,7 +464,7 @@ export function PlanTimeline({
         </button>
       </div>
 
-      {/* 4. DANH SÁCH CHẶNG (DRAG & DROP TIMELINE) */}
+      {/* 3. DANH SÁCH CHẶNG THEO MỐC THỜI GIAN (DRAG & DROP TIMELINE) */}
       {computedTimeline.length === 0 ? (
         <div className="text-center py-12 bg-[#f8f3eb] rounded-xl border border-dashed border-[#d5c5b0]">
           <p className="text-sm font-semibold text-[#6e5645] mb-2">
@@ -851,7 +502,7 @@ export function PlanTimeline({
                   isBeingDragged ? "opacity-45 scale-[0.98]" : "opacity-100"
                 } ${isDragOver ? "translate-y-1" : ""}`}
               >
-                {/* Node circle */}
+                {/* Node số thứ tự bên trái trục thời gian */}
                 <div
                   className={`absolute left-2.5 top-4 w-5 h-5 rounded-full border-2 flex items-center justify-center z-10 text-[10px] font-bold shadow-xs ${
                     stop.isLocked
@@ -863,7 +514,7 @@ export function PlanTimeline({
                   {idx + 1}
                 </div>
 
-                {/* Stop Card */}
+                {/* Khung thẻ chặng dừng */}
                 <div
                   className={`bg-[#f9f5ed] hover:bg-[#f7f1e6] border rounded-xl p-3.5 transition shadow-xs ${
                     isDragOver
@@ -873,7 +524,7 @@ export function PlanTimeline({
                       : "border-[#e4d9c8]"
                   }`}
                 >
-                  {/* Row 1: Time badge, name, badges, controls */}
+                  {/* Dòng 1: Khung giờ + Tên địa điểm + Badge trạng thái + Nút điều khiển */}
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <div
@@ -883,10 +534,12 @@ export function PlanTimeline({
                         <GripVertical className="w-4 h-4" />
                       </div>
 
+                      {/* Badge mốc giờ đỏ gạch */}
                       <span className="bg-[#c84b31] text-white text-xs font-extrabold px-2.5 py-1 rounded-md tracking-tight shadow-xs">
                         {`${stopItem.startTimeStr} - ${stopItem.endTimeStr}`}
                       </span>
 
+                      {/* Tên địa điểm */}
                       <h3
                         onClick={() => {
                           const slug = places.find((p) => p.id === stop.placeId)?.slug;
@@ -902,12 +555,14 @@ export function PlanTimeline({
                         <span>{stop.name}</span>
                       </h3>
 
+                      {/* Nhãn Cố định giờ */}
                       {stop.isLocked && (
                         <span className="inline-flex items-center gap-1 bg-[#fdf3dc] text-[#785118] border border-[#e3c383] text-[11px] font-bold px-2 py-0.5 rounded-md">
                           📌 Cố định giờ
                         </span>
                       )}
 
+                      {/* Nhãn khớp giờ vàng hoàng hôn */}
                       {stopItem.overlapsGoldenHour && (
                         <span className="inline-flex items-center gap-1 bg-[#fff0db] text-[#b85d19] border border-[#f5cca0] text-[11px] font-semibold px-2 py-0.5 rounded-md">
                           🌅 Đón Hoàng hôn
@@ -915,7 +570,7 @@ export function PlanTimeline({
                       )}
                     </div>
 
-                    {/* Controls: Up/Down, -15p, +15p, Pin, Edit, Delete */}
+                    {/* Cụm nút bên phải: [↑ ↓], -15p, +15p, 📌, ✎, 🗑️ */}
                     <div className="flex items-center gap-1.5 ml-auto">
                       <div className="flex items-center border border-[#dcd0be] rounded-md bg-white overflow-hidden mr-1">
                         <button
@@ -957,7 +612,9 @@ export function PlanTimeline({
 
                       <button
                         type="button"
-                        onClick={() => handleTogglePin(stop)}
+                        onClick={() =>
+                          handleTogglePin(stop.id, stop.isLocked, stopItem.startTimeStr)
+                        }
                         className={`px-2 py-1 rounded-md border text-xs font-bold transition ${
                           stop.isLocked
                             ? "bg-[#c84b31] text-white border-[#b03e26]"
@@ -974,7 +631,14 @@ export function PlanTimeline({
 
                       <button
                         type="button"
-                        onClick={() => handleStartDetailedEdit(stop)}
+                        onClick={() => {
+                          if (editingStopId === stop.id) {
+                            setEditingStopId(null);
+                            setEditStopForm(null);
+                          } else {
+                            handleStartDetailedEdit(stop, stopItem.startTimeStr);
+                          }
+                        }}
                         className="p-1.5 rounded-md bg-white hover:bg-[#f0e8dc] text-[#5c4738] border border-[#cfc1ae] transition"
                         title="Sửa chi tiết chặng"
                       >
@@ -992,7 +656,7 @@ export function PlanTimeline({
                     </div>
                   </div>
 
-                  {/* Row 2: Travel info line */}
+                  {/* Dòng 2: Thông tin di chuyển */}
                   <div className="mt-2 space-y-1 text-xs text-[#6e5645]">
                     {idx === 0 ? (
                       <p className="flex items-center gap-1.5 font-medium">
@@ -1011,6 +675,12 @@ export function PlanTimeline({
                       </p>
                     )}
 
+                    {stop.planBNote && (
+                      <p className="text-[#5c4738] italic flex items-center gap-1.5">
+                        <span>🏷️</span> {stop.planBNote}
+                      </p>
+                    )}
+
                     {stopItem.timeConflictWarning && (
                       <p className="text-[#b83723] font-semibold flex items-center gap-1 bg-[#fceae6] px-2 py-1 rounded">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -1019,7 +689,7 @@ export function PlanTimeline({
                     )}
                   </div>
 
-                  {/* Row 3: Quick Stop Note (Inline Editable) */}
+                  {/* Dòng 3: Ghi chú riêng chặng (Click để sửa nhanh) */}
                   <div className="mt-2.5">
                     {isEditingNote ? (
                       <div className="bg-white border border-[#c84b31] rounded-lg p-2 space-y-2">
@@ -1077,12 +747,12 @@ export function PlanTimeline({
                     )}
                   </div>
 
-                  {/* Detailed Edit Form */}
+                  {/* Form sửa chi tiết chặng hẹn (Khớp hoàn toàn Demo Image 2) */}
                   {isEditingThis && editStopForm && (
                     <div className="mt-3 pt-3 border-t border-[#e2d6c3] bg-white rounded-xl p-3 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-extrabold text-[#c84b31] uppercase">
-                          Chỉnh sửa chi tiết chặng #{idx + 1}
+                          {`CHỈNH SỬA CHI TIẾT CHẶNG #${idx + 1}`}
                         </span>
                         <button
                           type="button"
@@ -1093,10 +763,10 @@ export function PlanTimeline({
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div className="sm:col-span-2">
                           <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
-                            Tên chặng
+                            Tên quán / Địa điểm
                           </label>
                           <input
                             type="text"
@@ -1106,9 +776,31 @@ export function PlanTimeline({
                                 prev ? { ...prev, name: e.target.value } : null
                               )
                             }
-                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c]"
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
                           />
                         </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
+                            Loại hình
+                          </label>
+                          <select
+                            value={editStopForm.category}
+                            onChange={(e) =>
+                              setEditStopForm((prev) =>
+                                prev ? { ...prev, category: e.target.value } : null
+                              )
+                            }
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                          >
+                            <option value="coffee">☕ Cà phê</option>
+                            <option value="activity">📸 Tham quan / Chụp ảnh</option>
+                            <option value="sunset">🌅 Ngắm hoàng hôn</option>
+                            <option value="food">🍜 Ăn uống</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
                         <div>
                           <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
                             Thời lượng dừng (phút)
@@ -1126,43 +818,53 @@ export function PlanTimeline({
                                   : null
                               )
                             }
-                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c]"
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
                           />
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={editStopForm.isLocked}
-                            onChange={(e) =>
-                              setEditStopForm((prev) =>
-                                prev ? { ...prev, isLocked: e.target.checked } : null
-                              )
-                            }
-                            className="accent-[#c84b31]"
-                          />
-                          <span>📌 Cố định giờ bắt đầu</span>
-                        </label>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
+                            Chế độ mốc giờ
+                          </label>
+                          <label className="flex items-center gap-1.5 text-xs py-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editStopForm.isLocked}
+                              onChange={(e) =>
+                                setEditStopForm((prev) =>
+                                  prev ? { ...prev, isLocked: e.target.checked } : null
+                                )
+                              }
+                              className="accent-[#c84b31]"
+                            />
+                            <span className="text-[#2d221c]">📌 Cố định giờ bắt đầu</span>
+                          </label>
+                        </div>
 
-                        {editStopForm.isLocked && (
-                          <input
-                            type="time"
-                            value={editStopForm.lockedStartTime}
-                            onChange={(e) =>
-                              setEditStopForm((prev) =>
-                                prev ? { ...prev, lockedStartTime: e.target.value } : null
-                              )
-                            }
-                            className="px-2 py-1 text-xs rounded border border-[#d5c5b0] text-[#2d221c]"
-                          />
-                        )}
+                        <div>
+                          {editStopForm.isLocked && (
+                            <>
+                              <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
+                                Giờ bắt đầu cố định
+                              </label>
+                              <input
+                                type="time"
+                                value={editStopForm.lockedStartTime}
+                                onChange={(e) =>
+                                  setEditStopForm((prev) =>
+                                    prev ? { ...prev, lockedStartTime: e.target.value } : null
+                                  )
+                                }
+                                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                              />
+                            </>
+                          )}
+                        </div>
                       </div>
 
                       <div>
                         <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
-                          Ghi chú
+                          Ghi chú tại chặng này
                         </label>
                         <input
                           type="text"
@@ -1172,12 +874,12 @@ export function PlanTimeline({
                               prev ? { ...prev, note: e.target.value } : null
                             )
                           }
-                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c]"
-                          placeholder="Ghi chú chi tiết..."
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                          placeholder="Ghi chú chỗ ngồi, món nước, góc chụp ảnh..."
                         />
                       </div>
 
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 pt-1">
                         <button
                           type="button"
                           onClick={() => setEditingStopId(null)}
@@ -1196,7 +898,7 @@ export function PlanTimeline({
                     </div>
                   )}
 
-                  {/* Row 4: Google maps navigation link */}
+                  {/* Dòng 4: Chỉ đường Google Maps & Mốc thời gian */}
                   <div className="mt-2 flex items-center justify-between text-xs">
                     <a
                       href={
@@ -1211,10 +913,10 @@ export function PlanTimeline({
                       className="inline-flex items-center gap-1 font-bold text-[#c84b31] hover:underline"
                     >
                       <Navigation className="w-3 h-3" />
-                      Chỉ đường ({stop.address})
+                      {`Chỉ đường (${stop.address})`}
                     </a>
                     <span className="text-[11px] text-[#9c8874]">
-                      Mốc #{idx + 1}: {stopItem.startTimeStr} ➔ {stopItem.endTimeStr}
+                      {`Mốc #${idx + 1}: ${stopItem.startTimeStr} ➔ ${stopItem.endTimeStr}`}
                     </span>
                   </div>
                 </div>
@@ -1224,7 +926,7 @@ export function PlanTimeline({
         </div>
       )}
 
-      {/* Button to add stop */}
+      {/* 4. NÚT THÊM ĐỊA ĐIỂM TIẾP THEO THEO DEMO */}
       <div className="mt-4 pl-11">
         <button
           type="button"
@@ -1232,11 +934,11 @@ export function PlanTimeline({
           className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#d5c5b0] hover:border-[#c84b31] bg-[#faf6f0] hover:bg-[#fff5f2] text-xs font-bold text-[#6e5645] hover:text-[#c84b31] transition flex items-center justify-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
-          Thêm địa điểm mới vào mốc tiếp theo ({itineraryStats.endStr})
+          {`Thêm địa điểm mới vào mốc tiếp theo (${itineraryStats.endStr})`}
         </button>
       </div>
 
-      {/* 5. FOOTER CARD TRÁI: CHECKLIST & LƯU .ICS */}
+      {/* 5. THANH HÀNH ĐỘNG CUỐI CỘT TRÁI */}
       <div className="mt-6 pt-4 border-t border-[#eee5d7] flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
@@ -1294,7 +996,7 @@ export function PlanTimeline({
         isOpen={showDeletePlanModal}
         onClose={() => setShowDeletePlanModal(false)}
         onConfirm={handleDeletePlanConfirm}
-        planTitle={localTitle}
+        planTitle={plan.title}
         isDeleting={isDeletingPlan}
       />
     </div>

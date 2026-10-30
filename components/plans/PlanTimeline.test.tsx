@@ -102,10 +102,10 @@ describe("components/plans/PlanTimeline", () => {
       />
     );
 
-    // Title & date assertions
-    expect(html).toContain("Buổi hẹn cuối tuần phố cổ");
-    expect(html).toContain("Bắt đầu 15:00");
-    expect(html).toContain("CN, 01/11");
+    // Top buttons assertions
+    expect(html).toContain("🌧️ Đổi sang quán Trong nhà (Phòng mưa)");
+    expect(html).toContain("Mẹo: Giữ biểu tượng");
+    expect(html).toContain("Thêm chặng mới");
 
     // Stops assertions
     expect(html).toContain("Là Việt Coffee");

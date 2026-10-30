@@ -291,30 +291,6 @@ export default function PlansPage() {
         backgroundSize: "18px 18px",
       }}
     >
-      {/* BANNER ĐẦU TRANG THEO DEMO */}
-      {plan && (
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-[#fdfbf7]/95 backdrop-blur border border-[#e2d6c3] rounded-2xl px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 vintage-shadow">
-            <div className="flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-full bg-[#c84b31]/15 text-[#c84b31] flex items-center justify-center font-bold">
-                💌
-              </span>
-              <span className="text-xs sm:text-sm text-[#4a3423] font-medium">
-                <b>DateMate</b> gợi ý lịch trình hợp thời tiết nhất cho hai đứa nhé • Kéo thả địa
-                điểm để đổi thứ tự
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs bg-[#eef6f0] text-[#2b6e44] border border-[#b8dfc6] px-3 py-1.5 rounded-full font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                {`Đã lưu tự động ${plan.stops.length} mốc giờ`}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* CHUYỂN ĐỔI NHIỀU BUỔI HẸN */}
       {plans.length > 1 && (
         <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -394,7 +370,9 @@ export default function PlansPage() {
               sun={homePublic?.sun}
               partner={{
                 name: partnerMember?.nickname || "Người thương 💕",
-                lastSync: "Vừa xong",
+                phone: "0987 654 321",
+                email: "nguoithuong.hanoi@gmail.com",
+                lastSync: "2 phút trước",
               }}
               computedTimeline={computedTimeline.map((s) => ({
                 id: s.item.id,

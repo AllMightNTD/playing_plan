@@ -2,12 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "@/context/AppContext";
 import { CalendarCheck, Gift, CheckSquare, Plus, Trash2, Compass, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InteractiveTimeline } from "@/components/scrapbook/InteractiveTimeline";
 import { PosterShareModal } from "@/components/scrapbook/modals/PosterShareModal";
-import type { PlanDetailDto, PlanSummaryDto } from "@/server/services/user/plan.mapper";
+import type { PlanDetailDto } from "@/server/services/user/plan.mapper";
+import { fetchPlansList, fetchPlanDetail } from "./plans-fetchers";
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
@@ -37,11 +39,9 @@ async function readError(res: Response, fallback: string): Promise<string> {
 
 export default function PlansPage() {
   const { places, homeSummary, homePublic, isLoadingHome, refetchHomeSummary, roomProfile, setActiveDetailSlug, addToast } = useApp();
+  const queryClient = useQueryClient();
 
-  const [plans, setPlans] = useState<PlanSummaryDto[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [plan, setPlan] = useState<PlanDetailDto | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [newChecklistText, setNewChecklistText] = useState("");
 
@@ -54,50 +54,40 @@ export default function PlansPage() {
 
   const upcomingPlanId = homeSummary?.upcomingPlan?.id ?? null;
 
-  const loadPlans = useCallback(async () => {
-    try {
-      const res = await fetch("/api/v1/user/plans", { cache: "no-store" });
-      const json = await res.json();
-      const items: PlanSummaryDto[] = res.ok && Array.isArray(json?.data) ? json.data : [];
-      setPlans(items);
+  const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
+    queryKey: ["user", "plans"],
+    queryFn: fetchPlansList,
+    enabled: !isLoadingHome,
+  });
+
+  useEffect(() => {
+    if (plans.length > 0) {
       setSelectedPlanId((current) =>
-        current && items.some((p) => p.id === current)
+        current && plans.some((p) => p.id === current)
           ? current
-          : (upcomingPlanId && items.some((p) => p.id === upcomingPlanId) ? upcomingPlanId : items[0]?.id ?? null)
+          : (upcomingPlanId && plans.some((p) => p.id === upcomingPlanId) ? upcomingPlanId : plans[0]?.id ?? null)
       );
-    } catch (err) {
-      console.warn("Không thể tải danh sách kế hoạch:", err);
-    } finally {
-      setIsLoading(false);
+    } else {
+      setSelectedPlanId(null);
     }
-  }, [upcomingPlanId]);
+  }, [plans, upcomingPlanId]);
 
-  const loadPlan = useCallback(async (planId: string | null) => {
-    if (!planId) {
-      setPlan(null);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/v1/user/plans/${encodeURIComponent(planId)}`, { cache: "no-store" });
-      const json = await res.json();
-      setPlan(res.ok ? json.data : null);
-    } catch (err) {
-      console.warn("Không thể tải chi tiết kế hoạch:", err);
-    }
-  }, []);
+  const { data: plan = null, isLoading: isLoadingPlan } = useQuery({
+    queryKey: ["user", "plan", selectedPlanId],
+    queryFn: () => fetchPlanDetail(selectedPlanId),
+    enabled: Boolean(selectedPlanId),
+  });
 
-  useEffect(() => {
-    if (!isLoadingHome) loadPlans();
-  }, [isLoadingHome, loadPlans]);
-
-  useEffect(() => {
-    loadPlan(selectedPlanId);
-  }, [selectedPlanId, loadPlan]);
+  const isLoading = isLoadingPlans || (Boolean(selectedPlanId) && isLoadingPlan && !plan);
 
   // Sau mỗi thay đổi: tải lại kế hoạch đang xem và đồng bộ trang chủ
   const refreshPlan = useCallback(async () => {
-    await Promise.all([loadPlan(selectedPlanId), loadPlans(), refetchHomeSummary()]);
-  }, [loadPlan, loadPlans, refetchHomeSummary, selectedPlanId]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["user", "plan", selectedPlanId] }),
+      queryClient.invalidateQueries({ queryKey: ["user", "plans"] }),
+      refetchHomeSummary(),
+    ]);
+  }, [queryClient, refetchHomeSummary, selectedPlanId]);
 
   const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +114,10 @@ export default function PlansPage() {
       setSelectedPlanId(json.data.id);
       setDraftTitle("");
       addToast(`📅 Đã tạo kế hoạch "${title}"!`, "success");
-      await Promise.all([loadPlans(), refetchHomeSummary()]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["user", "plans"] }),
+        refetchHomeSummary(),
+      ]);
     } catch (err) {
       console.warn("Lỗi tạo kế hoạch:", err);
       addToast("Mất kết nối, chưa tạo được kế hoạch.", "error");
@@ -137,10 +130,12 @@ export default function PlansPage() {
     `/api/v1/user/plans/${encodeURIComponent(plan?.id ?? "")}/checklist${itemId ? `/${encodeURIComponent(itemId)}` : ""}`;
 
   const patchChecklistItem = async (itemId: string, patch: { isDone?: boolean; assignedTo?: string | null }) => {
-    if (!plan) return;
+    if (!plan || !selectedPlanId) return;
     const previous = plan.checklist;
     // Cập nhật lạc quan, lỗi thì trả lại trạng thái cũ
-    setPlan({ ...plan, checklist: plan.checklist.map((c) => (c.id === itemId ? { ...c, ...patch } : c)) });
+    queryClient.setQueryData<PlanDetailDto | null>(["user", "plan", selectedPlanId], (old) =>
+      old ? { ...old, checklist: old.checklist.map((c) => (c.id === itemId ? { ...c, ...patch } : c)) } : null
+    );
     try {
       const res = await fetch(checklistUrl(itemId), {
         method: "PATCH",
@@ -151,7 +146,9 @@ export default function PlansPage() {
       refetchHomeSummary();
     } catch (err) {
       console.warn("Lỗi cập nhật checklist:", err);
-      setPlan((current) => current && { ...current, checklist: previous });
+      queryClient.setQueryData<PlanDetailDto | null>(["user", "plan", selectedPlanId], (old) =>
+        old ? { ...old, checklist: previous } : null
+      );
       addToast("Chưa lưu được checklist, thử lại nhé.", "error");
     }
   };

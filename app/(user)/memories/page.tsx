@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "@/context/AppContext";
 import { VirtualVideoCanvas } from "@/components/scrapbook/VirtualVideoCanvas";
 import { MemoryCorkboard } from "@/components/memories/MemoryCorkboard";
@@ -21,16 +22,41 @@ interface UploadedPhotoItem {
 export default function MemoriesPage() {
   const { addToast } = useApp();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: roomData } = useQuery({
+    queryKey: ["user", "room-me"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/user/rooms/me");
+      const json = await res.json().catch(() => null);
+      return res.ok && json?.data?.room ? json.data.room : null;
+    },
+  });
+
+  const { data: uploadedPhotos = [] } = useQuery<UploadedPhotoItem[]>({
+    queryKey: ["user", "uploads"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/user/uploads");
+      const json = await res.json().catch(() => null);
+      return res.ok && Array.isArray(json?.data) ? json.data : [];
+    },
+  });
 
   // States
-  const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhotoItem[]>([]);
   const [hasConsent, setHasConsent] = useState(false);
-  const [storageUsedBytes, setStorageUsedBytes] = useState(0);
-  const [storageQuotaBytes, setStorageQuotaBytes] = useState(DEFAULT_STORAGE_QUOTA_BYTES);
-  const [photoCount, setPhotoCount] = useState(0);
-  const [maxPhotos, setMaxPhotos] = useState(DEFAULT_MAX_PHOTOS);
   const [isUploading, setIsUploading] = useState(false);
   const [videoRefreshTrigger, setVideoRefreshTrigger] = useState(0);
+
+  const storageUsedBytes = roomData?.storageUsedBytes || 0;
+  const storageQuotaBytes = roomData?.storageQuotaBytes || DEFAULT_STORAGE_QUOTA_BYTES;
+  const photoCount = roomData?.photoCount || 0;
+  const maxPhotos = roomData?.maxPhotos || DEFAULT_MAX_PHOTOS;
+
+  useEffect(() => {
+    if (roomData?.consentVersion) {
+      setHasConsent(true);
+    }
+  }, [roomData]);
 
   // Hàm định dạng dung lượng thông minh (hiển thị KB khi < 1MB, MB khi >= 1MB)
   const formatBytes = (bytes: number) => {
@@ -40,44 +66,6 @@ export default function MemoriesPage() {
     }
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
-
-  // Load thông tin phòng & danh sách ảnh thực tế từ Backend
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadData() {
-      try {
-        // 1. Lấy thông tin phòng & quota
-        const roomRes = await fetch("/api/v1/user/rooms/me");
-        if (roomRes.ok) {
-          const roomJson = await roomRes.json();
-          if (!ignore && roomJson.data?.room) {
-            setStorageUsedBytes(roomJson.data.room.storageUsedBytes || 0);
-            setStorageQuotaBytes(roomJson.data.room.storageQuotaBytes || DEFAULT_STORAGE_QUOTA_BYTES);
-            setPhotoCount(roomJson.data.room.photoCount || 0);
-            setMaxPhotos(roomJson.data.room.maxPhotos || DEFAULT_MAX_PHOTOS);
-            setHasConsent(Boolean(roomJson.data.room.consentVersion));
-          }
-        }
-
-        // 2. Lấy danh sách ảnh đã tải lên
-        const uploadRes = await fetch("/api/v1/user/uploads");
-        if (uploadRes.ok) {
-          const uploadJson = await uploadRes.json();
-          if (!ignore && Array.isArray(uploadJson.data)) {
-            setUploadedPhotos(uploadJson.data);
-          }
-        }
-      } catch {
-        // Fallback khi offline
-      }
-    }
-
-    loadData();
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   // Thay đổi đồng thuận Nghị định 13
   const handleToggleConsent = async (checked: boolean) => {
@@ -134,7 +122,7 @@ export default function MemoriesPage() {
           uploadSuccessCount++;
           addToast(`📸 Tải lên thành công: ${file.name} (${Math.round(uploadData.sizeBytes / 1024)} KB WebP)!`, "success");
 
-          setUploadedPhotos((prev) => [uploadData, ...prev]);
+          queryClient.setQueryData<UploadedPhotoItem[]>(["user", "uploads"], (prev = []) => [uploadData, ...prev]);
         } else {
           const errJson = await res.json().catch(() => ({}));
           const errMsg = errJson?.error?.message || "Không thể tải ảnh lên";
@@ -144,14 +132,10 @@ export default function MemoriesPage() {
 
       if (uploadSuccessCount > 0) {
         // Đồng bộ lại dung lượng và số ảnh chính xác từ Database
-        const roomRes = await fetch("/api/v1/user/rooms/me");
-        if (roomRes.ok) {
-          const roomJson = await roomRes.json();
-          if (roomJson.data?.room) {
-            setStorageUsedBytes(roomJson.data.room.storageUsedBytes || 0);
-            setPhotoCount(roomJson.data.room.photoCount || 0);
-          }
-        }
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["user", "room-me"] }),
+          queryClient.invalidateQueries({ queryKey: ["user", "uploads"] }),
+        ]);
         // Kích hoạt nạp lại thước phim Ken Burns với ảnh vừa tải
         setVideoRefreshTrigger((prev) => prev + 1);
         addToast("✨ Đã cập nhật thước phim kỷ niệm với ảnh thật vừa tải lên!", "success");
@@ -174,17 +158,10 @@ export default function MemoriesPage() {
       });
       if (res.ok) {
         addToast("🗑️ Đã xóa ảnh kỷ niệm và hoàn trả dung lượng phòng.", "info");
-        setUploadedPhotos((prev) => prev.filter((p) => p.id !== uploadId));
+        queryClient.setQueryData<UploadedPhotoItem[]>(["user", "uploads"], (prev = []) => prev.filter((p) => p.id !== uploadId));
 
         // Đồng bộ lại phòng & nạp lại slide
-        const roomRes = await fetch("/api/v1/user/rooms/me");
-        if (roomRes.ok) {
-          const roomJson = await roomRes.json();
-          if (roomJson.data?.room) {
-            setStorageUsedBytes(roomJson.data.room.storageUsedBytes || 0);
-            setPhotoCount(roomJson.data.room.photoCount || 0);
-          }
-        }
+        await queryClient.invalidateQueries({ queryKey: ["user", "room-me"] });
         setVideoRefreshTrigger((prev) => prev + 1);
       } else {
         addToast("Không thể xóa ảnh, vui lòng thử lại.", "error");

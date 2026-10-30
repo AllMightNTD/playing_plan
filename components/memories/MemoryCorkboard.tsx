@@ -1,10 +1,17 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "@/context/AppContext";
 import type { MemoryBoardDto, MemoryNoteDto } from "@/server/services/user/memory.service";
 import type { MemoryNoteColor } from "@/lib/constants/user";
+
+export async function fetchMemoryBoard(): Promise<MemoryBoardDto> {
+  const res = await fetch("/api/v1/user/memories");
+  const json = await res.json().catch(() => null);
+  return res.ok && json?.data ? json.data : { notes: [], memories: [] };
+}
 
 const NOTE_COLOR_STYLES: Record<MemoryNoteColor, { card: string; divider: string; label: string; pin: string }> = {
   peach: { card: "bg-[#FADCD2] border-[#E2A995]", divider: "border-[#E2A995]", label: "text-brand-terracottaDark", pin: "bg-brand-olive" },
@@ -31,32 +38,20 @@ function formatNoteTime(value: string | Date): string {
 /** Bảng gỗ bần: giấy nhớ của phòng, đếm ngược ngày kỷ niệm và polaroid các buổi hẹn đã đi. */
 export function MemoryCorkboard() {
   const { homeSummary, refetchHomeSummary, addToast, setIsRoomModalOpen } = useApp();
+  const queryClient = useQueryClient();
   const room = homeSummary?.room ?? null;
   const anniversary = room?.anniversary ?? null;
   const daysLeft = anniversary?.daysLeft ?? null;
 
-  const [memoryBoard, setMemoryBoard] = useState<MemoryBoardDto>({ notes: [], memories: [] });
-  const [isLoadingMemories, setIsLoadingMemories] = useState<boolean>(true);
+  const { data: memoryBoard = { notes: [], memories: [] }, isLoading: isLoadingMemories } = useQuery({
+    queryKey: ["user", "memories"],
+    queryFn: fetchMemoryBoard,
+  });
+
   const [isComposingNote, setIsComposingNote] = useState<boolean>(false);
   const [noteDraft, setNoteDraft] = useState<string>("");
   const [noteColor, setNoteColor] = useState<MemoryNoteColor>("peach");
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
-
-  const loadMemoryBoard = useCallback(async () => {
-    try {
-      const res = await fetch("/api/v1/user/memories", { cache: "no-store" });
-      const json = await res.json();
-      if (res.ok && json?.data) setMemoryBoard(json.data);
-    } catch (err) {
-      console.warn("Lỗi tải kho kỷ niệm:", err);
-    } finally {
-      setIsLoadingMemories(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadMemoryBoard();
-  }, [loadMemoryBoard]);
 
   // Dán giấy nhớ kỷ niệm lên bảng (lưu vào phòng đôi, lần đầu sẽ tự tạo phòng)
   const handleAddStickyNote = async (e: React.FormEvent) => {
@@ -76,7 +71,9 @@ export function MemoryCorkboard() {
         return;
       }
       const note: MemoryNoteDto = json.data;
-      setMemoryBoard((prev) => ({ ...prev, notes: [note, ...prev.notes] }));
+      queryClient.setQueryData<MemoryBoardDto>(["user", "memories"], (prev) =>
+        prev ? { ...prev, notes: [note, ...prev.notes] } : { notes: [note], memories: [] }
+      );
       setNoteDraft("");
       setIsComposingNote(false);
       addToast("📌 Đã ghim thêm một tờ giấy nhớ kỷ niệm lên bảng!", "success");
@@ -91,13 +88,17 @@ export function MemoryCorkboard() {
 
   const handleRemoveStickyNote = async (id: string) => {
     const previous = memoryBoard.notes;
-    setMemoryBoard((prev) => ({ ...prev, notes: prev.notes.filter((n) => n.id !== id) }));
+    queryClient.setQueryData<MemoryBoardDto>(["user", "memories"], (prev) =>
+      prev ? { ...prev, notes: prev.notes.filter((n) => n.id !== id) } : { notes: [], memories: [] }
+    );
     try {
       const res = await fetch(`/api/v1/user/memories/notes/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`memory note API ${res.status}`);
     } catch (err) {
       console.warn("Lỗi gỡ giấy nhớ:", err);
-      setMemoryBoard((prev) => ({ ...prev, notes: previous }));
+      queryClient.setQueryData<MemoryBoardDto>(["user", "memories"], (prev) =>
+        prev ? { ...prev, notes: previous } : { notes: previous, memories: [] }
+      );
       addToast("Chưa gỡ được giấy nhớ, thử lại nhé.", "error");
     }
   };

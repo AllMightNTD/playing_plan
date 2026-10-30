@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { QueryProvider } from "@/providers/QueryProvider";
 import { AppProvider } from "@/context/AppContext";
 import { ScrapbookNavbar } from "@/components/user/ScrapbookNavbar";
 import { RoomDeletionBanner } from "@/components/user/RoomDeletionBanner";
@@ -17,7 +18,8 @@ export default function UserLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AppProvider>
+    <QueryProvider>
+      <AppProvider>
       <div className="viewport-wrapper flex-1">
         <div className="scrapbook-paper min-h-screen flex flex-col relative shadow-2xl text-paper-ink">
           <ScrapbookNavbar />
@@ -38,5 +40,6 @@ export default function UserLayout({
       <LuckyWheelModal />
       <RoomModal />
     </AppProvider>
+  </QueryProvider>
   );
 }

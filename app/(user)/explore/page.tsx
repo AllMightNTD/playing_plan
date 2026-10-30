@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { PlaceCard } from "@/components/user/PlaceCard";
 import { LocationChip } from "@/components/user/LocationChip";
@@ -26,7 +27,10 @@ const BUDGET_OPTIONS = [
   { value: "3", label: "🥂 Dịp đặc biệt" },
 ];
 
-export default function ExplorePage() {
+function ExploreContent() {
+  const searchParams = useSearchParams();
+  const districtParam = searchParams.get("district");
+
   const {
     places,
     filteredPlaces,
@@ -47,9 +51,15 @@ export default function ExplorePage() {
   } = useApp();
 
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
-  const [district, setDistrict] = useState("all");
+  const [district, setDistrict] = useState(districtParam || "all");
   const [budget, setBudget] = useState("all");
   const [sortBy, setSortBy] = useState<"default" | "near">("default");
+
+  useEffect(() => {
+    if (districtParam) {
+      setDistrict(districtParam);
+    }
+  }, [districtParam]);
 
   const filtered = useMemo(
     () =>
@@ -273,5 +283,13 @@ export default function ExplorePage() {
 
       <MoodMatchQuiz />
     </div>
+  );
+}
+
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={<div className="text-center text-sm text-paper-muted py-10">Đang lật sổ tìm tọa độ hẹn hò...</div>}>
+      <ExploreContent />
+    </Suspense>
   );
 }

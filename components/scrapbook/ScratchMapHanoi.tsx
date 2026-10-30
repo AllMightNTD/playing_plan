@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import type { ScratchMapDto } from "@/server/services/user/gamification.service";
 import { HANOI_7_DISTRICTS } from "@/lib/districts";
+import { getExploreDistrictUrl } from "@/lib/districts-nav";
 
 interface ScratchMapHanoiProps {
   onToast?: (message: string, type?: "success" | "error" | "info") => void;
@@ -71,13 +73,12 @@ export function ScratchMapHanoi({ onToast, refreshTrigger = 0 }: ScratchMapHanoi
           {districts.map((d) => {
             const isScratched = d.scratched;
             return (
-              <button
+              <div
                 key={d.key}
-                type="button"
                 onClick={() => handleScratchTile(d.name, isScratched)}
-                className={`p-2.5 rounded-xl border text-left transition ${
+                className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                   isScratched
-                    ? "bg-[#FAF4E8] border-brand-olive text-paper-ink shadow-xs"
+                    ? "bg-[#FAF4E8] border-brand-olive text-paper-ink shadow-2xs"
                     : "bg-gradient-to-br from-stone-300 via-stone-400 to-stone-300 border-stone-500 text-stone-800 hover:brightness-105"
                 }`}
               >
@@ -85,12 +86,22 @@ export function ScratchMapHanoi({ onToast, refreshTrigger = 0 }: ScratchMapHanoi
                   <span>{d.name}</span>
                   <span>{isScratched ? "✅" : "🪙"}</span>
                 </div>
-                <span className="text-[10px] block mt-0.5">
-                  {isScratched
-                    ? `Check-in: ${d.count}`
-                    : "Check-in để cào lớp nhũ bạc"}
-                </span>
-              </button>
+                <div className="flex items-center justify-between mt-1 text-[10px]">
+                  <span>
+                    {isScratched
+                      ? `Check-in: ${d.count}`
+                      : "Chưa mở nhũ"}
+                  </span>
+                  <Link
+                    href={getExploreDistrictUrl(d.key)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-bold text-brand-terracotta hover:underline inline-flex items-center gap-0.5 ml-1"
+                  >
+                    <span>Gợi ý quán</span>
+                    <span>→</span>
+                  </Link>
+                </div>
+              </div>
             );
           })}
         </div>

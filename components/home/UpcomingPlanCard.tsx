@@ -74,9 +74,9 @@ export function UpcomingPlanCard({ onOpenShare }: UpcomingPlanCardProps) {
           )}
         </div>
 
-        <Link href="/plans" className="font-serif font-extrabold text-lg sm:text-xl text-paper-ink hover:text-brand-terracotta block mb-3">
+        <h3 className="font-serif font-extrabold text-lg sm:text-xl text-paper-ink block mb-3">
           {upcomingPlan.title}
-        </Link>
+        </h3>
 
         {upcomingPlan.isSecretLocked ? (
           <div className="p-5 rounded-xl bg-[#362721] text-white text-center space-y-2 my-4">

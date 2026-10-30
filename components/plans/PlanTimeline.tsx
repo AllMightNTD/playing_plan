@@ -14,6 +14,8 @@ import {
   Plus,
   Send,
   AlertTriangle,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import type { PlanDetailDto, PlanStopDto } from "@/server/services/user/plan.mapper";
 import type { HanoiPlace } from "@/lib/types/catalog";
@@ -34,6 +36,124 @@ const CATEGORY_ICONS: Record<string, string> = {
   sunset: "🌅",
 };
 
+export interface DatingTemplate {
+  id: string;
+  title: string;
+  tagline: string;
+  icon: string;
+  estimatedDuration: string;
+  badge: string;
+  stops: Array<{
+    name: string;
+    category: "coffee" | "activity" | "sunset" | "food";
+    duration: number;
+    isLocked?: boolean;
+    lockedStartTime?: string | null;
+    note?: string;
+    address?: string;
+  }>;
+}
+
+export const DATING_TEMPLATES: DatingTemplate[] = [
+  {
+    id: "chill-cafe",
+    title: "Chill Cafe Cuối Tuần",
+    tagline: "Trò chuyện ấm cúng, check-in tranh cổ & cafe chiều phố cổ",
+    icon: "☕",
+    estimatedDuration: "3h 15p • 3 điểm",
+    badge: "Phổ biến nhất",
+    stops: [
+      {
+        name: "420 Lab",
+        category: "coffee",
+        duration: 60,
+        note: "Mở đầu buổi hẹn nhẹ nhàng, thử dòng Coldbrew đặc trưng",
+        address: "Ba Đình, Hà Nội",
+      },
+      {
+        name: "Bảo Tàng Mỹ Thuật Việt Nam",
+        category: "activity",
+        duration: 75,
+        isLocked: true,
+        lockedStartTime: "16:15",
+        note: "Chụp ảnh cầu thang vintage tầng 2 và ngắm tranh chiều",
+        address: "Ba Đình, Hà Nội",
+      },
+      {
+        name: "Cà Phê Blackbird",
+        category: "coffee",
+        duration: 60,
+        note: "Ngồi góc nhỏ tâm sự buổi tối ấm cúng",
+        address: "Hoàn Kiếm, Hà Nội",
+      },
+    ],
+  },
+  {
+    id: "hoang-hon-ho-tay",
+    title: "Hẹn Hò Hoàng Hôn Hồ Tây",
+    tagline: "Săn khung giờ vàng lãng mạn ven hồ & thưởng thức ẩm thực",
+    icon: "🌅",
+    estimatedDuration: "3h 05p • 3 điểm",
+    badge: "Lãng mạn",
+    stops: [
+      {
+        name: "Là Việt Coffee",
+        category: "coffee",
+        duration: 60,
+        note: "Cà phê thơm dịu, trò chuyện chuẩn bị ngắm hoàng hôn",
+        address: "Đống Đa, Hà Nội",
+      },
+      {
+        name: "Hồ Tây - Phố Từ Hoa",
+        category: "sunset",
+        duration: 60,
+        isLocked: true,
+        lockedStartTime: "16:20",
+        note: "Dạo bộ ven hồ đón Giờ Vàng 16:23 - 17:23, nhớ mang máy ảnh film",
+        address: "Tây Hồ, Hà Nội",
+      },
+      {
+        name: "Bún Chả Nem Phố Cổ",
+        category: "food",
+        duration: 60,
+        note: "Ăn tối nạp năng lượng sau khi săn hoàng hôn",
+        address: "Hoàn Kiếm, Hà Nội",
+      },
+    ],
+  },
+  {
+    id: "foodtour-pho-co",
+    title: "Foodtour Hà Nội & Dạo Phố",
+    tagline: "Ăn no nê đặc sản phố cổ, dạo mát hồ Gươm & cà phê chill",
+    icon: "🍜",
+    estimatedDuration: "3h 00p • 3 điểm",
+    badge: "Vui vẻ năng động",
+    stops: [
+      {
+        name: "Bún Chả Nem Phố Cổ",
+        category: "food",
+        duration: 60,
+        note: "Thưởng thức bún chả que tre thơm nức phố cổ",
+        address: "Hoàn Kiếm, Hà Nội",
+      },
+      {
+        name: "Phố Đi Bộ & Kem Tràng Tiền",
+        category: "activity",
+        duration: 60,
+        note: "Dạo mát quanh hồ Gươm, thưởng thức kem cốm truyền thống",
+        address: "Hoàn Kiếm, Hà Nội",
+      },
+      {
+        name: "Cà Phê Blackbird",
+        category: "coffee",
+        duration: 60,
+        note: "Ngồi ban công ngắm dòng người qua lại về đêm",
+        address: "Hoàn Kiếm, Hà Nội",
+      },
+    ],
+  },
+];
+
 export interface PlanTimelineProps {
   plan: PlanDetailDto;
   places?: HanoiPlace[];
@@ -51,16 +171,41 @@ export function PlanTimeline({
   places = [],
   onRefresh,
   onOpenPlaceDetail,
+  onShareStory,
   onNotifyPartner,
+  goldenHourStart,
+  partnerContact: _partnerContact,
   className = "",
 }: PlanTimelineProps) {
   // Local stops for 0ms optimistic UI
   const [localStops, setLocalStops] = useState<PlanStopDto[]>(plan.stops);
-  const [localStartTime] = useState(plan.startTime || "15:00");
+  const [localStartTime, setLocalStartTime] = useState(plan.startTime || "15:00");
+  const [localTitle, setLocalTitle] = useState(plan.title);
+  const [localPlanDate, setLocalPlanDate] = useState(plan.planDate);
+
+  // Header inline editing state (zero redirect)
+  const [isEditingHeader, setIsEditingHeader] = useState(false);
+  const [headerForm, setHeaderForm] = useState({
+    title: plan.title,
+    planDate: plan.planDate,
+    startTime: plan.startTime || "15:00",
+  });
+  const [isSavingHeader, setIsSavingHeader] = useState(false);
 
   useEffect(() => {
     setLocalStops(plan.stops);
   }, [plan.stops]);
+
+  useEffect(() => {
+    setLocalTitle(plan.title);
+    setLocalPlanDate(plan.planDate);
+    setLocalStartTime(plan.startTime || "15:00");
+    setHeaderForm({
+      title: plan.title,
+      planDate: plan.planDate,
+      startTime: plan.startTime || "15:00",
+    });
+  }, [plan.title, plan.planDate, plan.startTime]);
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -352,6 +497,115 @@ export function PlanTimeline({
     }
   };
 
+  // Save header metadata (title, date, start time) inline with zero redirect
+  const handleSaveHeader = async () => {
+    const nextTitle = headerForm.title.trim() || "Buổi hẹn hò";
+    const nextDate = headerForm.planDate;
+    const nextStartTime = headerForm.startTime;
+    setIsSavingHeader(true);
+    setLocalTitle(nextTitle);
+    setLocalPlanDate(nextDate);
+    setLocalStartTime(nextStartTime);
+
+    try {
+      const res = await fetch(`/api/v1/user/plans/${plan.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: nextTitle,
+          planDate: nextDate,
+          startTime: nextStartTime,
+        }),
+      });
+      if (!res.ok) throw new Error("Update plan header failed");
+      setIsEditingHeader(false);
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      await onRefresh();
+    } finally {
+      setIsSavingHeader(false);
+    }
+  };
+
+  // Sunset auto-align (sets stop #2 or sunset stop to golden hour)
+  const handleSunsetAlign = async () => {
+    if (localStops.length < 2) return;
+    const sunsetTarget = goldenHourStart || "16:20";
+    const targetStop = localStops[1];
+    if (!targetStop) return;
+
+    setLocalStops((prev) =>
+      prev.map((s, idx) =>
+        idx === 1
+          ? {
+              ...s,
+              isPinnedTime: true,
+              plannedTime: sunsetTarget,
+            }
+          : s
+      )
+    );
+
+    try {
+      await fetch(`/api/v1/user/plans/${plan.id}/stops/${targetStop.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isPinnedTime: true,
+          plannedTime: sunsetTarget,
+        }),
+      });
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      await onRefresh();
+    }
+  };
+
+  // Apply quick dating template with 0ms optimistic UI
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
+  const handleApplyTemplate = async (template: DatingTemplate) => {
+    if (isApplyingTemplate) return;
+    setIsApplyingTemplate(true);
+
+    const tempStops: PlanStopDto[] = template.stops.map((ts, idx) => ({
+      id: `temp-${Date.now()}-${idx}`,
+      placeId: null,
+      customName: ts.name,
+      sortOrder: idx,
+      plannedTime: ts.lockedStartTime || null,
+      durationMin: ts.duration,
+      dayOffset: 0,
+      startMinute: 900 + idx * 60,
+      travelMinutes: idx === 0 ? 0 : 15,
+      isPinnedTime: Boolean(ts.isLocked),
+      note: ts.note || null,
+    }));
+    setLocalStops(tempStops);
+
+    try {
+      for (const stop of template.stops) {
+        await fetch(`/api/v1/user/plans/${plan.id}/stops`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customName: stop.name,
+            durationMin: stop.duration,
+            plannedTime: stop.lockedStartTime || undefined,
+            note: stop.note || undefined,
+          }),
+        });
+      }
+      await onRefresh();
+    } catch (err) {
+      console.error("Apply template failed:", err);
+      await onRefresh();
+    } finally {
+      setIsApplyingTemplate(false);
+    }
+  };
+
   // Indoor Plan B
   const handlePlanB = async () => {
     if (isApplyingPlanB) return;
@@ -433,14 +687,172 @@ export function PlanTimeline({
   const totalChecklistCount = plan.checklist.length;
 
   return (
-    <div className={`space-y-4 ${className}`.trim()}>
-      {/* 1. NÚT ĐỔI SANG QUÁN TRONG NHÀ (PHÒNG MƯA) TRÊN CÙNG THEO DEMO */}
+    <div
+      className={`bg-[#fdfbf7] border border-[#e2d6c3] rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 ${className}`.trim()}
+    >
+      {/* 1. HEADER LỊCH HẸN: CHỌN NGÀY, GIỜ, SỬA TÊN TRỰC TIẾP (KHÔNG REDIRECT) */}
+      <div className="border-b border-[#eee5d7] pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 bg-[#e8f4ec] text-[#2b6e44] text-xs font-bold px-2.5 py-1 rounded-full border border-[#bce0c8]">
+              📍 Lịch hẹn sắp tới
+            </span>
+
+            {/* Nút chọn nhanh Ngày & Giờ bắt đầu */}
+            <button
+              type="button"
+              onClick={() => {
+                setHeaderForm({
+                  title: localTitle,
+                  planDate: localPlanDate,
+                  startTime: localStartTime,
+                });
+                setIsEditingHeader(true);
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#5c4738] bg-[#f5efe6] hover:bg-[#ebe0d0] px-2.5 py-1 rounded-full border border-[#dcd0be] transition cursor-pointer"
+              title="Bấm để đổi ngày & giờ bắt đầu"
+            >
+              <Calendar className="w-3.5 h-3.5 text-[#c84b31]" />
+              <span>{formatVietnameseDate(localPlanDate)}</span>
+              <span>•</span>
+              <Clock className="w-3.5 h-3.5 text-[#c84b31]" />
+              <span>{`Bắt đầu ${localStartTime}`}</span>
+              <Edit3 className="w-3 h-3 opacity-60" />
+            </button>
+          </div>
+
+          {/* Cụm nút Tạo ảnh Story / Sửa / Xóa lịch hẹn */}
+          <div className="flex items-center gap-2">
+            {onShareStory && (
+              <button
+                type="button"
+                onClick={onShareStory}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#c84b31] hover:text-[#a3361f] bg-[#fff5f2] hover:bg-[#ffe8e2] px-2.5 py-1 rounded-lg border border-[#f5c6bc] transition cursor-pointer"
+              >
+                🖼️ Tạo ảnh Story chia sẻ
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setHeaderForm({
+                  title: localTitle,
+                  planDate: localPlanDate,
+                  startTime: localStartTime,
+                });
+                setIsEditingHeader(!isEditingHeader);
+              }}
+              className="p-1.5 rounded-lg text-[#6e5645] hover:bg-[#f2eae0] transition cursor-pointer"
+              title="Sửa tiêu đề & ngày giờ lịch hẹn"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeletePlanModal(true)}
+              className="p-1.5 rounded-lg text-[#b93829] hover:bg-[#fdeceb] transition cursor-pointer"
+              title="Xóa lịch hẹn này"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Form chỉnh sửa Tiêu đề, Ngày hẹn & Giờ bắt đầu trực tiếp không redirect */}
+        {isEditingHeader ? (
+          <div className="mt-3 bg-[#f7f2ea] border border-[#dfd2c0] rounded-xl p-3.5 space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-[#6e5645] mb-1">
+                Tên buổi hẹn hò
+              </label>
+              <input
+                type="text"
+                value={headerForm.title}
+                onChange={(e) => setHeaderForm({ ...headerForm, title: e.target.value })}
+                className="w-full px-3 py-1.5 rounded-lg border border-[#d5c5b0] bg-white text-sm font-bold text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                placeholder="Nhập tên buổi hẹn..."
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[#6e5645] mb-1">
+                  Chọn ngày hẹn
+                </label>
+                <input
+                  type="date"
+                  value={headerForm.planDate}
+                  onChange={(e) => setHeaderForm({ ...headerForm, planDate: e.target.value })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-[#d5c5b0] bg-white text-sm text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6e5645] mb-1">
+                  Giờ bắt đầu chặng đầu tiên
+                </label>
+                <input
+                  type="time"
+                  value={headerForm.startTime}
+                  onChange={(e) =>
+                    setHeaderForm({ ...headerForm, startTime: e.target.value })
+                  }
+                  className="w-full px-3 py-1.5 rounded-lg border border-[#d5c5b0] bg-white text-sm text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsEditingHeader(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#6e5645] hover:bg-[#e8dfd3] cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={isSavingHeader}
+                onClick={handleSaveHeader}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#c84b31] text-white hover:bg-[#b03e26] flex items-center gap-1 cursor-pointer disabled:opacity-50"
+              >
+                <Check className="w-3.5 h-3.5" />
+                {isSavingHeader ? "Đang lưu..." : "Lưu lịch hẹn"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <h1
+              onClick={() => {
+                setHeaderForm({
+                  title: localTitle,
+                  planDate: localPlanDate,
+                  startTime: localStartTime,
+                });
+                setIsEditingHeader(true);
+              }}
+              className="text-xl sm:text-2xl font-extrabold text-[#231915] cursor-pointer hover:text-[#c84b31] transition flex items-center gap-2 group"
+              title="Bấm để sửa tên lịch hẹn"
+            >
+              <span>{localTitle}</span>
+              <Edit3 className="w-4 h-4 opacity-0 group-hover:opacity-70 text-[#c84b31] transition" />
+            </h1>
+          </div>
+        )}
+      </div>
+
+      {/* 2. CÁC NÚT TÁC VỤ NHANH: HOÀNG HÔN & PHÒNG MƯA */}
       <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={handleSunsetAlign}
+          className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#fdf3dc] hover:bg-[#f9e7be] text-[#5c4018] border border-[#e3c383] px-3.5 py-2 rounded-full transition shadow-xs cursor-pointer"
+        >
+          🌅 Tự xếp giờ khớp Hoàng hôn ({goldenHourStart || "16:23"})
+        </button>
         <button
           type="button"
           onClick={handlePlanB}
           disabled={isApplyingPlanB}
-          className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#fdfbf7] hover:bg-[#f2ece1] text-[#3d2d24] border border-[#d6c7b2] px-3.5 py-2 rounded-full transition shadow-xs disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#fdfbf7] hover:bg-[#f2ece1] text-[#3d2d24] border border-[#d6c7b2] px-3.5 py-2 rounded-full transition shadow-xs disabled:opacity-50 cursor-pointer"
         >
           🌧️ Đổi sang quán Trong nhà (Phòng mưa)
         </button>
@@ -466,17 +878,91 @@ export function PlanTimeline({
 
       {/* 3. DANH SÁCH CHẶNG THEO MỐC THỜI GIAN (DRAG & DROP TIMELINE) */}
       {computedTimeline.length === 0 ? (
-        <div className="text-center py-12 bg-[#f8f3eb] rounded-xl border border-dashed border-[#d5c5b0]">
-          <p className="text-sm font-semibold text-[#6e5645] mb-2">
-            Chưa có địa điểm nào trong lịch hẹn này.
-          </p>
-          <button
-            type="button"
+        <div className="space-y-4">
+          {/* Vùng kéo thả (Drop Zone) nét đứt trực quan */}
+          <div
             onClick={() => setShowAddStopModal(true)}
-            className="bg-[#c84b31] text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-[#ad3b23] transition"
+            className="group relative border-2 border-dashed border-[#c84b31]/40 hover:border-[#c84b31] bg-[#fbf7f0] hover:bg-[#fff9f5] rounded-2xl p-6 sm:p-7 text-center transition-all cursor-pointer shadow-xs"
           >
-            + Thêm địa điểm đầu tiên
-          </button>
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-[#f5e8d8] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+              🎯
+            </div>
+            <h3 className="font-serif font-extrabold text-base sm:text-lg text-[#231915] mt-2.5">
+              Vùng thả địa điểm vào lịch trình
+            </h3>
+            <p className="text-xs text-[#7d6856] max-w-md mx-auto mt-1 leading-relaxed">
+              Kéo thả các quán yêu thích từ trang <strong>Khám phá</strong> vào đây, hoặc bấm nút bên dưới để thêm địa điểm thủ công theo ý hai bạn.
+            </p>
+            <div className="mt-3.5 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAddStopModal(true);
+                }}
+                className="bg-[#c84b31] hover:bg-[#ad3b23] text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> Thêm chặng đầu tiên
+              </button>
+            </div>
+          </div>
+
+          {/* Khối kịch bản mẫu nhanh (Timeline Builder) */}
+          <div className="bg-[#f7f2ea] border border-[#dfd2c0] rounded-2xl p-4 sm:p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-[#c84b31] uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> Timeline Builder
+                </span>
+                <h4 className="font-serif font-extrabold text-sm sm:text-base text-[#231915]">
+                  Hoặc bắt đầu nhanh với 3 kịch bản hẹn hò được yêu thích nhất:
+                </h4>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5">
+              {DATING_TEMPLATES.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="bg-white hover:bg-[#fffdfa] border border-[#e5d8c6] hover:border-[#c84b31]/60 rounded-xl p-3.5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-lg">{tpl.icon}</span>
+                      <span className="font-serif font-extrabold text-sm text-[#231915]">
+                        {tpl.title}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fdf3dc] text-[#785118] border border-[#e3c383]">
+                        {tpl.badge}
+                      </span>
+                      <span className="text-[11px] text-[#7d6856] font-medium hidden sm:inline">
+                        • {tpl.estimatedDuration}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#6e5645]">{tpl.tagline}</p>
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#8c7765] pt-0.5 flex-wrap">
+                      <span className="font-medium">Lộ trình:</span>
+                      {tpl.stops.map((s, sIdx) => (
+                        <React.Fragment key={s.name}>
+                          <span className="font-semibold text-[#231915]">{s.name}</span>
+                          {sIdx < tpl.stops.length - 1 && <span className="text-[#c84b31]">➔</span>}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isApplyingTemplate}
+                    onClick={() => handleApplyTemplate(tpl)}
+                    className="shrink-0 bg-[#fdf3dc] hover:bg-[#c84b31] text-[#785118] hover:text-white border border-[#e3c383] hover:border-[#c84b31] text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{isApplyingTemplate ? "Đang xếp lịch..." : "✨ Chọn kịch bản này"}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="relative timeline-line space-y-3.5">

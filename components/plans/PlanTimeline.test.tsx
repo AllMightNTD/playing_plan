@@ -102,7 +102,13 @@ describe("components/plans/PlanTimeline", () => {
       />
     );
 
+    // Header assertions
+    expect(html).toContain("Buổi hẹn cuối tuần phố cổ");
+    expect(html).toContain("📍 Lịch hẹn sắp tới");
+    expect(html).toContain("Bắt đầu 15:00");
+
     // Top buttons assertions
+    expect(html).toContain("🌅 Tự xếp giờ khớp Hoàng hôn");
     expect(html).toContain("🌧️ Đổi sang quán Trong nhà (Phòng mưa)");
     expect(html).toContain("Mẹo: Giữ biểu tượng");
     expect(html).toContain("Thêm chặng mới");
@@ -121,7 +127,7 @@ describe("components/plans/PlanTimeline", () => {
     expect(html).toContain("Lưu vào Lịch ĐT (.ics)");
   });
 
-  it("handles empty stops gracefully", () => {
+  it("renders interactive Timeline Builder with dating templates and drop zone when empty", () => {
     const emptyPlan: PlanDetailDto = {
       ...mockPlan,
       stops: [],
@@ -135,7 +141,12 @@ describe("components/plans/PlanTimeline", () => {
       />
     );
 
-    expect(html).toContain("Chưa có địa điểm nào trong lịch hẹn này.");
-    expect(html).toContain("+ Thêm địa điểm đầu tiên");
+    expect(html).toContain("Timeline Builder");
+    expect(html).toContain("Vùng thả địa điểm vào lịch trình");
+    expect(html).toContain("Kéo thả các quán yêu thích");
+    expect(html).toContain("Chill Cafe Cuối Tuần");
+    expect(html).toContain("Hẹn Hò Hoàng Hôn Hồ Tây");
+    expect(html).toContain("Foodtour Hà Nội");
+    expect(html).toContain("Thêm chặng đầu tiên");
   });
 });

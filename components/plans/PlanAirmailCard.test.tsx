@@ -106,5 +106,29 @@ describe("components/plans/PlanAirmailCard", () => {
     expect(html).toContain("Người thương 💕");
     expect(html).toContain("Chưa thêm SĐT");
     expect(html).toContain("Chưa thêm Email");
+    expect(html).toContain("Lưu .ics");
+  });
+
+  it("renders dynamic weather badge and OOTD suggestion under rainy conditions", () => {
+    const html = renderToString(
+      <PlanAirmailCard
+        planId="plan-rain"
+        planDate="2026-11-01"
+        weather={{
+          temp: 22,
+          description: "Mưa rào nhẹ",
+          rainProb: 65,
+          icon: "🌧️",
+        }}
+        computedTimeline={mockTimeline}
+        itineraryStats={mockStats}
+      />
+    );
+
+    expect(html).toContain("Mưa rào nhẹ");
+    expect(html).toContain("65%");
+    expect(html).toContain("Khuyên ưu tiên điểm trong nhà");
+    expect(html).toContain("OOTD: Tone be / pastel");
   });
 });
+

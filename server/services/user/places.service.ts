@@ -29,34 +29,32 @@ function isProduction(): boolean {
  * Production: DB rỗng trả rỗng, DB lỗi thì ném lỗi để giám sát phát hiện.
  */
 export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
+  // Chỉ dùng seed data khi chạy test offline hoặc dev chưa cấu hình DB
   if (!isDatabaseConfigured()) {
     if (isProduction()) throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
     return getSeedPlaces();
   }
 
-  try {
-    const rows = await listPublishedPlacesWithGuides();
-    if (rows.length === 0) return isProduction() ? [] : getSeedPlaces();
-
-    const placeIds = rows.map((r) => r.place.id);
-    const mediaRows = await listMediaByPlaceIds(placeIds);
-
-    const mediaByPlaceId = new Map<string, PlaceMedia[]>();
-    for (const media of mediaRows) {
-      const list = mediaByPlaceId.get(media.placeId) ?? [];
-      list.push(media);
-      mediaByPlaceId.set(media.placeId, list);
-    }
-
-    const now = new Date();
-    return rows.map(({ place, guide }) =>
-      toCatalogPlace(place, guide, mediaByPlaceId.get(place.id) ?? [], now)
-    );
-  } catch (err) {
-    if (isProduction()) throw err;
-    console.warn("Không thể truy vấn TiDB Cloud, fallback dùng seed data:", err);
-    return getSeedPlaces();
+  // Khi DB đã cấu hình: TiDB là nguồn chân lý duy nhất (Single Source of Truth)
+  const rows = await listPublishedPlacesWithGuides();
+  if (rows.length === 0) {
+    return [];
   }
+
+  const placeIds = rows.map((r) => r.place.id);
+  const mediaRows = await listMediaByPlaceIds(placeIds);
+
+  const mediaByPlaceId = new Map<string, PlaceMedia[]>();
+  for (const media of mediaRows) {
+    const list = mediaByPlaceId.get(media.placeId) ?? [];
+    list.push(media);
+    mediaByPlaceId.set(media.placeId, list);
+  }
+
+  const now = new Date();
+  return rows.map(({ place, guide }) =>
+    toCatalogPlace(place, guide, mediaByPlaceId.get(place.id) ?? [], now)
+  );
 }
 
 export async function findPlaceBySlug(slug: string): Promise<HanoiPlace | null> {

@@ -387,3 +387,44 @@ body {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ==========================================================
+   AIRMAIL POSTCARD & VINTAGE TIMELINE
+   ========================================================== */
+.airmail-card {
+  background: repeating-linear-gradient(
+    -45deg,
+    #c84b31 0px,
+    #c84b31 12px,
+    #fdfbf7 12px,
+    #fdfbf7 20px,
+    #35698a 20px,
+    #35698a 32px,
+    #fdfbf7 32px,
+    #fdfbf7 40px
+  );
+  padding: 9px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px -10px rgba(65, 42, 28, 0.14);
+}
+
+.vintage-shadow {
+  box-shadow: 0 8px 28px -8px rgba(74, 52, 35, 0.1);
+}
+
+.timeline-line::before {
+  content: '';
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: 23px;
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #d9c7b2 0px,
+    #d9c7b2 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  z-index: 0;
+}
+

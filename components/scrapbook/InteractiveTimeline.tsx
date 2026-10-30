@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Navigation, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 import type { PlanDetailDto, PlanStopDto } from "@/server/services/user/plan.mapper";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import { calculateHaversineDistanceKm } from "@/lib/travel-time";
+import { reorderStopsOptimistic, deleteStopOptimistic } from "@/lib/optimistic-timeline";
 
 /** Hệ số uốn lượn đường phố Hà Nội, cùng hệ số với lib/travel-time khi tính phút di chuyển. */
 const ROAD_FACTOR = 1.35;
@@ -48,17 +49,25 @@ export function InteractiveTimeline({
   const [isApplyingPlanB, setIsApplyingPlanB] = useState(false);
   const [conflictError, setConflictError] = useState<{ message: string; version: number } | null>(null);
 
+  const [localStops, setLocalStops] = useState<PlanStopDto[]>(plan.stops);
+
+  useEffect(() => {
+    setLocalStops(plan.stops);
+  }, [plan.stops]);
+
   const findPlace = (stop: PlanStopDto) =>
     stop.placeId ? places.find((place) => place.id === stop.placeId) : undefined;
 
-  // Đổi thứ tự trạm: gửi toàn bộ danh sách id theo thứ tự mới
+  // Đổi thứ tự trạm: đổi ngay lập tức trên UI (0ms) bằng reorderStopsOptimistic
   const handleMoveStop = async (idx: number, dir: -1 | 1) => {
     const target = idx + dir;
-    if (target < 0 || target >= plan.stops.length) return;
-    const stopIds = plan.stops.map((s) => s.id);
-    [stopIds[idx], stopIds[target]] = [stopIds[target], stopIds[idx]];
+    if (target < 0 || target >= localStops.length) return;
+    const previousStops = localStops;
+    const optimistic = reorderStopsOptimistic(localStops, idx, target);
+    setLocalStops(optimistic);
+    const stopIds = optimistic.map((s) => s.id);
     try {
-      setLoadingStopId(plan.stops[idx].id);
+      setLoadingStopId(optimistic[target].id);
       const res = await fetch(`/api/v1/user/plans/${plan.id}/stops/reorder`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -68,6 +77,7 @@ export function InteractiveTimeline({
       await onRefresh();
     } catch (err) {
       console.error(err);
+      setLocalStops(previousStops);
       onError?.("Chưa đổi được thứ tự chặng, thử lại nhé.");
     } finally {
       setLoadingStopId(null);
@@ -75,6 +85,8 @@ export function InteractiveTimeline({
   };
 
   const handleDeleteStop = async (stopId: string) => {
+    const previousStops = localStops;
+    setLocalStops((current) => deleteStopOptimistic(current, stopId));
     try {
       setLoadingStopId(stopId);
       const res = await fetch(`/api/v1/user/plans/${plan.id}/stops/${stopId}`, { method: "DELETE" });
@@ -82,6 +94,7 @@ export function InteractiveTimeline({
       await onRefresh();
     } catch (err) {
       console.error(err);
+      setLocalStops(previousStops);
       onError?.("Chưa xóa được chặng, thử lại nhé.");
     } finally {
       setLoadingStopId(null);
@@ -237,12 +250,12 @@ export function InteractiveTimeline({
 
       {/* Các chặng */}
       <div className="space-y-2.5 my-4">
-        {plan.stops.map((stop, idx) => {
+        {localStops.map((stop, idx) => {
           const isLoading = loadingStopId === stop.id;
           const place = findPlace(stop);
           const stopName = stop.customName || place?.name || "Địa điểm hẹn hò";
           const start = toMinutes(stop.plannedTime);
-          const prevPlace = idx > 0 ? findPlace(plan.stops[idx - 1]) : undefined;
+          const prevPlace = idx > 0 ? findPlace(localStops[idx - 1]) : undefined;
           const roadKm =
             prevPlace?.lat != null && prevPlace?.lng != null && place?.lat != null && place?.lng != null
               ? calculateHaversineDistanceKm({ lat: prevPlace.lat, lng: prevPlace.lng }, { lat: place.lat, lng: place.lng }) *
@@ -338,7 +351,7 @@ export function InteractiveTimeline({
                     <button
                       type="button"
                       onClick={() => handleMoveStop(idx, 1)}
-                      disabled={isLoading || idx === plan.stops.length - 1}
+                      disabled={isLoading || idx === localStops.length - 1}
                       className="p-1 rounded bg-[#FFFDF9] border border-[#CBB292] disabled:opacity-30"
                       title="Đưa chặng xuống sau"
                     >

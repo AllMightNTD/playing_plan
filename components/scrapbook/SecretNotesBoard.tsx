@@ -52,6 +52,24 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
     const text = contentInput.trim();
     if (!text || !selectedPlace) return;
 
+    // 1. Cập nhật lạc quan (0ms feedback)
+    const previousNotes = notes;
+    const tempNote: SecretNoteDto = {
+      id: "temp-" + Date.now(),
+      placeId: selectedPlace.id,
+      placeName: selectedPlace.name,
+      district: selectedPlace.area,
+      hint: `Check-in tại ${selectedPlace.name} để đọc lời nhắn ngọt ngào`,
+      content: text,
+      isUnlocked: true,
+      isMine: true,
+      createdAt: new Date(),
+      unlockedAt: null,
+    };
+    setNotes([tempNote, ...notes]);
+    setContentInput("");
+    toast(`🔒 Đã giấu bức thư tình bí mật tại "${selectedPlace.name}"!`, "success");
+
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/v1/user/gamification/secret-notes", {
@@ -65,13 +83,13 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
       });
 
       if (res.ok) {
-        setContentInput("");
-        toast(`🔒 Đã giấu bức thư tình bí mật tại "${selectedPlace.name}"!`, "success");
-        await fetchNotes();
+        fetchNotes();
       } else {
+        setNotes(previousNotes);
         toast("Không thể gửi thư tình, vui lòng thử lại.", "error");
       }
     } catch {
+      setNotes(previousNotes);
       toast("Lỗi kết nối khi gửi thư tình.", "error");
     } finally {
       setIsSubmitting(false);
@@ -79,6 +97,12 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
   };
 
   const handleUnlockNote = async (note: SecretNoteDto) => {
+    // 1. Cập nhật lạc quan (0ms feedback)
+    const previousNotes = notes;
+    setNotes(notes.map((n) => (n.id === note.id ? { ...n, isUnlocked: true, unlockedAt: new Date() } : n)));
+    toast(`💌 Đã check-in tại "${note.placeName}" và mở khóa thư tình bí mật!`, "success");
+    if (onCheckInSuccess) onCheckInSuccess();
+
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/v1/user/gamification/check-in", {
@@ -91,13 +115,13 @@ export function SecretNotesBoard({ onToast, onCheckInSuccess }: SecretNotesBoard
       });
 
       if (res.ok) {
-        toast(`💌 Đã check-in tại "${note.placeName}" và mở khóa thư tình bí mật!`, "success");
-        await fetchNotes();
-        if (onCheckInSuccess) onCheckInSuccess();
+        fetchNotes();
       } else {
+        setNotes(previousNotes);
         toast("Check-in chưa thành công.", "error");
       }
     } catch {
+      setNotes(previousNotes);
       toast("Lỗi kết nối khi mở thư tình.", "error");
     } finally {
       setIsSubmitting(false);

@@ -5,7 +5,7 @@ import type { HanoiPlace } from "@/lib/types/catalog";
 import { normalizeVietnamese } from "@/lib/search";
 import { isTrainStreetQuery, normalizeSearchQuery } from "@/lib/catalog-filter";
 import type { HomePublicDto, HomeSummaryDto } from "@/lib/types/home";
-import type { PlanDetailDto } from "@/server/services/user/plan.mapper";
+import type { PlanDetailDto, PlanStopDto } from "@/server/services/user/plan.mapper";
 import type { RoomProfileDto } from "@/server/services/user/room.service";
 import { districtName, nearestDistrictKey } from "@/lib/districts";
 import { calculateHanoiTravelMinutes } from "@/lib/travel-time";
@@ -376,6 +376,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const targetId = place?.id || (typeof placeOrId === "string" ? placeOrId : "");
     const placeName = place?.name || "Địa điểm";
 
+    // 1. Optimistic update: phản hồi tức thì 0ms trên UI
+    const previousPlan = upcomingPlan;
+    if (upcomingPlan && targetId) {
+      const optimisticStop: PlanStopDto = {
+        id: "temp-" + Date.now(),
+        placeId: targetId,
+        customName: placeName,
+        plannedTime: null,
+        note: null,
+        durationMin: 60,
+        dayOffset: 0,
+        startMinute: 0,
+        travelMinutes: 0,
+        isPinnedTime: false,
+        sortOrder: upcomingPlan.stops.length,
+      };
+      setUpcomingPlan({
+        ...upcomingPlan,
+        stops: [...upcomingPlan.stops, optimisticStop],
+      });
+    }
+
     try {
       const res = await fetch("/api/v1/user/plans/quick-add", {
         method: "POST",
@@ -385,12 +407,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const json = await res.json();
       if (json?.data?.success) {
         addToast(`📅 Đã thêm "${placeName}" vào "${json.data.planTitle}"!`, "success");
-        await refetchHomeSummary();
+        refetchHomeSummary();
         return true;
       }
+      setUpcomingPlan(previousPlan);
       addToast(json?.error?.message || "Chưa thêm được vào kế hoạch, thử lại nhé.", "error");
     } catch (e) {
       console.warn("Lỗi quick-add trạm:", e);
+      setUpcomingPlan(previousPlan);
       addToast("Mất kết nối, chưa thêm được vào kế hoạch.", "error");
     }
     return false;

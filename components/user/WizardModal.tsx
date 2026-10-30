@@ -56,11 +56,11 @@ export function WizardModal() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200 select-none">
-      <div className="bg-[#FAF4E8] w-full max-w-lg rounded-3xl shadow-2xl border-2 border-[#CBB292] overflow-hidden relative">
+      <div className="bg-[#FAF4E8] w-full max-w-lg rounded-3xl shadow-2xl border-2 border-[#CBB292] overflow-hidden relative max-h-[90dvh] flex flex-col">
         <div className="washi-tape washi-terracotta -top-3.5 left-10" />
 
         {/* Header */}
-        <div className="px-5 py-4 bg-[#FFFDF9] border-b border-[#E6D7C3] flex items-center justify-between">
+        <div className="px-5 py-4 bg-[#FFFDF9] border-b border-[#E6D7C3] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-2xl bg-brand-terracotta text-white flex items-center justify-center shadow-xs">
               <Wand2 className="w-4 h-4" />
@@ -84,7 +84,7 @@ export function WizardModal() {
         </div>
 
         {/* Content */}
-        <div className="p-5">
+        <div className="p-5 flex-1 overflow-y-auto overscroll-contain">
           {/* Step 1: Budget */}
           {wizardStep === 1 && (
             <div className="space-y-4">

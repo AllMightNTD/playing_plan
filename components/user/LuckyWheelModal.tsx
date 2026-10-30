@@ -37,7 +37,7 @@ export function LuckyWheelModal() {
         role="dialog"
         aria-modal="true"
         aria-label="Rút quẻ hẹn hò"
-        className="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-sm w-full p-5 text-center space-y-3 select-none"
+        className="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-sm w-full p-5 text-center space-y-3 select-none max-h-[90dvh] overflow-y-auto overscroll-contain"
       >
         <h3 className="font-serif font-extrabold text-lg text-paper-ink">🎯 Rút Quẻ Hẹn Hò Hôm Nay</h3>
 

@@ -499,10 +499,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const query = new URLSearchParams();
       if (recentWheelSlugs.length > 0) query.set("exclude", recentWheelSlugs.join(","));
-      const [res] = await Promise.all([
-        fetch(`/api/v1/user/places/random?${query}`, { cache: "no-store" }),
-        new Promise((resolve) => setTimeout(resolve, 700)),
-      ]);
+      const res = await fetch(`/api/v1/user/places/random?${query}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || !json?.data) {
         addToast(json?.error?.message || "Chưa bốc được địa điểm, thử lại nhé.", "error");

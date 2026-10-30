@@ -1,6 +1,10 @@
 import { getWeatherForecast, type WeatherData } from "@/lib/weather";
 import { getBestTimes } from "@/lib/sun";
-import { getAllPublishedPlaces, requirePublishedPlace } from "@/server/services/user/places.service";
+import {
+  getAllPublishedPlaces,
+  getPublishedPlacesByIds,
+  requirePublishedPlace,
+} from "@/server/services/user/places.service";
 import { listPlans, getPlanDetail, createPlan } from "@/server/services/user/plan.service";
 import { addStop } from "@/server/services/user/plan-items.service";
 import { getRoomProfile } from "@/server/services/user/room.service";
@@ -151,8 +155,12 @@ export async function getHomeSummary(session: MemberSession | null): Promise<Hom
   let upcomingPlanDto: HomeSummaryDto["upcomingPlan"] = null;
 
   if (upcoming) {
-    const [detail, allPlaces] = await Promise.all([getPlanDetail(session, upcoming.id), getAllPublishedPlaces()]);
-    const placeById = new Map(allPlaces.map((place) => [place.id, place]));
+    const detail = await getPlanDetail(session, upcoming.id);
+    const stopPlaceIds = Array.from(
+      new Set(detail.stops.map((s) => s.placeId).filter((id): id is string => Boolean(id)))
+    );
+    const placeRows = await getPublishedPlacesByIds(stopPlaceIds);
+    const placeById = new Map(placeRows.map((place) => [place.id, place]));
     const stopsPreview: UpcomingPlanStopPreview[] = detail.stops.slice(0, 3).map((s) => {
       const time = s.plannedTime || upcoming.startTime;
       // Điểm dừng tạo kèm kế hoạch chỉ có placeId, lấy tên địa điểm làm tiêu đề

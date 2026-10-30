@@ -27,3 +27,13 @@ export async function listMediaByPlaceIds(placeIds: string[]): Promise<PlaceMedi
     .orderBy(asc(placeMedia.sortOrder));
 }
 
+/** Truy vấn mục tiêu theo danh sách ID cụ thể (tránh quét toàn bộ catalog). */
+export async function listPublishedPlacesByIds(placeIds: string[]): Promise<PlaceWithGuide[]> {
+  if (placeIds.length === 0) return [];
+  return db
+    .select({ place: places, guide: placeGuides })
+    .from(places)
+    .leftJoin(placeGuides, eq(placeGuides.placeId, places.id))
+    .where(inArray(places.id, placeIds));
+}
+

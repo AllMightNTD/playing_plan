@@ -1,5 +1,9 @@
 import { isDatabaseConfigured } from "@/server/db/client";
-import { listMediaByPlaceIds, listPublishedPlacesWithGuides } from "@/server/db/queries/user/places.queries";
+import {
+  listMediaByPlaceIds,
+  listPublishedPlacesWithGuides,
+  listPublishedPlacesByIds,
+} from "@/server/db/queries/user/places.queries";
 import { toCatalogPlace } from "@/server/services/user/catalog.mapper";
 import { HANOI_PLACES } from "@/lib/mock-data";
 import { HIDDEN_SAFETY_PLACE } from "@/lib/constants/catalog";
@@ -44,6 +48,34 @@ export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
   const placeIds = rows.map((r) => r.place.id);
   const mediaRows = await listMediaByPlaceIds(placeIds);
 
+  const mediaByPlaceId = new Map<string, PlaceMedia[]>();
+  for (const media of mediaRows) {
+    const list = mediaByPlaceId.get(media.placeId) ?? [];
+    list.push(media);
+    mediaByPlaceId.set(media.placeId, list);
+  }
+
+  const now = new Date();
+  return rows.map(({ place, guide }) =>
+    toCatalogPlace(place, guide, mediaByPlaceId.get(place.id) ?? [], now)
+  );
+}
+
+/**
+ * Lấy danh sách địa điểm theo ID (chỉ quét các ID cần thiết, không quét toàn bộ catalog).
+ */
+export async function getPublishedPlacesByIds(placeIds: string[]): Promise<HanoiPlace[]> {
+  if (placeIds.length === 0) return [];
+  if (!isDatabaseConfigured()) {
+    if (isProduction()) throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
+    const idSet = new Set(placeIds);
+    return getSeedPlaces().filter((p) => idSet.has(p.id));
+  }
+
+  const rows = await listPublishedPlacesByIds(placeIds);
+  if (rows.length === 0) return [];
+
+  const mediaRows = await listMediaByPlaceIds(placeIds);
   const mediaByPlaceId = new Map<string, PlaceMedia[]>();
   for (const media of mediaRows) {
     const list = mediaByPlaceId.get(media.placeId) ?? [];

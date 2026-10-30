@@ -1,35 +1,43 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "@/context/AppContext";
-import { CalendarCheck, Gift, CheckSquare, Plus, Trash2, Compass, Flame } from "lucide-react";
+import {
+  Compass,
+  Flame,
+  CheckCircle2,
+  Calendar,
+  Clock,
+  Heart,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { InteractiveTimeline } from "@/components/scrapbook/InteractiveTimeline";
+import { PlanTimeline } from "@/components/plans/PlanTimeline";
+import { PlanAirmailCard } from "@/components/plans/PlanAirmailCard";
 import { PosterShareModal } from "@/components/scrapbook/modals/PosterShareModal";
-import type { PlanDetailDto } from "@/server/services/user/plan.mapper";
+import {
+  computePlanTimeline,
+  computeItineraryStats,
+  formatVietnameseDate,
+} from "@/lib/plan-optimizer";
 import { fetchPlansList, fetchPlanDetail } from "./plans-fetchers";
 
-const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-
-function formatPlanDate(planDate: string): string {
-  const [y, m, d] = planDate.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  if (Number.isNaN(date.getTime())) return planDate;
-  return `${WEEKDAYS[date.getDay()]} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
-}
-
-function formatDateTime(value: string | Date): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" });
-}
+const CATEGORY_ICONS: Record<string, string> = {
+  coffee: "☕",
+  food: "🍜",
+  activity: "📸",
+  sunset: "🌅",
+};
 
 function nextSaturday(): string {
   const date = new Date();
   date.setDate(date.getDate() + (((6 - date.getDay()) % 7) || 7));
-  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 async function readError(res: Response, fallback: string): Promise<string> {
@@ -38,14 +46,22 @@ async function readError(res: Response, fallback: string): Promise<string> {
 }
 
 export default function PlansPage() {
-  const { places, homeSummary, homePublic, isLoadingHome, refetchHomeSummary, roomProfile, setActiveDetailSlug, addToast } = useApp();
+  const {
+    places,
+    homeSummary,
+    homePublic,
+    isLoadingHome,
+    refetchHomeSummary,
+    roomProfile,
+    setActiveDetailSlug,
+    addToast,
+  } = useApp();
   const queryClient = useQueryClient();
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [newChecklistText, setNewChecklistText] = useState("");
 
-  // Form tạo kế hoạch khi phòng chưa có buổi hẹn nào
+  // Form tạo kế hoạch mới khi chưa có buổi hẹn nào
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDate, setDraftDate] = useState(nextSaturday);
   const [draftTime, setDraftTime] = useState("16:30");
@@ -65,7 +81,9 @@ export default function PlansPage() {
       setSelectedPlanId((current) =>
         current && plans.some((p) => p.id === current)
           ? current
-          : (upcomingPlanId && plans.some((p) => p.id === upcomingPlanId) ? upcomingPlanId : plans[0]?.id ?? null)
+          : upcomingPlanId && plans.some((p) => p.id === upcomingPlanId)
+          ? upcomingPlanId
+          : plans[0]?.id ?? null
       );
     } else {
       setSelectedPlanId(null);
@@ -80,7 +98,7 @@ export default function PlansPage() {
 
   const isLoading = isLoadingPlans || (Boolean(selectedPlanId) && isLoadingPlan && !plan);
 
-  // Sau mỗi thay đổi: tải lại kế hoạch đang xem và đồng bộ trang chủ
+  // Đồng bộ lại dữ liệu sau khi sửa chặng hoặc thông tin buổi hẹn
   const refreshPlan = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["user", "plan", selectedPlanId] }),
@@ -89,6 +107,23 @@ export default function PlansPage() {
     ]);
   }, [queryClient, refetchHomeSummary, selectedPlanId]);
 
+  // Lưu ghi chú chung vào backend qua PATCH API
+  const handleSavePlanNote = async (note: string) => {
+    if (!selectedPlanId) return;
+    try {
+      await fetch(`/api/v1/user/plans/${selectedPlanId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: note.trim() || null }),
+      });
+      await refreshPlan();
+    } catch (err) {
+      console.error(err);
+      addToast("Chưa lưu được ghi chú chung, thử lại nhé.", "error");
+    }
+  };
+
+  // Tạo kế hoạch mới
   const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     const title = draftTitle.trim();
@@ -126,84 +161,63 @@ export default function PlansPage() {
     }
   };
 
-  const checklistUrl = (itemId?: string) =>
-    `/api/v1/user/plans/${encodeURIComponent(plan?.id ?? "")}/checklist${itemId ? `/${encodeURIComponent(itemId)}` : ""}`;
-
-  const patchChecklistItem = async (itemId: string, patch: { isDone?: boolean; assignedTo?: string | null }) => {
-    if (!plan || !selectedPlanId) return;
-    const previous = plan.checklist;
-    // Cập nhật lạc quan, lỗi thì trả lại trạng thái cũ
-    queryClient.setQueryData<PlanDetailDto | null>(["user", "plan", selectedPlanId], (old) =>
-      old ? { ...old, checklist: old.checklist.map((c) => (c.id === itemId ? { ...c, ...patch } : c)) } : null
-    );
-    try {
-      const res = await fetch(checklistUrl(itemId), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) throw new Error(`checklist API ${res.status}`);
-      refetchHomeSummary();
-    } catch (err) {
-      console.warn("Lỗi cập nhật checklist:", err);
-      queryClient.setQueryData<PlanDetailDto | null>(["user", "plan", selectedPlanId], (old) =>
-        old ? { ...old, checklist: previous } : null
-      );
-      addToast("Chưa lưu được checklist, thử lại nhé.", "error");
+  // Thành viên đối phương (người thương)
+  const partnerMember = roomProfile?.members.find((m) => !m.isMe);
+  const handleNotifyPartner = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard?.writeText(window.location.href);
+      addToast("💌 Đã sao chép liên kết kế hoạch để gửi cho người thương!", "success");
     }
   };
 
-  const handleAddChecklist = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const content = newChecklistText.trim();
-    if (!content || !plan) return;
-    try {
-      const res = await fetch(checklistUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-      if (!res.ok) {
-        addToast(await readError(res, "Chưa thêm được mục chuẩn bị."), "error");
-        return;
-      }
-      setNewChecklistText("");
-      await refreshPlan();
-    } catch (err) {
-      console.warn("Lỗi thêm checklist:", err);
-      addToast("Mất kết nối, chưa thêm được mục chuẩn bị.", "error");
-    }
-  };
+  // Tính toán timeline cho Bưu thiếp Airmail
+  const enrichedStops = useMemo(() => {
+    if (!plan) return [];
+    return plan.stops.map((stop) => {
+      const place = stop.placeId ? places.find((p) => p.id === stop.placeId) : undefined;
+      const name = stop.customName || place?.name || "Địa điểm hẹn hò";
+      const category = (place?.category || "coffee").toLowerCase();
+      const icon = CATEGORY_ICONS[category] || "📍";
+      return {
+        ...stop,
+        name,
+        category,
+        icon,
+        lat: place?.lat ?? null,
+        lng: place?.lng ?? null,
+        duration: stop.durationMin,
+        isLocked: stop.isPinnedTime,
+        lockedStartTime: stop.plannedTime,
+      };
+    });
+  }, [plan, places]);
 
-  const handleDeleteChecklist = async (itemId: string) => {
-    try {
-      const res = await fetch(checklistUrl(itemId), { method: "DELETE" });
-      if (!res.ok) throw new Error(`checklist API ${res.status}`);
-      await refreshPlan();
-    } catch (err) {
-      console.warn("Lỗi xóa checklist:", err);
-      addToast("Chưa xóa được mục chuẩn bị, thử lại nhé.", "error");
-    }
-  };
+  const computedTimeline = useMemo(() => {
+    return computePlanTimeline(enrichedStops, plan?.startTime || "15:00");
+  }, [enrichedStops, plan?.startTime]);
 
-  const members = roomProfile?.members ?? [];
-  const memberName = (memberId: string | null) =>
-    (memberId && members.find((m) => m.id === memberId)?.nickname) || "Cả hai";
+  const itineraryStats = useMemo(() => {
+    return computeItineraryStats(computedTimeline);
+  }, [computedTimeline]);
 
   if (isLoading || isLoadingHome) {
     return (
-      <div className="p-10 text-center text-sm text-paper-muted animate-pulse">Đang tải kế hoạch của hai bạn...</div>
+      <div className="p-12 text-center text-sm text-[#7d6856] animate-pulse">
+        Đang tải kế hoạch của hai bạn...
+      </div>
     );
   }
 
-  // Chưa có kế hoạch nào: form tạo mới thay vì lịch trình mẫu
+  // Chưa có kế hoạch nào: form tạo mới thân thiện
   if (plans.length === 0) {
     return (
       <div className="max-w-xl mx-auto bg-[#FFFDF9] rounded-3xl p-6 sm:p-8 border border-[#E6D7C3] shadow-xs space-y-5 relative animate-in fade-in duration-300">
         <div className="washi-tape washi-terracotta -top-3.5 left-10" />
         <div className="text-center space-y-1.5">
           <div className="text-4xl">🗓️</div>
-          <h3 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">Chưa có buổi hẹn nào</h3>
+          <h3 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+            Chưa có buổi hẹn nào
+          </h3>
           <p className="text-xs sm:text-sm text-paper-muted">
             Tạo kế hoạch rồi thêm điểm dừng từ trang Khám phá hoặc các địa điểm hai bạn đã Match.
           </p>
@@ -251,10 +265,16 @@ export default function PlansPage() {
         </form>
 
         <div className="flex justify-center gap-3 text-xs font-bold">
-          <Link href="/explore" className="text-brand-terracotta hover:underline flex items-center gap-1">
+          <Link
+            href="/explore"
+            className="text-brand-terracotta hover:underline flex items-center gap-1"
+          >
             <Compass className="w-3.5 h-3.5" /> Khám phá địa điểm
           </Link>
-          <Link href="/match" className="text-brand-terracotta hover:underline flex items-center gap-1">
+          <Link
+            href="/match"
+            className="text-brand-terracotta hover:underline flex items-center gap-1"
+          >
             <Flame className="w-3.5 h-3.5" /> Quẹt thẻ cùng người ấy
           </Link>
         </div>
@@ -262,220 +282,135 @@ export default function PlansPage() {
     );
   }
 
-  const completedCount = plan?.checklist.filter((c) => c.isDone).length ?? 0;
-
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Chọn kế hoạch khi phòng có nhiều buổi hẹn */}
+    <div
+      className="min-h-screen py-4 px-2 sm:px-6 lg:px-8 space-y-5"
+      style={{
+        backgroundColor: "#f3ede2",
+        backgroundImage: "radial-gradient(#cbbba0 1.35px, transparent 1.35px)",
+        backgroundSize: "18px 18px",
+      }}
+    >
+      {/* BANNER ĐẦU TRANG THEO DEMO */}
+      {plan && (
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-[#fdfbf7]/95 backdrop-blur border border-[#e2d6c3] rounded-2xl px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 vintage-shadow">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-full bg-[#c84b31]/15 text-[#c84b31] flex items-center justify-center font-bold">
+                💌
+              </span>
+              <span className="text-xs sm:text-sm text-[#4a3423] font-medium">
+                <b>DateMate</b> gợi ý lịch trình hợp thời tiết nhất cho hai đứa nhé • Kéo thả địa
+                điểm để đổi thứ tự
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs bg-[#eef6f0] text-[#2b6e44] border border-[#b8dfc6] px-3 py-1.5 rounded-full font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {`Đã lưu tự động ${plan.stops.length} mốc giờ`}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHUYỂN ĐỔI NHIỀU BUỔI HẸN */}
       {plans.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto pb-1 no-scrollbar">
           {plans.map((p) => (
             <button
               key={p.id}
+              type="button"
               onClick={() => setSelectedPlanId(p.id)}
               className={cn(
-                "px-3.5 py-2 rounded-2xl text-xs font-bold border whitespace-nowrap transition",
+                "px-3.5 py-2 rounded-2xl text-xs font-bold border whitespace-nowrap transition flex items-center gap-1.5",
                 p.id === selectedPlanId
-                  ? "bg-brand-terracotta text-white border-brand-terracotta"
-                  : "bg-[#FFFDF9] text-paper-ink border-[#E6D7C3] hover:bg-brand-peach/40"
+                  ? "bg-[#c84b31] text-white border-[#c84b31] shadow-xs"
+                  : "bg-[#FFFDF9] text-[#4a3423] border-[#E6D7C3] hover:bg-[#fff5f2]"
               )}
             >
-              {p.isSecretLocked ? "🎁 " : ""}
-              {p.title} • {formatPlanDate(p.planDate)}
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{p.title}</span>
+              <span>•</span>
+              <span className="opacity-80">{formatVietnameseDate(p.planDate)}</span>
             </button>
           ))}
         </div>
       )}
 
+      {/* NỘI DUNG CHÍNH: BỐ CỤC 2 CỘT */}
       {!plan ? (
-        <div className="p-10 text-center text-sm text-paper-muted animate-pulse">Đang tải lịch trình...</div>
+        <div className="p-12 text-center text-sm text-[#7d6856] animate-pulse">
+          Đang tải lịch trình chi tiết...
+        </div>
       ) : (
-        <>
-          {/* Header kế hoạch & hành động */}
-          <div className="bg-[#FFFDF9] rounded-3xl p-5 sm:p-6 border border-[#E6D7C3] shadow-xs flex flex-wrap items-center justify-between gap-4 relative">
-            <div className="washi-tape washi-terracotta -top-3.5 left-10" />
-
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-brand-olive/15 text-brand-olive text-xs font-bold border border-brand-olive/20">
-                  {formatPlanDate(plan.planDate)} • {plan.startTime}
-                </span>
-                {plan.budget !== null && (
-                  <span className="text-xs text-paper-muted">
-                    Ngân sách dự kiến: ~{plan.budget.toLocaleString("vi-VN")}đ
-                  </span>
-                )}
-                {plan.isSecret && !plan.isSecretLocked && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-brand-peach text-brand-terracottaDark text-xs font-bold flex items-center gap-1">
-                    <Gift className="w-3 h-3" /> Hẹn bất ngờ
-                    {plan.revealAt ? ` • người ấy thấy lúc ${formatDateTime(plan.revealAt)}` : ""}
-                  </span>
-                )}
-              </div>
-              <h3 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink mt-1.5">{plan.title}</h3>
-              {plan.note && <p className="text-xs text-paper-muted mt-1">{plan.note}</p>}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-            {!plan.isSecretLocked && (
-              <button
-                type="button"
-                onClick={() => setIsShareOpen(true)}
-                className="px-4 py-2 rounded-2xl bg-[#FFFDF9] border-2 border-brand-terracotta text-brand-terracottaDark text-xs font-bold transition hover:bg-[#FFF5F0]"
-              >
-                🖼️ Tạo ảnh Story chia sẻ
-              </button>
-            )}
-            <a
-              href={`/api/v1/user/plans/${encodeURIComponent(plan.id)}/export.ics`}
-              download
-              onClick={() => addToast("📅 Đang tải file lịch .ics để thêm vào Apple / Google Calendar!", "success")}
-              className="px-4 py-2 rounded-2xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5"
-            >
-              <CalendarCheck className="w-4 h-4" />
-              <span>Đồng bộ Lịch ĐT (.ics)</span>
-            </a>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Lộ trình điểm dừng (7 cột) */}
-            <div className="lg:col-span-7 space-y-4">
-              {plan.isSecretLocked ? (
-                /* F19: người ấy chỉ thấy ngày giờ, địa điểm mở khóa lúc revealAt */
-                <div className="p-6 sm:p-8 rounded-3xl bg-[#362721] text-white text-center space-y-4 border-2 border-dashed border-[#E6D7C3] shadow-md">
-                  <div className="text-5xl">🎁🔒</div>
-                  <h4 className="font-serif font-extrabold text-xl sm:text-2xl text-brand-peach">
-                    Người ấy đã chuẩn bị một buổi hẹn bất ngờ cho bạn!
-                  </h4>
-                  <p className="text-xs sm:text-sm text-white/85 max-w-md mx-auto leading-relaxed">
-                    Hẹn bạn {formatPlanDate(plan.planDate)} lúc <strong className="text-brand-peach">{plan.startTime}</strong>.
-                    {plan.revealAt && (
-                      <>
-                        {" "}Địa điểm sẽ tự mở khóa lúc{" "}
-                        <strong className="text-brand-peach">{formatDateTime(plan.revealAt)}</strong>.
-                      </>
-                    )}
-                  </p>
-                </div>
-              ) : plan.stops.length === 0 ? (
-                <div className="bg-[#FFFDF9] rounded-3xl p-8 border border-[#E6D7C3] text-center space-y-3">
-                  <div className="text-3xl">📍</div>
-                  <p className="text-sm text-paper-muted">Kế hoạch chưa có điểm dừng nào.</p>
-                  <div className="flex justify-center gap-3 text-xs font-bold">
-                    <Link href="/explore" className="text-brand-terracotta hover:underline">+ Thêm từ Khám phá</Link>
-                    <Link href="/match" className="text-brand-terracotta hover:underline">+ Từ địa điểm đã Match</Link>
-                  </div>
-                </div>
-              ) : (
-                <InteractiveTimeline
-                  plan={plan}
-                  places={places}
-                  onRefresh={refreshPlan}
-                  onOpenDetail={setActiveDetailSlug}
-                  onError={(message) => addToast(message, "error")}
-                  goldenHourStart={homePublic?.sun.goldenHour.start}
-                  allowEditStops
-                />
-              )}
-            </div>
-
-            {/* Checklist chuẩn bị (5 cột) */}
-            <div className="lg:col-span-5 bg-[#FFFDF9] rounded-3xl p-5 sm:p-6 border border-[#E6D7C3] shadow-xs space-y-4 relative">
-              <div className="washi-tape washi-terracotta -top-3.5 right-8" />
-
-              <div className="flex items-center justify-between">
-                <h4 className="font-serif font-extrabold text-base text-paper-ink flex items-center gap-1.5">
-                  <CheckSquare className="w-4 h-4 text-brand-terracotta" />
-                  <span>Checklist chuẩn bị</span>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* CỘT TRÁI (7/12): LỊCH HẸN & TIMELINE DRAG & DROP */}
+          <div className="lg:col-span-7">
+            {plan.isSecretLocked ? (
+              <div className="p-6 sm:p-8 rounded-3xl bg-[#362721] text-white text-center space-y-4 border-2 border-dashed border-[#E6D7C3] shadow-md">
+                <div className="text-5xl">🎁🔒</div>
+                <h4 className="font-serif font-extrabold text-xl sm:text-2xl text-brand-peach">
+                  Người ấy đã chuẩn bị một buổi hẹn bất ngờ cho bạn!
                 </h4>
-                <span className="px-2.5 py-1 rounded-full bg-brand-peach text-brand-terracottaDark font-bold text-xs">
-                  {completedCount}/{plan.checklist.length}
-                </span>
+                <p className="text-xs sm:text-sm text-white/85 max-w-md mx-auto leading-relaxed">
+                  Hẹn bạn {formatVietnameseDate(plan.planDate)} lúc{" "}
+                  <strong className="text-brand-peach">{plan.startTime}</strong>.
+                </p>
               </div>
-
-              <div className="space-y-2.5">
-                {plan.checklist.length === 0 && (
-                  <p className="text-xs text-paper-muted text-center py-4">Chưa có món nào. Thêm đồ cần mang bên dưới nhé!</p>
-                )}
-                {plan.checklist.map((item) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "p-3 rounded-2xl border flex items-center justify-between gap-2 transition",
-                      item.isDone ? "bg-brand-olive/10 border-brand-olive/30" : "bg-[#FAF4E8] border-[#E6D7C3]"
-                    )}
-                  >
-                    <label className="flex items-center gap-2.5 min-w-0 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={item.isDone}
-                        onChange={() => patchChecklistItem(item.id, { isDone: !item.isDone })}
-                        className="w-4 h-4 accent-[#C84B31] rounded shrink-0"
-                      />
-                      <span
-                        className={cn(
-                          "text-xs font-medium leading-relaxed",
-                          item.isDone ? "line-through text-paper-muted" : "text-paper-ink"
-                        )}
-                      >
-                        {item.content}
-                      </span>
-                    </label>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {members.length > 1 ? (
-                        <select
-                          value={item.assignedTo ?? ""}
-                          onChange={(e) => patchChecklistItem(item.id, { assignedTo: e.target.value || null })}
-                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FFFDF9] border border-[#E6D7C3] text-paper-ink"
-                          title="Ai phụ trách"
-                        >
-                          <option value="">Cả hai</option>
-                          {members.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.nickname || "Thành viên"}
-                              {m.isMe ? " (bạn)" : ""}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFFDF9] border border-[#E6D7C3] text-paper-ink">
-                          {memberName(item.assignedTo)}
-                        </span>
-                      )}
-                      <button
-                        onClick={() => handleDeleteChecklist(item.id)}
-                        className="w-6 h-6 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-600 transition"
-                        title="Xóa mục"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <form onSubmit={handleAddChecklist} className="flex gap-2 pt-2">
-                <input
-                  type="text"
-                  value={newChecklistText}
-                  onChange={(e) => setNewChecklistText(e.target.value)}
-                  maxLength={200}
-                  placeholder="Thêm đồ cần mang (vd: Máy ảnh film)..."
-                  className="flex-1 px-3 py-2 rounded-xl bg-[#FAF4E8] border border-[#E6D7C3] text-xs focus:outline-none focus:border-brand-terracotta text-paper-ink placeholder:text-paper-muted"
-                />
-                <button
-                  type="submit"
-                  disabled={!newChecklistText.trim()}
-                  className="px-3.5 py-2 rounded-xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white text-xs font-bold shrink-0 transition flex items-center gap-1 shadow-2xs disabled:opacity-40"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Thêm</span>
-                </button>
-              </form>
-            </div>
+            ) : (
+              <PlanTimeline
+                plan={plan}
+                places={places}
+                onRefresh={refreshPlan}
+                onOpenPlaceDetail={setActiveDetailSlug}
+                onShareStory={() => setIsShareOpen(true)}
+                onNotifyPartner={handleNotifyPartner}
+                goldenHourStart={homePublic?.sun.goldenHour.start}
+                partnerContact={partnerMember?.nickname || "Người thương 💕"}
+              />
+            )}
           </div>
 
+          {/* CỘT PHẢI (5/12): BƯU THIẾP AIRMAIL */}
+          <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4">
+            <PlanAirmailCard
+              planId={plan.id}
+              planDate={plan.planDate}
+              planNote={plan.note}
+              onSaveNote={handleSavePlanNote}
+              weather={
+                homePublic
+                  ? {
+                      temp: homePublic.weather.temp,
+                      description: homePublic.weather.condition,
+                      rainProb: homePublic.weather.rainProbability,
+                      icon: homePublic.weather.icon === "sun" ? "☀️" : "🌤️",
+                      weatherTip: homePublic.weatherTip,
+                    }
+                  : null
+              }
+              sun={homePublic?.sun}
+              partner={{
+                name: partnerMember?.nickname || "Người thương 💕",
+                lastSync: "Vừa xong",
+              }}
+              computedTimeline={computedTimeline.map((s) => ({
+                id: s.item.id,
+                name: s.item.name,
+                startTimeStr: s.startTimeStr,
+                endTimeStr: s.endTimeStr,
+                distKm: s.distKm,
+                travelMins: s.travelMins,
+                icon: s.item.icon,
+              }))}
+              itineraryStats={itineraryStats}
+              onNotifyPartner={handleNotifyPartner}
+            />
+          </div>
+
+          {/* Modal chia sẻ Poster / Story */}
           <PosterShareModal
             isOpen={isShareOpen}
             onClose={() => setIsShareOpen(false)}
@@ -483,7 +418,7 @@ export default function PlansPage() {
             places={places}
             onRefresh={refreshPlan}
           />
-        </>
+        </div>
       )}
     </div>
   );

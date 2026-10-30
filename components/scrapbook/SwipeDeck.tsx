@@ -12,6 +12,7 @@ import {
   Check,
 } from "lucide-react";
 import { HOBBY_TAGS, type HobbyTagId } from "@/lib/catalog/hobby-filter";
+import { calculateNextPollInterval } from "@/lib/polling-backoff";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { MatchDto } from "@/server/services/user/match.service";
 
@@ -50,6 +51,13 @@ export function SwipeDeck({
   const [matches, setMatches] = useState<MatchDto[]>(initialMatches);
   const [lastEtag, setLastEtag] = useState<string>("");
   const [pollingStatus, setPollingStatus] = useState<"idle" | "304" | "200">("304");
+  const lastEtagRef = useRef<string>(lastEtag);
+  const idlePollCountRef = useRef(0);
+  const hasRecentActivityRef = useRef(false);
+
+  useEffect(() => {
+    lastEtagRef.current = lastEtag;
+  }, [lastEtag]);
 
   // State Confetti & Match Modal
   const [showCelebration, setShowCelebration] = useState(false);
@@ -148,6 +156,8 @@ export function SwipeDeck({
   // Đổi Hobby filter
   const handleSelectHobby = (hobbyId: HobbyTagId | "all") => {
     setSelectedHobby(hobbyId);
+    hasRecentActivityRef.current = true;
+    idlePollCountRef.current = 0;
     fetchDeck(hobbyId === "all" ? undefined : hobbyId);
   };
 
@@ -155,6 +165,9 @@ export function SwipeDeck({
   const handleCardSwipe = async (choice: "like" | "nope") => {
     if (currentIndex >= deck.length) return;
     const place = deck[currentIndex];
+
+    hasRecentActivityRef.current = true;
+    idlePollCountRef.current = 0;
 
     // Ghi vào lịch sử để hỗ trợ Undo
     setSwipeHistory((prev) => [{ place, choice }, ...prev]);
@@ -203,6 +216,8 @@ export function SwipeDeck({
   // Xóa lượt quẹt trên server trước rồi mới lùi thẻ; Match mất ngưỡng like cũng bị gỡ theo
   const handleUndoSwipe = async () => {
     if (swipeHistory.length === 0 || currentIndex <= 0 || isUndoing) return;
+    hasRecentActivityRef.current = true;
+    idlePollCountRef.current = 0;
     const last = swipeHistory[0];
     setIsUndoing(true);
     try {
@@ -224,14 +239,21 @@ export function SwipeDeck({
     }
   };
 
-  // Short Polling 3s kiểm tra Match mới với header ETag
+  // Smart Adaptive Polling kiểm tra Match mới (Page Visibility API + Adaptive Exponential Backoff)
   useEffect(() => {
     let isMounted = true;
-    const poll = async () => {
+    let timerId: NodeJS.Timeout | null = null;
+
+    const executePoll = async () => {
+      // Đóng băng polling khi tab trình duyệt chạy ngầm (tiết kiệm pin & CPU)
+      if (typeof document !== "undefined" && document.hidden) {
+        return;
+      }
+
       try {
         const headers: Record<string, string> = {};
-        if (lastEtag) {
-          headers["If-None-Match"] = lastEtag;
+        if (lastEtagRef.current) {
+          headers["If-None-Match"] = lastEtagRef.current;
         }
 
         const res = await fetch("/api/v1/user/matches", { headers });
@@ -240,9 +262,12 @@ export function SwipeDeck({
 
         if (res.status === 304) {
           setPollingStatus("304");
+          idlePollCountRef.current += 1;
+          hasRecentActivityRef.current = false;
         } else if (res.status === 200) {
           const newEtag = res.headers.get("ETag") || `W/"etag-${Date.now()}"`;
           setLastEtag(newEtag);
+          lastEtagRef.current = newEtag;
           setPollingStatus("200");
 
           const json = await res.json();
@@ -254,27 +279,65 @@ export function SwipeDeck({
             triggerConfetti();
             setLatestMatchPlace(unseen[0].place);
             setShowCelebration(true);
+            hasRecentActivityRef.current = true;
+            idlePollCountRef.current = 0;
 
             // Đánh dấu đã xem
             for (const m of unseen) {
               fetch(`/api/v1/user/matches/${m.id}/seen`, { method: "POST" });
             }
+          } else {
+            idlePollCountRef.current += 1;
+            hasRecentActivityRef.current = false;
           }
 
           setMatches(items);
         }
       } catch {
         // Polling silent retry
+        idlePollCountRef.current += 1;
+      } finally {
+        if (isMounted) {
+          scheduleNextTick();
+        }
       }
     };
-    poll();
-    const interval = setInterval(poll, 3000);
+
+    const scheduleNextTick = () => {
+      if (timerId) clearTimeout(timerId);
+      const nextDelay = calculateNextPollInterval(
+        idlePollCountRef.current,
+        hasRecentActivityRef.current
+      );
+      timerId = setTimeout(executePoll, nextDelay);
+    };
+
+    // Khởi động poll đợt đầu
+    executePoll();
+
+    // Lắng nghe khi tab ẩn/hiện để đóng băng hoặc hồi phục polling tức thì
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (timerId) {
+          clearTimeout(timerId);
+          timerId = null;
+        }
+      } else {
+        // Vừa quay lại tab: reset idle count, poll ngay lập tức
+        hasRecentActivityRef.current = true;
+        idlePollCountRef.current = 0;
+        executePoll();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (timerId) clearTimeout(timerId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [lastEtag, triggerConfetti]);
+  }, [triggerConfetti]);
 
   const currentPlace = deck[currentIndex];
   const ruleText =

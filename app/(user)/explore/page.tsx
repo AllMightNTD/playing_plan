@@ -31,6 +31,9 @@ export default function ExplorePage() {
     places,
     filteredPlaces,
     isLoadingPlaces,
+    placesNextCursor,
+    isLoadingMorePlaces,
+    loadMorePlaces,
     searchQuery,
     setSearchQuery,
     selectedCategory,
@@ -231,11 +234,33 @@ export default function ExplorePage() {
         {isLoadingPlaces ? (
           <div className="text-center text-sm text-paper-muted py-10">Đang lật sổ tìm tọa độ hẹn hò...</div>
         ) : displayedPlaces.length > 0 ? (
-          <div className="responsive-3col grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-1">
-            {displayedPlaces.map((place, idx) => (
-              <PlaceCard key={place.id} place={place} index={idx} />
-            ))}
-          </div>
+          <>
+            <div className="responsive-3col grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-1">
+              {displayedPlaces.map((place, idx) => (
+                <PlaceCard key={place.id} place={place} index={idx} />
+              ))}
+            </div>
+
+            {placesNextCursor && (
+              <div className="pt-6 pb-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => loadMorePlaces()}
+                  disabled={isLoadingMorePlaces}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#FFFDF9] border-2 border-[#CBB292] text-xs sm:text-sm font-bold text-paper-ink hover:bg-brand-peach hover:border-brand-terracotta hover:text-brand-terracotta transition shadow-2xs disabled:opacity-50"
+                >
+                  <span>{isLoadingMorePlaces ? "Đang lật thêm trang sổ..." : "📖 Xem thêm tọa độ hẹn hò"}</span>
+                  <span className="text-brand-terracotta font-mono font-bold">↓</span>
+                </button>
+              </div>
+            )}
+
+            {!placesNextCursor && places.length > 0 && (
+              <div className="pt-6 pb-2 text-center text-xs text-paper-muted font-medium">
+                ✨ Hai bạn đã xem hết các tọa độ hẹn hò tuyển chọn tại Hà Nội
+              </div>
+            )}
+          </>
         ) : (
           <div className="bg-[#FFFDF9] border-2 border-dashed border-[#CBB292] rounded-2xl p-8 text-center text-xs">
             {quickFilter === "saved" ? "Hai bạn chưa lưu quán nào khớp bộ lọc. " : "Không tìm thấy địa điểm khớp bộ lọc. "}

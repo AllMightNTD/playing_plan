@@ -31,19 +31,15 @@ export interface PlaceDistance {
 /** API places giới hạn 24 bản ghi/trang (placeListQuerySchema). */
 const PLACES_PAGE_SIZE = 24;
 
-async function fetchAllPlaces(): Promise<HanoiPlace[]> {
-  const all: HanoiPlace[] = [];
-  let cursor: string | null = null;
-  do {
-    const query = new URLSearchParams({ limit: String(PLACES_PAGE_SIZE) });
-    if (cursor) query.set("cursor", cursor);
-    const res = await fetch(`/api/v1/user/places?${query}`);
-    if (!res.ok) throw new Error(`places API ${res.status}`);
-    const payload = await res.json();
-    all.push(...(payload?.data?.items ?? []));
-    cursor = payload?.data?.nextCursor ?? null;
-  } while (cursor);
-  return all;
+async function fetchInitialPlaces(): Promise<{ items: HanoiPlace[]; nextCursor: string | null }> {
+  const query = new URLSearchParams({ limit: String(PLACES_PAGE_SIZE) });
+  const res = await fetch(`/api/v1/user/places?${query}`);
+  if (!res.ok) throw new Error(`places API ${res.status}`);
+  const payload = await res.json();
+  return {
+    items: payload?.data?.items ?? [],
+    nextCursor: payload?.data?.nextCursor ?? null,
+  };
 }
 
 export interface ToastItem {
@@ -74,6 +70,9 @@ interface AppContextType {
   // Places & search
   places: HanoiPlace[];
   isLoadingPlaces: boolean;
+  placesNextCursor: string | null;
+  isLoadingMorePlaces: boolean;
+  loadMorePlaces: () => Promise<boolean>;
   filteredPlaces: HanoiPlace[];
   searchQuery: string;
   setSearchQuery: (q: string) => void;
@@ -134,11 +133,42 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  // 1. Places & Search (nạp toàn bộ địa điểm đã xuất bản từ API)
+  // 1. Places & Search (nạp trước trang đầu 24 quán, hỗ trợ cursor phân trang tải thêm)
   const [places, setPlaces] = useState<HanoiPlace[]>([]);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(true);
+  const [placesNextCursor, setPlacesNextCursor] = useState<string | null>(null);
+  const [isLoadingMorePlaces, setIsLoadingMorePlaces] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  const loadMorePlaces = useCallback(async (): Promise<boolean> => {
+    if (!placesNextCursor || isLoadingMorePlaces) return false;
+    setIsLoadingMorePlaces(true);
+    try {
+      const query = new URLSearchParams({
+        limit: String(PLACES_PAGE_SIZE),
+        cursor: placesNextCursor,
+      });
+      const res = await fetch(`/api/v1/user/places?${query}`);
+      if (!res.ok) return false;
+      const payload = await res.json();
+      const newItems: HanoiPlace[] = payload?.data?.items ?? [];
+      const newCursor: string | null = payload?.data?.nextCursor ?? null;
+
+      setPlaces((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const uniqueNew = newItems.filter((p) => !existingIds.has(p.id));
+        return [...prev, ...uniqueNew];
+      });
+      setPlacesNextCursor(newCursor);
+      return true;
+    } catch (err) {
+      console.warn("Lỗi tải thêm địa điểm:", err);
+      return false;
+    } finally {
+      setIsLoadingMorePlaces(false);
+    }
+  }, [placesNextCursor, isLoadingMorePlaces]);
 
   // Home Dynamic APIs (F12, F13, F08, F01)
   const [homePublic, setHomePublic] = useState<HomePublicDto | null>(null);
@@ -159,9 +189,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    fetchAllPlaces()
-      .then((items) => {
-        if (active) setPlaces(items);
+    fetchInitialPlaces()
+      .then(({ items, nextCursor }) => {
+        if (active) {
+          setPlaces(items);
+          setPlacesNextCursor(nextCursor);
+        }
       })
       .catch((err) => {
         console.warn("Không thể tải danh sách địa điểm từ API:", err);
@@ -575,6 +608,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         places,
         isLoadingPlaces,
+        placesNextCursor,
+        isLoadingMorePlaces,
+        loadMorePlaces,
         filteredPlaces,
         searchQuery,
         setSearchQuery,

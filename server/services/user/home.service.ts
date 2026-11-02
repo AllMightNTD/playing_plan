@@ -1,7 +1,7 @@
 import { getWeatherForecast, type WeatherData } from "@/lib/weather";
 import { getBestTimes } from "@/lib/sun";
 import {
-  getAllPublishedPlaces,
+  getHomeCatalogPreview,
   getPublishedPlacesByIds,
   requirePublishedPlace,
 } from "@/server/services/user/places.service";
@@ -59,19 +59,18 @@ function resolveStopIcon(title: string, category?: string): string {
  * Phục vụ toàn bộ dữ liệu công khai trên Trang chủ (Thời tiết, SunCalc, 3 thẻ gợi ý, tổng số nơi)
  */
 export async function getHomePublic(city = "hanoi"): Promise<HomePublicDto> {
-  const [weather, allPlaces] = await Promise.all([
+  const [weather, catalogPreview] = await Promise.all([
     getWeatherForecast(HANOI_COORDS.lat, HANOI_COORDS.lng),
-    getAllPublishedPlaces(),
+    getHomeCatalogPreview(3),
   ]);
 
   const sunTimes = getBestTimes(HANOI_COORDS.lat, HANOI_COORDS.lng, new Date());
-  const curatedPlaces = allPlaces.slice(0, 3);
 
   return {
     city: {
       id: city,
       name: city === "hanoi" ? "Hà Nội" : city,
-      totalPlaces: allPlaces.length,
+      totalPlaces: catalogPreview.totalPlaces,
     },
     weather,
     sun: {
@@ -87,7 +86,7 @@ export async function getHomePublic(city = "hanoi"): Promise<HomePublicDto> {
       sunset: sunTimes.sunset,
     },
     weatherTip: weather.weatherTip,
-    curatedPlaces,
+    curatedPlaces: catalogPreview.curatedPlaces,
   };
 }
 
@@ -145,13 +144,14 @@ export async function getHomeSummary(session: MemberSession | null): Promise<Hom
     }
   }
 
-  // Tìm buổi hẹn sắp tới gần nhất (chưa hủy, ngày >= hôm nay)
+  // Tìm buổi hẹn sắp tới gần nhất (đang ở trạng thái planned, ngày >= hôm nay)
   const todayStr = new Date().toISOString().slice(0, 10);
-  const validPlans = plans
-    .filter((p) => p.status !== "cancelled" && p.planDate >= todayStr)
+  const plannedPlans = plans.filter((p) => p.status === "planned");
+  const validPlans = plannedPlans
+    .filter((p) => p.planDate >= todayStr)
     .sort((a, b) => a.planDate.localeCompare(b.planDate) || a.startTime.localeCompare(b.startTime));
 
-  const upcoming = validPlans[0] ?? plans[0] ?? null;
+  const upcoming = validPlans[0] ?? plannedPlans[0] ?? null;
   let upcomingPlanDto: HomeSummaryDto["upcomingPlan"] = null;
 
   if (upcoming) {
@@ -222,7 +222,7 @@ export async function quickAddStopToPlan(
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const activePlan = plans
-    .filter((p) => p.status !== "cancelled" && p.planDate >= todayStr)
+    .filter((p) => p.status === "planned" && p.planDate >= todayStr)
     .sort((a, b) => a.planDate.localeCompare(b.planDate) || a.startTime.localeCompare(b.startTime))[0];
 
   if (activePlan) {

@@ -1,15 +1,14 @@
 import { getUserRepositories } from "@/server/db/repositories";
-import { getAllPublishedPlaces, requirePublishedPlace } from "@/server/services/user/places.service";
+import { getPublishedPlacesByIds, requirePublishedPlace } from "@/server/services/user/places.service";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { MemberSession } from "@/server/db/repositories/types";
 
-/** Chưa có phiên thì danh sách đã lưu nằm ở localStorage phía client (mục 0.2), server trả rỗng. */
 export async function listSavedPlaces(session: MemberSession | null): Promise<HanoiPlace[]> {
   if (!session) return [];
-  const [placeIds, places] = await Promise.all([
-    getUserRepositories().saved.listPlaceIds(session.memberId),
-    getAllPublishedPlaces(),
-  ]);
+  const placeIds = await getUserRepositories().saved.listPlaceIds(session.memberId);
+  if (placeIds.length === 0) return [];
+
+  const places = await getPublishedPlacesByIds(placeIds);
   const placeById = new Map(places.map((place) => [place.id, place]));
   return placeIds.flatMap((placeId) => placeById.get(placeId) ?? []);
 }

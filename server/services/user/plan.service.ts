@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { getUserRepositories } from "@/server/db/repositories";
-import { requirePublishedPlace, getAllPublishedPlaces } from "@/server/services/user/places.service";
+import { requirePublishedPlace, getPublishedPlacesByIds } from "@/server/services/user/places.service";
 import {
   assertNoConcurrentEdit,
   assertNotSecretLocked,
@@ -134,7 +134,7 @@ async function describeFirstStopLocation(stops: PlanStop[]): Promise<string | nu
   if (!firstStop) return null;
   if (!firstStop.placeId) return firstStop.customName;
 
-  const place = (await getAllPublishedPlaces()).find((candidate) => candidate.id === firstStop.placeId);
+  const [place] = await getPublishedPlacesByIds([firstStop.placeId]);
   return place ? `${place.name}, ${place.area}` : firstStop.customName;
 }
 

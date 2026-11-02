@@ -1,8 +1,8 @@
 import { db } from "@/server/db/client";
-import { places, placeMedia, Place } from "@/server/db/schema/places";
-import { placeVideos, PlaceVideo } from "@/server/db/schema/governance";
+import { places } from "@/server/db/schema/places";
+import { placeVideos } from "@/server/db/schema/governance";
 import { loadCatalogVideos, type CatalogVideo } from "@/server/services/videos/video-catalog.service";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 
 export type VideoCategory = "cafe" | "food" | "photo" | "walk" | "fun" | "chill" | "stay";
 
@@ -190,34 +190,36 @@ export async function queryUserVideos(
   let videoPlaceLinkMap = new Map<string, string>(); // videoId -> placeId
 
   try {
-    const allPlaces = await db
-      .select({
-        id: places.id,
-        name: places.name,
-        slug: places.slug,
-        category: places.category,
-        area: places.area,
-        address: places.address,
-      })
-      .from(places)
-      .where(eq(places.status, "published"));
-
-    for (const p of allPlaces) {
-      placeMap.set(p.id, p);
-    }
-
-    // Lấy liên kết place_videos
     const pvRows = await db
       .select({
         placeId: placeVideos.placeId,
         videoId: placeVideos.videoId,
-        status: placeVideos.status,
       })
-      .from(placeVideos);
+      .from(placeVideos)
+      .where(ne(placeVideos.status, "rejected"));
 
-    for (const row of pvRows) {
-      if (placeMap.has(row.placeId) && row.status !== "rejected") {
-        videoPlaceLinkMap.set(row.videoId, row.placeId);
+    const linkedPlaceIds = Array.from(new Set(pvRows.map((row) => row.placeId)));
+    if (linkedPlaceIds.length > 0) {
+      const linkedPlaces = await db
+        .select({
+          id: places.id,
+          name: places.name,
+          slug: places.slug,
+          category: places.category,
+          area: places.area,
+          address: places.address,
+        })
+        .from(places)
+        .where(and(eq(places.status, "published"), inArray(places.id, linkedPlaceIds)));
+
+      for (const p of linkedPlaces) {
+        placeMap.set(p.id, p);
+      }
+
+      for (const row of pvRows) {
+        if (placeMap.has(row.placeId)) {
+          videoPlaceLinkMap.set(row.videoId, row.placeId);
+        }
       }
     }
   } catch (err) {

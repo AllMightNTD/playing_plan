@@ -1,12 +1,19 @@
 import { isDatabaseConfigured } from "@/server/db/client";
+import { getUserRepositories } from "@/server/db/repositories";
 import {
+  countPublishedPlaces,
+  findPublishedPlaceWithGuide,
   listMediaByPlaceIds,
-  listPublishedPlacesWithGuides,
   listPublishedPlacesByIds,
+  listPublishedPlacesLimited,
+  listPublishedPlacesWithGuides,
+  listUnswipedPublishedPlacesWithGuides,
+  type PlaceWithGuide,
 } from "@/server/db/queries/user/places.queries";
 import { toCatalogPlace } from "@/server/services/user/catalog.mapper";
 import { HANOI_PLACES } from "@/lib/mock-data";
 import { HIDDEN_SAFETY_PLACE } from "@/lib/constants/catalog";
+import { filterPlacesByHobby } from "@/lib/catalog/hobby-filter";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { PlaceMedia } from "@/server/db/schema";
 import {
@@ -20,30 +27,23 @@ import {
 import { AppError, ERRORS } from "@/server/http/errors";
 
 function getSeedPlaces(): HanoiPlace[] {
-  return HANOI_PLACES.filter((place) => place.status === "published");
+  return HANOI_PLACES.filter(
+    (place) => place.status === "published" && place.slug !== HIDDEN_SAFETY_PLACE.slug
+  );
 }
 
-/** Bộ seed chỉ dành cho chế độ demo khi dev; production không được che lỗi DB bằng dữ liệu giả. */
 function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
-/**
- * Catalog đã xuất bản. Khi dev: chưa có DB, DB chưa seed, hoặc DB lỗi thì dùng bộ seed 36 địa điểm (mục 14).
- * Production: DB rỗng trả rỗng, DB lỗi thì ném lỗi để giám sát phát hiện.
- */
-export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
-  // Chỉ dùng seed data khi chạy test offline hoặc dev chưa cấu hình DB
-  if (!isDatabaseConfigured()) {
-    if (isProduction()) throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
-    return getSeedPlaces();
+function assertDemoFallbackAllowed(): void {
+  if (isProduction()) {
+    throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
   }
+}
 
-  // Khi DB đã cấu hình: TiDB là nguồn chân lý duy nhất (Single Source of Truth)
-  const rows = await listPublishedPlacesWithGuides();
-  if (rows.length === 0) {
-    return [];
-  }
+async function hydrateCatalogPlaces(rows: PlaceWithGuide[]): Promise<HanoiPlace[]> {
+  if (rows.length === 0) return [];
 
   const placeIds = rows.map((r) => r.place.id);
   const mediaRows = await listMediaByPlaceIds(placeIds);
@@ -62,45 +62,137 @@ export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
 }
 
 /**
- * Lấy danh sách địa điểm theo ID (chỉ quét các ID cần thiết, không quét toàn bộ catalog).
+ * Full published catalog (used for full-text search/suggestions/filter pagination).
+ */
+export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
+  if (!isDatabaseConfigured()) {
+    assertDemoFallbackAllowed();
+    return getSeedPlaces();
+  }
+
+  const rows = await listPublishedPlacesWithGuides();
+  return hydrateCatalogPlaces(rows);
+}
+
+/**
+ * Batch lookup of published places by IDs (deduplicated, zero full-table scan).
  */
 export async function getPublishedPlacesByIds(placeIds: string[]): Promise<HanoiPlace[]> {
-  if (placeIds.length === 0) return [];
+  const uniqueIds = Array.from(new Set(placeIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return [];
+
   if (!isDatabaseConfigured()) {
-    if (isProduction()) throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
-    const idSet = new Set(placeIds);
+    assertDemoFallbackAllowed();
+    const idSet = new Set(uniqueIds);
     return getSeedPlaces().filter((p) => idSet.has(p.id));
   }
 
-  const rows = await listPublishedPlacesByIds(placeIds);
-  if (rows.length === 0) return [];
+  const rows = await listPublishedPlacesByIds(uniqueIds);
+  return hydrateCatalogPlaces(rows);
+}
 
-  const mediaRows = await listMediaByPlaceIds(placeIds);
-  const mediaByPlaceId = new Map<string, PlaceMedia[]>();
-  for (const media of mediaRows) {
-    const list = mediaByPlaceId.get(media.placeId) ?? [];
-    list.push(media);
-    mediaByPlaceId.set(media.placeId, list);
+/**
+ * Home public preview: COUNT(*) + top-N curated places without loading the entire catalog.
+ */
+export async function getHomeCatalogPreview(
+  limit: number = 3
+): Promise<{ totalPlaces: number; curatedPlaces: HanoiPlace[] }> {
+  if (!isDatabaseConfigured()) {
+    assertDemoFallbackAllowed();
+    const seed = getSeedPlaces();
+    return {
+      totalPlaces: seed.length,
+      curatedPlaces: seed.slice(0, limit),
+    };
   }
 
-  const now = new Date();
-  return rows.map(({ place, guide }) =>
-    toCatalogPlace(place, guide, mediaByPlaceId.get(place.id) ?? [], now)
-  );
+  const [totalPlaces, topRows] = await Promise.all([
+    countPublishedPlaces(),
+    listPublishedPlacesLimited(limit),
+  ]);
+  const curatedPlaces = await hydrateCatalogPlaces(topRows);
+  return { totalPlaces, curatedPlaces };
 }
 
+/**
+ * Swipe deck loader pushing `NOT EXISTS` + `LIMIT` down to SQL when TiDB is configured.
+ */
+export async function getUnswipedPublishedPlaces(
+  session: { roomId: string; memberId: string } | null,
+  limit: number,
+  hobby?: string
+): Promise<HanoiPlace[]> {
+  if (limit <= 0) return [];
+  const hasHobbyFilter = Boolean(hobby && hobby.trim() && hobby !== "all");
+
+  if (!isDatabaseConfigured()) {
+    assertDemoFallbackAllowed();
+    const filtered = filterPlacesByHobby(getSeedPlaces(), hobby);
+    if (!session) return filtered.slice(0, limit);
+    const swiped = new Set(
+      await getUserRepositories().swipes.listSwipedPlaceIds(session.roomId, session.memberId)
+    );
+    return filtered.filter((place) => !swiped.has(place.id)).slice(0, limit);
+  }
+
+  if (!session) {
+    if (!hasHobbyFilter) {
+      const rows = await listPublishedPlacesLimited(limit);
+      return hydrateCatalogPlaces(rows);
+    }
+    const all = await getAllPublishedPlaces();
+    return filterPlacesByHobby(all, hobby).slice(0, limit);
+  }
+
+  if (!hasHobbyFilter) {
+    const rows = await listUnswipedPublishedPlacesWithGuides(session.roomId, session.memberId, limit);
+    return hydrateCatalogPlaces(rows);
+  }
+
+  const unswipedRows = await listUnswipedPublishedPlacesWithGuides(session.roomId, session.memberId);
+  const unswipedPlaces = await hydrateCatalogPlaces(unswipedRows);
+  return filterPlacesByHobby(unswipedPlaces, hobby).slice(0, limit);
+}
+
+/** Point lookup by slug (1-row index query instead of full-catalog scan). */
 export async function findPlaceBySlug(slug: string): Promise<HanoiPlace | null> {
-  if (slug === HIDDEN_SAFETY_PLACE.slug) return null;
-  const all = await getAllPublishedPlaces();
-  return all.find((place) => place.slug === slug) ?? null;
+  if (!slug || slug === HIDDEN_SAFETY_PLACE.slug) return null;
+
+  if (!isDatabaseConfigured()) {
+    assertDemoFallbackAllowed();
+    return getSeedPlaces().find((place) => place.slug === slug) ?? null;
+  }
+
+  const row = await findPublishedPlaceWithGuide(slug);
+  if (!row) return null;
+  const [hydrated] = await hydrateCatalogPlaces([row]);
+  return hydrated ?? null;
 }
 
-/** Guard: chỉ cho thao tác (lưu, vuốt, thêm vào kế hoạch) trên địa điểm đang xuất bản. */
+/** Guard: verifies a place is published by ID or slug via point lookup. */
 export async function requirePublishedPlace(placeIdOrSlug: string): Promise<HanoiPlace> {
-  const all = await getAllPublishedPlaces();
-  const place = all.find((candidate) => candidate.id === placeIdOrSlug || candidate.slug === placeIdOrSlug);
-  if (!place) throw new AppError(ERRORS.PLACE.NOT_FOUND);
-  return place;
+  if (
+    !placeIdOrSlug ||
+    placeIdOrSlug === HIDDEN_SAFETY_PLACE.slug ||
+    placeIdOrSlug === HIDDEN_SAFETY_PLACE.id
+  ) {
+    throw new AppError(ERRORS.PLACE.NOT_FOUND);
+  }
+
+  if (!isDatabaseConfigured()) {
+    assertDemoFallbackAllowed();
+    const place = getSeedPlaces().find(
+      (candidate) => candidate.id === placeIdOrSlug || candidate.slug === placeIdOrSlug
+    );
+    if (!place) throw new AppError(ERRORS.PLACE.NOT_FOUND);
+    return place;
+  }
+
+  const row = await findPublishedPlaceWithGuide(placeIdOrSlug);
+  if (!row) throw new AppError(ERRORS.PLACE.NOT_FOUND);
+  const [hydrated] = await hydrateCatalogPlaces([row]);
+  if (!hydrated) throw new AppError(ERRORS.PLACE.NOT_FOUND);
+  return hydrated;
 }
 
 export async function queryPlaces(filters: PlaceFilters, cursor?: string, limit: number = 12) {
@@ -108,7 +200,10 @@ export async function queryPlaces(filters: PlaceFilters, cursor?: string, limit:
   return paginate(filterPlaces(all, filters), cursor, limit);
 }
 
-export async function getRandomCandidate(excludeSlugs: string[] = [], filter?: PlaceFilters): Promise<HanoiPlace | null> {
+export async function getRandomCandidate(
+  excludeSlugs: string[] = [],
+  filter?: PlaceFilters
+): Promise<HanoiPlace | null> {
   const all = await getAllPublishedPlaces();
   const pool = filter ? filterPlaces(all, filter) : all;
   return pickRandomPlace(pool, excludeSlugs);

@@ -1,7 +1,10 @@
 import { nanoid } from "nanoid";
 import { getUserRepositories } from "@/server/db/repositories";
-import { getAllPublishedPlaces, requirePublishedPlace } from "@/server/services/user/places.service";
-import { filterPlacesByHobby } from "@/lib/catalog/hobby-filter";
+import {
+  getPublishedPlacesByIds,
+  getUnswipedPublishedPlaces,
+  requirePublishedPlace,
+} from "@/server/services/user/places.service";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { MatchRecord, MemberSession } from "@/server/db/repositories/types";
 import type { SwipeChoice } from "@/lib/constants/user";
@@ -32,28 +35,24 @@ export interface MatchesEtagResult {
   items: MatchDto[];
 }
 
-/**
- * Tính ETag cho danh sách Match của phòng dựa trên số lượng, thời gian cập nhật mới nhất và số match chưa đọc.
- */
 export function computeMatchesEtag(roomId: string, rawMatches: MatchRecord[]): string {
-  const latestTs = rawMatches.reduce((max, m) => Math.max(max, m.matchedAt ? new Date(m.matchedAt).getTime() : 0), 0);
+  const latestTs = rawMatches.reduce(
+    (max, m) => Math.max(max, m.matchedAt ? new Date(m.matchedAt).getTime() : 0),
+    0
+  );
   const unseenCount = rawMatches.filter((m) => !m.isSeen).length;
-  // Đổi trạng thái (open ↔ planned) cũng phải làm đổi ETag, nếu không polling trả 304 và UI không cập nhật
   const plannedCount = rawMatches.filter((m) => m.status === "planned").length;
   return `W/"matches-${roomId}-${rawMatches.length}-${latestTs}-${unseenCount}-${plannedCount}"`;
 }
 
-/** F07: bộ thẻ là catalog đang xuất bản trừ các nơi người này đã vuốt, hỗ trợ lọc theo Hobby tag. */
-export async function getSwipeDeck(session: MemberSession | null, limit: number, hobby?: string): Promise<HanoiPlace[]> {
-  const places = await getAllPublishedPlaces();
-  const filtered = filterPlacesByHobby(places, hobby);
-  if (!session) return filtered.slice(0, limit);
-
-  const swiped = new Set(await getUserRepositories().swipes.listSwipedPlaceIds(session.roomId, session.memberId));
-  return filtered.filter((place) => !swiped.has(place.id)).slice(0, limit);
+export async function getSwipeDeck(
+  session: MemberSession | null,
+  limit: number,
+  hobby?: string
+): Promise<HanoiPlace[]> {
+  return getUnswipedPublishedPlaces(session, limit, hobby);
 }
 
-/** Hoàn tác lượt quẹt của chính mình; Match mất ngưỡng like thì bị gỡ theo. */
 export async function undoSwipe(session: MemberSession, placeId: string): Promise<UndoSwipeDto> {
   const result = await getUserRepositories().swipes.undoSwipe({
     roomId: session.roomId,
@@ -65,7 +64,11 @@ export async function undoSwipe(session: MemberSession, placeId: string): Promis
   return { placeId, removedMatchId: result.removedMatchId };
 }
 
-export async function recordSwipe(session: MemberSession, placeId: string, choice: SwipeChoice): Promise<SwipeResultDto> {
+export async function recordSwipe(
+  session: MemberSession,
+  placeId: string,
+  choice: SwipeChoice
+): Promise<SwipeResultDto> {
   const place = await requirePublishedPlace(placeId);
   const now = new Date();
   const syncResult = await getUserRepositories().swipes.saveSwipeAndSyncMatch({
@@ -76,13 +79,12 @@ export async function recordSwipe(session: MemberSession, placeId: string, choic
     now,
   });
 
-  // Khi có match mới tạo, tự động bắn thông báo nội bộ vào room_notices
   if (syncResult.isNewMatch && syncResult.matchId) {
     try {
       await getUserRepositories().notices.insertNotice({
         id: nanoid(21),
         roomId: session.roomId,
-        memberId: null, // Gửi cho toàn bộ thành viên trong phòng
+        memberId: null,
         noticeType: "new_match",
         title: `🎉 Match mới: ${place.name}!`,
         content: `Cả hai đều đã thích "${place.name}". Lên kế hoạch hẹn hò ngay thôi!`,
@@ -91,7 +93,7 @@ export async function recordSwipe(session: MemberSession, placeId: string, choic
         createdAt: now,
       });
     } catch {
-      // Bỏ qua nếu lỗi notice phụ để không chặn luồng chính
+      // Non-critical notice side-effect failure must not block swipe response
     }
   }
 
@@ -102,26 +104,33 @@ export async function recordSwipe(session: MemberSession, placeId: string, choic
   };
 }
 
-/** Ghép Match với catalog; nơi đã bị gỡ xuất bản thì không hiện nữa. */
-export async function listMatches(session: MemberSession | null): Promise<MatchDto[]> {
-  if (!session) return [];
-  const [matches, places] = await Promise.all([
-    getUserRepositories().swipes.listMatches(session.roomId),
-    getAllPublishedPlaces(),
-  ]);
+async function hydrateMatchRecords(rawMatches: MatchRecord[]): Promise<MatchDto[]> {
+  if (rawMatches.length === 0) return [];
+  const places = await getPublishedPlacesByIds(rawMatches.map((m) => m.placeId));
   const placeById = new Map(places.map((place) => [place.id, place]));
 
-  return matches.flatMap((match) => {
+  return rawMatches.flatMap((match) => {
     const place = placeById.get(match.placeId);
     return place
-      ? [{ id: match.id, matchedAt: match.matchedAt, status: match.status, isSeen: match.isSeen, place }]
+      ? [
+          {
+            id: match.id,
+            matchedAt: match.matchedAt,
+            status: match.status,
+            isSeen: match.isSeen,
+            place,
+          },
+        ]
       : [];
   });
 }
 
-/**
- * Lấy danh sách match hỗ trợ Short Polling ETag (RFC 7232).
- */
+export async function listMatches(session: MemberSession | null): Promise<MatchDto[]> {
+  if (!session) return [];
+  const rawMatches = await getUserRepositories().swipes.listMatches(session.roomId);
+  return hydrateMatchRecords(rawMatches);
+}
+
 export async function listMatchesWithEtag(
   session: MemberSession | null,
   ifNoneMatch?: string | null
@@ -137,20 +146,10 @@ export async function listMatchesWithEtag(
     return { notModified: true, etag, items: [] };
   }
 
-  const places = await getAllPublishedPlaces();
-  const placeById = new Map(places.map((place) => [place.id, place]));
-
-  const items = rawMatches.flatMap((match) => {
-    const place = placeById.get(match.placeId);
-    return place
-      ? [{ id: match.id, matchedAt: match.matchedAt, status: match.status, isSeen: match.isSeen, place }]
-      : [];
-  });
-
+  const items = await hydrateMatchRecords(rawMatches);
   return { notModified: false, etag, items };
 }
 
-/** Đánh dấu match đã được xem để tắt badge thông báo. */
 export async function markMatchAsSeen(session: MemberSession, matchId: string): Promise<boolean> {
   return getUserRepositories().swipes.markMatchSeen(session.roomId, matchId);
 }

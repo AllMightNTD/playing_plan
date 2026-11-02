@@ -1,5 +1,5 @@
 import { getUserRepositories } from "@/server/db/repositories";
-import { getAllPublishedPlaces } from "@/server/services/user/places.service";
+import { getAllPublishedPlaces, getPublishedPlacesByIds } from "@/server/services/user/places.service";
 import { loadEditablePlan, toPlanScope, toPlanTouch, getPlanDetail } from "@/server/services/user/plan.service";
 import { calculateHanoiTravelMinutes } from "@/lib/travel-time";
 import { getBestTimes } from "@/lib/sun";
@@ -112,7 +112,10 @@ export async function autoSchedulePlan(
   const stops = await plans.listStops(scope);
   if (stops.length === 0) return getPlanDetail(session, planId);
 
-  const publishedPlaces = await getAllPublishedPlaces();
+  const stopPlaceIds = stops
+    .map((s) => s.placeId)
+    .filter((id): id is string => Boolean(id));
+  const publishedPlaces = await getPublishedPlacesByIds(stopPlaceIds);
   const placeMap = new Map(publishedPlaces.map((p) => [p.id, p]));
 
   // 1. Tính toán giờ hoàng hôn Hà Nội theo ngày hẹn
@@ -205,11 +208,19 @@ export async function applyPlanBIndoor(
   const { plans } = getUserRepositories();
   const stops = await plans.listStops(scope);
 
-  const publishedPlaces = await getAllPublishedPlaces();
-  const placeMap = new Map(publishedPlaces.map((p) => [p.id, p]));
+  const stopPlaceIds = stops
+    .map((s) => s.placeId)
+    .filter((id): id is string => Boolean(id));
+  const stopPlaces = await getPublishedPlacesByIds(stopPlaceIds);
+  const placeMap = new Map(stopPlaces.map((p) => [p.id, p]));
 
-  // Lọc các địa điểm trong nhà đã xuất bản
-  const indoorCandidates = publishedPlaces.filter((p) => p.indoor);
+  if (!stopPlaces.some((p) => !p.indoor)) {
+    return getPlanDetail(session, planId);
+  }
+
+  // Lọc các địa điểm trong nhà đã xuất bản từ catalog
+  const allPublished = await getAllPublishedPlaces();
+  const indoorCandidates = allPublished.filter((p) => p.indoor);
   if (indoorCandidates.length === 0) {
     return getPlanDetail(session, planId);
   }

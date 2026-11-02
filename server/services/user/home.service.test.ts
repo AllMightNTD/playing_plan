@@ -113,5 +113,24 @@ describe("Home Service & Integration APIs (F12, F13, F08, F01)", () => {
       const summary = await getHomeSummary(creator.session);
       expect(summary.upcomingPlan?.stops.length).toBe(2);
     });
+
+    it("excludes completed ('done') plans from upcomingPlan and creates a new plan on quick-add", async () => {
+      const creator = await ensureRoomSession(null, "10.0.0.5", "Minh");
+      const first = await quickAddStopToPlan(creator.session, "p1");
+
+      const { completePlanWithMemory } = await import("./memory.service");
+      await completePlanWithMemory(creator.session, {
+        planId: first.planId,
+        rating: 5,
+        journal: "Đi về rất vui!",
+      });
+
+      const summaryAfterDone = await getHomeSummary(creator.session);
+      expect(summaryAfterDone.upcomingPlan).toBeNull();
+      expect(summaryAfterDone.badges.hasUpcomingPlan).toBe(false);
+
+      const nextQuickAdd = await quickAddStopToPlan(creator.session, "p2");
+      expect(nextQuickAdd.planId).not.toBe(first.planId);
+    });
   });
 });

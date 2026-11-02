@@ -14,6 +14,10 @@ import {
   validateMentions,
   type PlaceCandidate,
 } from "@/server/services/ai/video-hotspot-ai.service";
+import {
+  isGeminiTransientFailure,
+  resolveGeminiApiKey,
+} from "@/server/services/ai/gemini-gateway";
 import { getPublishPauseState } from "@/server/services/pipeline/pipeline-control.service";
 
 export const AI_HOTSPOT_ACTOR = "ai:gemini";
@@ -59,7 +63,7 @@ export async function runAiVideoHotspots(options: { maxVideos?: number; now?: Da
   };
 
   if (!isDatabaseConfigured()) return { ...summary, stoppedReason: "no_database" };
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  const apiKey = resolveGeminiApiKey();
   if (!apiKey) return { ...summary, stoppedReason: "no_api_key" };
 
   const model = process.env.GEMINI_VIDEO_MODEL?.trim() || DEFAULT_VIDEO_AI_MODEL;
@@ -113,8 +117,8 @@ export async function runAiVideoHotspots(options: { maxVideos?: number; now?: Da
       summary.pendingHotspots += validated.filter((m) => !m.autoVerify).length;
       console.log(`[AI Hotspots] ${video.videoId}: ${validated.length} mốc hợp lệ / ${mentions.length} AI đề xuất`);
     } catch (err) {
-      // Hết quota thì dừng cả lượt, không đánh dấu video để lần sau chạy lại
-      if (err instanceof VideoAiQuotaError) {
+      // Stop the current batch and leave aiAnalyzedAt = null (PENDING_AI) on transient AI quota/timeout/breaker failures
+      if (err instanceof VideoAiQuotaError || isGeminiTransientFailure(err)) {
         summary.stoppedReason = "quota";
         break;
       }

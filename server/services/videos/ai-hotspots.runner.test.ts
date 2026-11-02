@@ -104,4 +104,24 @@ describe("runAiVideoHotspots", () => {
 
     expect(insertHotspotsIgnoringDuplicates).toHaveBeenCalledWith([expect.objectContaining({ status: "pending", verifiedBy: null })]);
   });
+
+  it("keeps video in PENDING_AI queue without marking error when Gemini times out or circuit breaker opens", async () => {
+    const { GeminiTimeoutError } = await import("@/server/services/ai/gemini-gateway");
+    vi.mocked(listVideosPendingAi).mockResolvedValue([video("v_timeout", 120), video("v_next", 120)]);
+    vi.mocked(detectPlaceMentions).mockRejectedValueOnce(new GeminiTimeoutError(15_000));
+
+    const summary = await runAiVideoHotspots();
+
+    expect(summary.stoppedReason).toBe("quota");
+    expect(markVideoAnalyzed).not.toHaveBeenCalled();
+  });
+
+  it("treats placeholder AIzaSy... GEMINI_API_KEY as no_api_key without invoking AI", async () => {
+    process.env.GEMINI_API_KEY = "AIzaSy...placeholder";
+
+    const summary = await runAiVideoHotspots();
+
+    expect(summary.stoppedReason).toBe("no_api_key");
+    expect(detectPlaceMentions).not.toHaveBeenCalled();
+  });
 });

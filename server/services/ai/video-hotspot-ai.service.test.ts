@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { namesAgree, validateMentions, type AiPlaceMention } from "./video-hotspot-ai.service";
+import { describe, expect, it, vi } from "vitest";
+import * as gateway from "./gemini-gateway";
+import {
+  DEFAULT_VIDEO_AI_MODEL,
+  VideoAiQuotaError,
+  detectPlaceMentions,
+  namesAgree,
+  validateMentions,
+  type AiPlaceMention,
+} from "./video-hotspot-ai.service";
 
 const CANDIDATES = [
   { id: "vm", name: "Văn Miếu Quốc Tử Giám", area: "Đống Đa" },
@@ -76,5 +84,48 @@ describe("validateMentions", () => {
 
   it("đang phanh publish thì không tự duyệt gì", () => {
     expect(validateMentions([mention({})], CANDIDATES, 600, false)[0].autoVerify).toBe(false);
+  });
+});
+
+describe("detectPlaceMentions", () => {
+  it("delegates to generateStructuredJson with gemini-3.8-flash low-resolution video input and maps transient failures to VideoAiQuotaError", async () => {
+    expect(DEFAULT_VIDEO_AI_MODEL).toBe("gemini-3.8-flash");
+    const spy = vi
+      .spyOn(gateway, "generateStructuredJson")
+      .mockResolvedValueOnce({ mentions: [mention({})] })
+      .mockRejectedValueOnce(new gateway.GeminiTimeoutError(15_000));
+
+    const mentions = await detectPlaceMentions({
+      apiKey: "real-video-key",
+      model: "",
+      videoId: "yt_123",
+      videoTitle: "Review Hồ Tây",
+      candidates: CANDIDATES,
+    });
+    expect(mentions).toHaveLength(1);
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gemini-3.8-flash",
+        input: expect.arrayContaining([
+          expect.objectContaining({
+            type: "video",
+            uri: "https://www.youtube.com/watch?v=yt_123",
+            resolution: "low",
+          }),
+        ]),
+      })
+    );
+
+    await expect(
+      detectPlaceMentions({
+        apiKey: "real-video-key",
+        model: "gemini-3.8-flash",
+        videoId: "yt_timeout",
+        videoTitle: "Timeout Video",
+        candidates: CANDIDATES,
+      })
+    ).rejects.toBeInstanceOf(VideoAiQuotaError);
+
+    spy.mockRestore();
   });
 });

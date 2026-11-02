@@ -1,8 +1,19 @@
+import { z } from "zod";
 import { getUserRepositories } from "@/server/db/repositories";
 import { AppError, ERRORS } from "@/server/http/errors";
 import type { MemberSession } from "@/server/db/repositories/types";
 import { getAudioTrackById, type AudioTrackDto } from "@/lib/media/audio-tracks";
 import { getMemoryStore } from "@/server/db/demo/memory-store";
+import {
+  DEFAULT_GEMINI_FLASH_MODEL,
+  GeminiCircuitOpenError,
+  GeminiRateLimitError,
+  GeminiTimeoutError,
+  generateStructuredJson,
+  resolveGeminiApiKey,
+} from "./gemini-gateway";
+
+const generatedCaptionsSchema = z.array(z.string().min(1)).min(1);
 
 export interface GenerateVirtualVideoOptions {
   simulate429?: boolean;
@@ -149,25 +160,23 @@ export async function generateVirtualVideoScript(
   };
   assertZeroPii(anonymizedPayload);
 
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_FLASH_MODEL;
   let generatedCaptions: string[] = [];
   let isFallback = false;
   let fallbackReason: string | undefined;
 
-  // 4. Kịch bản mô phỏng hoặc gọi Gemini API
   if (options?.simulate429) {
     isFallback = true;
     fallbackReason = "HTTP 429: Rate limit exceeded (Simulated). Đã kích hoạt Fallback Heuristic Template.";
     generatedCaptions = FALLBACK_HEURISTIC_TEMPLATES.slice(0, photoCount);
   } else {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = resolveGeminiApiKey();
     if (!apiKey) {
       isFallback = true;
       fallbackReason = "GEMINI_API_KEY không tồn tại. Đã sử dụng Fallback Heuristic Template văn học Hà Nội.";
       generatedCaptions = FALLBACK_HEURISTIC_TEMPLATES.slice(0, photoCount);
     } else {
       try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const promptText = `Bạn là trợ lý AI sáng tạo lời bình video kỷ niệm đôi lãng mạn tại Hà Nội.
 Dựa trên metadata ẩn danh (Zero PII):
 - Chặng dừng thể loại: ${anonymizedPayload.stops.join(", ")}
@@ -178,44 +187,22 @@ Yêu cầu:
 - Hãy sinh đúng ${photoCount} câu lời dẫn ngắn (15-25 từ/câu), giàu chất thơ Hà Nội, ấm áp, sâu lắng.
 - Trả về DUY NHẤT 1 mảng JSON các chuỗi: ["câu 1", "câu 2", ...]`;
 
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: promptText }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.7,
-            },
-          }),
+        generatedCaptions = await generateStructuredJson({
+          apiKey,
+          model,
+          input: promptText,
+          schema: generatedCaptionsSchema,
         });
-
-        if (response.status === 429) {
-          isFallback = true;
-          fallbackReason = "HTTP 429: Gemini Quota Exceeded. Đã kích hoạt Fallback Heuristic Template.";
-          generatedCaptions = FALLBACK_HEURISTIC_TEMPLATES.slice(0, photoCount);
-        } else if (response.ok) {
-          const data = (await response.json()) as {
-            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-          };
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-          try {
-            const parsed = JSON.parse(rawText) as string[];
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              generatedCaptions = parsed;
-            }
-          } catch {
-            // Parse json lỗi -> fallback
-          }
-        } else {
-          isFallback = true;
-          fallbackReason = `Gemini API HTTP ${response.status}: Sử dụng Fallback Heuristic Template.`;
-          generatedCaptions = FALLBACK_HEURISTIC_TEMPLATES.slice(0, photoCount);
-        }
       } catch (err: unknown) {
         isFallback = true;
-        fallbackReason = `Lỗi kết nối Gemini (${err instanceof Error ? err.message : err}). Sử dụng Fallback Heuristic.`;
         generatedCaptions = FALLBACK_HEURISTIC_TEMPLATES.slice(0, photoCount);
+        if (err instanceof GeminiRateLimitError) {
+          fallbackReason = "HTTP 429: Gemini Quota Exceeded. Đã kích hoạt Fallback Heuristic Template.";
+        } else if (err instanceof GeminiCircuitOpenError || err instanceof GeminiTimeoutError) {
+          fallbackReason = `Gemini tạm thời quá tải (${err.message}). Đã sử dụng Fallback Heuristic Template.`;
+        } else {
+          fallbackReason = `Lỗi kết nối Gemini (${err instanceof Error ? err.message : String(err)}). Sử dụng Fallback Heuristic.`;
+        }
       }
     }
   }

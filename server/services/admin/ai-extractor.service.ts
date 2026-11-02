@@ -1,12 +1,17 @@
-import { GoogleGenAI } from "@google/genai";
 import { consumeRateLimit, RATE_LIMITS } from "@/server/http/rate-limit";
 import { AppError, ERRORS } from "@/server/http/errors";
 import { extractedGuideSchema, type ExtractedGuide } from "@/lib/validators/admin";
 import type { AdminIdentity } from "@/server/auth/admin-auth";
+import {
+  DEFAULT_GEMINI_FLASH_MODEL,
+  GeminiCircuitOpenError,
+  GeminiInvalidOutputError,
+  GeminiRateLimitError,
+  GeminiTimeoutError,
+  generateStructuredJson,
+  resolveGeminiApiKey,
+} from "@/server/services/ai/gemini-gateway";
 
-const GEMINI_MODEL = "gemini-2.5-flash";
-/** Giá trị mẫu trong .env.example, coi như chưa cấu hình. */
-const PLACEHOLDER_KEY_PREFIX = "AIzaSy...";
 const FALLBACK_SUMMARY_LENGTH = 150;
 
 export interface GuideDraftDto {
@@ -47,34 +52,41 @@ function buildTemplateDraft(text: string): GuideDraftDto {
   };
 }
 
-function parseGuide(rawText: string | undefined): ExtractedGuide {
-  try {
-    return extractedGuideSchema.parse(JSON.parse(rawText ?? ""));
-  } catch (error) {
-    console.error(
-      JSON.stringify({
-        event: "ai_extract.invalid_response",
-        reason: error instanceof Error ? error.name : "unknown",
-        at: new Date().toISOString(),
-      })
-    );
-    throw new AppError(ERRORS.AI.INVALID_RESPONSE);
-  }
-}
-
 /**
- * F17: trích bản nháp cẩm nang từ nội dung admin dán vào; không tự lưu, admin phải duyệt.
+ * Extracts a structured venue guide draft from admin-pasted caption/transcript text; requires manual review before saving.
  */
 export async function extractGuideDraft(admin: AdminIdentity, text: string): Promise<GuideDraftDto> {
   consumeRateLimit(RATE_LIMITS.AI_EXTRACT, admin.email);
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey.startsWith(PLACEHOLDER_KEY_PREFIX)) return buildTemplateDraft(text);
+  const apiKey = resolveGeminiApiKey();
+  if (!apiKey) return buildTemplateDraft(text);
 
-  const response = await new GoogleGenAI({ apiKey }).models.generateContent({
-    model: GEMINI_MODEL,
-    contents: text,
-    config: { systemInstruction: SYSTEM_INSTRUCTION, responseMimeType: "application/json" },
-  });
-  return { guide: parseGuide(response.text), isAiGenerated: true };
+  try {
+    const guide = await generateStructuredJson({
+      apiKey,
+      model: DEFAULT_GEMINI_FLASH_MODEL,
+      systemInstruction: SYSTEM_INSTRUCTION,
+      input: text,
+      schema: extractedGuideSchema,
+    });
+    return { guide, isAiGenerated: true };
+  } catch (error: unknown) {
+    if (error instanceof GeminiRateLimitError) {
+      throw new AppError(ERRORS.AI.QUOTA_EXCEEDED);
+    }
+    if (error instanceof GeminiTimeoutError || error instanceof GeminiCircuitOpenError) {
+      throw new AppError(ERRORS.AI.UNAVAILABLE);
+    }
+    if (error instanceof GeminiInvalidOutputError) {
+      console.error(
+        JSON.stringify({
+          event: "ai_extract.invalid_response",
+          reason: error.name,
+          at: new Date().toISOString(),
+        })
+      );
+      throw new AppError(ERRORS.AI.INVALID_RESPONSE);
+    }
+    throw new AppError(ERRORS.AI.UNAVAILABLE);
+  }
 }

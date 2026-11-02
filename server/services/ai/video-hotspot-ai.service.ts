@@ -1,7 +1,12 @@
-import { ApiError, GoogleGenAI, MediaResolution } from "@google/genai";
+import { z } from "zod";
 import { normalizeVietnamese } from "@/lib/search";
+import {
+  DEFAULT_GEMINI_FLASH_MODEL,
+  generateStructuredJson,
+  isGeminiTransientFailure,
+} from "./gemini-gateway";
 
-export const DEFAULT_VIDEO_AI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_VIDEO_AI_MODEL = DEFAULT_GEMINI_FLASH_MODEL;
 /** Mốc AI chỉ tự duyệt khi mô hình chắc chắn và tên nghe/thấy trong video khớp tên địa điểm. */
 export const AUTO_VERIFY_MIN_CONFIDENCE = 0.85;
 /** Các lần nhắc cùng một địa điểm cách nhau dưới khoảng này được gộp, giữ lần đầu. */
@@ -79,7 +84,20 @@ ${list}
 Liệt kê mọi lần video giới thiệu một địa điểm trong danh sách, theo schema JSON.`;
 }
 
-/** Gọi Gemini xem trực tiếp video YouTube công khai và trả về các lần nhắc địa điểm. */
+const aiPlaceMentionResponseSchema = z.object({
+  mentions: z.array(
+    z.object({
+      placeId: z.string().nullable(),
+      nameInVideo: z.string(),
+      timestampSec: z.number().int().min(0),
+      evidence: z.enum(["on_screen_text", "speech", "both"]),
+      quote: z.string(),
+      confidence: z.number().min(0).max(1),
+    })
+  ),
+});
+
+/** Detects timestamped venue mentions in a public YouTube video via the unified Gemini Interactions gateway. */
 export async function detectPlaceMentions(params: {
   apiKey: string;
   model: string;
@@ -87,32 +105,30 @@ export async function detectPlaceMentions(params: {
   videoTitle: string;
   candidates: PlaceCandidate[];
 }): Promise<AiPlaceMention[]> {
-  const ai = new GoogleGenAI({ apiKey: params.apiKey });
   try {
-    const response = await ai.models.generateContent({
-      model: params.model,
-      contents: [
+    const parsed = await generateStructuredJson({
+      apiKey: params.apiKey,
+      model: params.model || DEFAULT_VIDEO_AI_MODEL,
+      systemInstruction: SYSTEM_INSTRUCTION,
+      responseJsonSchema: RESPONSE_SCHEMA,
+      schema: aiPlaceMentionResponseSchema,
+      input: [
         {
-          role: "user",
-          parts: [
-            { fileData: { fileUri: `https://www.youtube.com/watch?v=${params.videoId}` } },
-            { text: buildPrompt(params.videoTitle, params.candidates) },
-          ],
+          type: "video",
+          uri: `https://www.youtube.com/watch?v=${params.videoId}`,
+          resolution: "low",
+        },
+        {
+          type: "text",
+          text: buildPrompt(params.videoTitle, params.candidates),
         },
       ],
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-        responseJsonSchema: RESPONSE_SCHEMA,
-        // Chỉ cần đọc biển hiệu/chữ chèn và nghe tiếng: độ phân giải thấp giảm mạnh token video
-        mediaResolution: MediaResolution.MEDIA_RESOLUTION_LOW,
-        temperature: 0,
-      },
     });
-    const parsed = JSON.parse(response.text ?? "{}") as { mentions?: AiPlaceMention[] };
-    return Array.isArray(parsed.mentions) ? parsed.mentions.slice(0, MAX_MENTIONS) : [];
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 429) throw new VideoAiQuotaError(err.message);
+    return parsed.mentions.slice(0, MAX_MENTIONS);
+  } catch (err: unknown) {
+    if (isGeminiTransientFailure(err)) {
+      throw new VideoAiQuotaError(err instanceof Error ? err.message : "Gemini transient failure");
+    }
     throw err;
   }
 }

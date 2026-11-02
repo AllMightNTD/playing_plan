@@ -32,7 +32,7 @@ describe("components/plans/PlanAirmailCard", () => {
     endStr: "17:25",
   };
 
-  it("renders weather and SunCalc golden hour information", () => {
+  it("renders weather, SunCalc golden hour, and Zero-PII paired room status", () => {
     const html = renderToString(
       <PlanAirmailCard
         planId="plan-123"
@@ -49,11 +49,10 @@ describe("components/plans/PlanAirmailCard", () => {
           goldenHour: { start: "16:20", end: "17:20" },
           blueHour: { start: "17:20", end: "17:50" },
         }}
-        partner={{
-          name: "Bé iu",
-          phone: "0912345678",
-          email: "beiu@test.com",
-          lastSync: "1 phút trước",
+        roomConnection={{
+          isPaired: true,
+          partnerNickname: "Bé iu",
+          partnerLastSeenAt: "2026-11-01T09:00:00.000Z",
         }}
         computedTimeline={mockTimeline}
         itineraryStats={mockStats}
@@ -68,25 +67,23 @@ describe("components/plans/PlanAirmailCard", () => {
     expect(html).toContain("17:20 - 17:50");
     expect(html).toContain("Thời tiết lý tưởng cho buổi hẹn!");
 
-    // Partner assertions
+    // Zero-PII paired room assertions (no phone/email inputs or fake PII)
     expect(html).toContain("Bé iu");
-    expect(html).toContain("0912345678");
-    expect(html).toContain("beiu@test.com");
+    expect(html).toContain("Đã ghép phòng đôi");
+    expect(html).toContain("Zero-PII");
+    expect(html).not.toContain("Số điện thoại kết nối");
+    expect(html).not.toContain("Email nhận lịch");
 
-    // General note assertion
+    // General note & timeline summary assertions
     expect(html).toContain("Mang theo áo khoác mỏng");
-
-    // Timeline summary assertions
     expect(html).toContain("420 Lab");
     expect(html).toContain("Bảo Tàng Mỹ Thuật");
     expect(html).toContain("1.6 km");
     expect(html).toContain("2h 25p");
-
-    // Attribution
     expect(html).toContain("Open-Meteo (CC-BY 4.0)");
   });
 
-  it("handles fallback defaults gracefully when optional props are missing", () => {
+  it("renders solo room pairing invitation when room is not paired yet", () => {
     const html = renderToString(
       <PlanAirmailCard
         planId="plan-empty"
@@ -103,9 +100,8 @@ describe("components/plans/PlanAirmailCard", () => {
 
     expect(html).toContain("DỰ BÁO HẸN HÒ HÀ NỘI");
     expect(html).toContain("Chưa có chặng dừng nào trong kế hoạch.");
-    expect(html).toContain("Người thương 💕");
-    expect(html).toContain("Chưa thêm SĐT");
-    expect(html).toContain("Chưa thêm Email");
+    expect(html).toContain("Chưa ghép đôi");
+    expect(html).toContain("Ghép phòng đôi bằng QR / Mã 8 ký tự");
     expect(html).toContain("Lưu .ics");
   });
 
@@ -131,4 +127,3 @@ describe("components/plans/PlanAirmailCard", () => {
     expect(html).toContain("OOTD: Tone be / pastel");
   });
 });
-

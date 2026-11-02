@@ -199,8 +199,8 @@ describe("Auto-Promotion Gatekeeper & 30-Day Maintenance", () => {
       );
 
       expect(result.promoted).toBe(true);
-      expect(result.promotedPlaceId).toBeDefined();
-      expect(mockInsert).toHaveBeenCalledTimes(2); // 1 lần cho places, 1 lần cho placeMedia
+      expect(result.promotedPlaceId).toBe("cnd_123");
+      expect(mockInsert).toHaveBeenCalledTimes(7); // 1 place + 1 guide + 4 Unsplash photos + 1 YouTube video
       expect(mockUpdate).toHaveBeenCalledTimes(1); // update candidatePlaces status
     });
   });

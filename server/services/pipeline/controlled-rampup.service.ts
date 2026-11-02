@@ -1,19 +1,23 @@
 import { assertPublishNotPaused } from "@/server/services/pipeline/pipeline-control.service";
 import { db } from "@/server/db/client";
-import { places, NewPlace } from "@/server/db/schema/places";
+import { places } from "@/server/db/schema/places";
 import {
   candidatePlaces,
   placeBlocklist,
   placeReports,
   placeVideos,
   pipelineRuns,
+  type PlaceVideo,
 } from "@/server/db/schema/governance";
 import { getQuotaStatus, MAX_DAILY_YOUTUBE_QUOTA } from "@/server/services/youtube/quota-ledger";
 import { assertPublishNotHalted, isCandidateBlocklisted } from "@/server/services/admin/governance.policy";
 import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
-import { sql, eq, and, not, desc, inArray } from "drizzle-orm";
+import {
+  buildPromotedPlaceBundle,
+  persistPromotedPlaceBundle,
+} from "@/server/services/pipeline/place-promotion.builder";
+import { sql, eq, and, inArray } from "drizzle-orm";
 import * as crypto from "crypto";
-import { toSlug } from "@/lib/search";
 
 export type RampUpStage = 1 | 2 | 3;
 
@@ -113,10 +117,25 @@ export async function runControlledPromotion(
   const promotedPlaceIds: string[] = [];
   let rejectedByBlocklistCount = 0;
 
-  // 6. Giao dịch nguyên tử thăng hạng (Phanh 4: Blocklist Immunity trong transaction)
+  const candidateIds = candidates.map((cand) => cand.id);
+  const candidateVideos =
+    candidateIds.length > 0
+      ? await db
+          .select()
+          .from(placeVideos)
+          .where(inArray(placeVideos.placeId, candidateIds))
+      : [];
+
+  const videosByPlaceId = new Map<string, PlaceVideo[]>();
+  for (const videoRow of candidateVideos) {
+    const bucket = videosByPlaceId.get(videoRow.placeId) ?? [];
+    bucket.push(videoRow);
+    videosByPlaceId.set(videoRow.placeId, bucket);
+  }
+
+  // Atomic promotion transaction with sequential writes and blocklist immunity
   await db.transaction(async (tx) => {
     for (const cand of candidates) {
-      // Kiểm tra Blocklist
       const isBlocked = isCandidateBlocklisted(
         {
           name: cand.name,
@@ -136,60 +155,17 @@ export async function runControlledPromotion(
         continue;
       }
 
-      // Tạo slug duy nhất
-      const baseSlug = toSlug(cand.name);
-      const uniqueSlug = `${baseSlug}-${cand.id.slice(-6).toLowerCase()}`;
-
-      // Xác định area từ address
-      const areaMatch = cand.address.match(/(Hoàn Kiếm|Ba Đình|Tây Hồ|Cầu Giấy|Đống Đa|Hai Bà Trưng|Nam Từ Liêm|Bắc Từ Liêm|Long Biên|Hà Đông)/i);
-      const area = areaMatch ? areaMatch[0] : "Hà Nội";
-
-      // Chèn vào bảng places public
-      const validCategory = (["cafe", "food", "walk", "fun", "indoor", "nature", "photo"].includes(cand.category)
-        ? cand.category
-        : "cafe") as "cafe" | "food" | "walk" | "fun" | "indoor" | "nature" | "photo";
-
-      await tx.insert(places).values({
-        id: cand.id,
-        slug: uniqueSlug,
-        name: cand.name,
-        displayName: cand.name,
-        searchName: cand.searchName,
-        city: cand.city,
-        area,
-        address: cand.address,
-        lat: cand.lat,
-        lng: cand.lng,
-        category: validCategory,
-        priceLevel: 2,
-        estCostMin: 40000,
-        estCostMax: 120000,
-        moods: ["chill", "romantic"],
-        tags: ["date-worthy", cand.evaluatedDateFit || "chill"],
-        indoor: cand.category === "cafe" || cand.category === "food",
-        coverUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80",
-        summary: `Địa điểm ${cand.name} nằm tại ${cand.address}, mang phong cách ${cand.evaluatedDateFit || "chill"} lý tưởng cho buổi hẹn hò ấm áp.`,
-        status: "published",
-        publishState: "published",
-        tier: "A",
+      const bundle = buildPromotedPlaceBundle(cand, {
         batchId,
-        dateFit: cand.evaluatedDateFit || "chill",
-        lastVerifiedAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        tier: "A",
+        linkedVideos: videosByPlaceId.get(cand.id) ?? [],
       });
-
-      // Cập nhật candidate_places sang status promoted
-      await tx
-        .update(candidatePlaces)
-        .set({ status: "promoted", batchId, updatedAt: new Date() })
-        .where(eq(candidatePlaces.id, cand.id));
+      await persistPromotedPlaceBundle(tx, bundle);
 
       promotedCount++;
       promotedPlaceIds.push(cand.id);
     }
 
-    // Ghi nhận pipeline_runs
     await tx.insert(pipelineRuns).values({
       id: runId,
       runType: "auto_promote",

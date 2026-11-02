@@ -1,9 +1,14 @@
-import { CandidatePlace, PlaceBlocklist, PlaceVideo, candidatePlaces } from "@/server/db/schema/governance";
-import { places, placeMedia, NewPlace } from "@/server/db/schema/places";
+import type {
+  CandidatePlace,
+  PlaceBlocklist,
+  PlaceVideo,
+} from "@/server/db/schema/governance";
 import { assertNotBlocklisted } from "@/server/services/admin/governance.policy";
-import { db, DbExecutor } from "@/server/db/client";
-import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { db, type DbExecutor } from "@/server/db/client";
+import {
+  buildPromotedPlaceBundle,
+  persistPromotedPlaceBundle,
+} from "@/server/services/pipeline/place-promotion.builder";
 
 export interface PromotionEvaluationResult {
   promoted: boolean;
@@ -95,7 +100,7 @@ export function evaluateCandidateForPromotion(
 }
 
 /**
- * Thực hiện thăng hạng tự động từ CandidatePlace lên Catalog Place chính thức trong DB.
+ * Promotes a verified CandidatePlace into the published catalog while preserving candidate.id.
  */
 export async function promoteCandidateToPlace(
   candidate: CandidatePlace,
@@ -108,70 +113,11 @@ export async function promoteCandidateToPlace(
     return evaluation;
   }
 
-  const newPlaceId = `plc_${nanoid(16)}`;
-  const now = new Date();
-  const slug = `${candidate.searchName.replace(/[^a-z0-9]+/g, "-")}-${nanoid(6)}`;
-
-  // Map category OSM sang category enum của places
-  let catalogCategory: "cafe" | "food" | "walk" | "photo" | "nature" | "indoor" | "fun" = "cafe";
-  if (candidate.category === "restaurant") catalogCategory = "food";
-  else if (candidate.category === "park") catalogCategory = "nature";
-  else if (candidate.category === "viewpoint") catalogCategory = "photo";
-  else if (candidate.category === "museum" || candidate.category === "gallery") catalogCategory = "indoor";
-
-  // Thêm vào places chính thức với status = published
-  await executor.insert(places).values({
-    id: newPlaceId,
-    slug,
-    name: candidate.name,
-    searchName: candidate.searchName,
-    searchText: `${candidate.name} ${candidate.address}`,
-    city: candidate.city || "hanoi",
-    area: "Tây Hồ", // default area hoặc extract từ address
-    address: candidate.address,
-    lat: candidate.lat,
-    lng: candidate.lng,
-    category: catalogCategory,
-    priceLevel: 2,
-    estCostMin: 35000,
-    estCostMax: 80000,
-    moods: ["lãng mạn", "tự động gợi ý"],
-    tags: ["auto_generated", "dating_pick"],
-    indoor: false,
-    coverUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80",
-    summary: `✨ Gợi ý tự động • Chưa xác minh thời gian thực. Điểm hẹn hò triển vọng được trích xuất từ OpenStreetMap và video review trên YouTube.`,
-    status: "published",
-    createdAt: now,
-    updatedAt: now,
+  const bundle = buildPromotedPlaceBundle(candidate, {
+    linkedVideos,
   });
+  await persistPromotedPlaceBundle(executor, bundle);
 
-  // Liên kết video sang place_media
-  const autoLinkedVideo = linkedVideos.find((v) => v.status === "auto_linked");
-  if (autoLinkedVideo) {
-    await executor.insert(placeMedia).values({
-      id: `med_${nanoid(16)}`,
-      placeId: newPlaceId,
-      type: "video",
-      url: `https://www.youtube.com/watch?v=${autoLinkedVideo.videoId}`,
-      platform: "youtube",
-      embedId: autoLinkedVideo.videoId,
-      caption: `Video review từ kênh ${autoLinkedVideo.channelTitle || "YouTube"}`,
-      credit: autoLinkedVideo.channelTitle || "YouTube Creator",
-      sourceUrl: `https://www.youtube.com/watch?v=${autoLinkedVideo.videoId}`,
-      license: "embed_only",
-      sortOrder: 0,
-    });
-  }
-
-  // Cập nhật trạng thái candidate thành promoted
-  await executor
-    .update(candidatePlaces)
-    .set({
-      status: "promoted",
-      updatedAt: now,
-    })
-    .where(eq(candidatePlaces.id, candidate.id));
-
-  evaluation.promotedPlaceId = newPlaceId;
+  evaluation.promotedPlaceId = candidate.id;
   return evaluation;
 }

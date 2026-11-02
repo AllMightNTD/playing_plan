@@ -134,3 +134,4 @@ export type NewPlace = typeof places.$inferInsert;
 export type PlaceGuide = typeof placeGuides.$inferSelect;
 export type NewPlaceGuide = typeof placeGuides.$inferInsert;
 export type PlaceMedia = typeof placeMedia.$inferSelect;
+export type NewPlaceMedia = typeof placeMedia.$inferInsert;

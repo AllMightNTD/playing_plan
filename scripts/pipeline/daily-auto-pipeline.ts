@@ -5,136 +5,30 @@ import * as fs from "fs";
 import * as path from "path";
 import { db } from "@/server/db/client";
 import {
-  candidatePlaces,
   placeVideos,
   placeBlocklist,
-  PlaceBlocklist,
-  CandidatePlace,
+  type PlaceBlocklist,
 } from "@/server/db/schema/governance";
-import {
-  places,
-  placeGuides,
-  placeMedia,
-  Place,
-} from "@/server/db/schema/places";
+import { places, type Place } from "@/server/db/schema/places";
 import { YouTubeCoupleReviewCrawler } from "@/server/services/youtube/youtube-couple-crawler";
-import { runOsmIngestion, HANOI_DISTRICTS } from "./osm-ingest";
+import { runOsmIngestion } from "./osm-ingest";
 import {
   matchVideosWithPlaces,
-  VideoForMatching,
-  PlaceForMatching,
+  type VideoForMatching,
+  type PlaceForMatching,
 } from "@/server/services/matching/place-video.matcher";
 import { autoPublishMatchedVideos } from "@/server/services/pipeline/auto-publish-videos.service";
+import { runControlledPromotion } from "@/server/services/pipeline/controlled-rampup.service";
+import { runShadowWorker } from "@/server/services/pipeline/shadow-worker";
 import { runYoutubeMaintenanceCron } from "./youtube-maintenance-cron";
 import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
-import { assertNotBlocklisted } from "@/server/services/admin/governance.policy";
-import { getCuratedUnsplashGalleryForPlace } from "@/lib/media/unsplash-gallery-pool";
 import { eq, sql } from "drizzle-orm";
 import { runTrackedPipeline } from "@/server/services/pipeline/pipeline-run.service";
-import { getPublishPauseState, type PublishPauseState } from "@/server/services/pipeline/pipeline-control.service";
-import { nanoid } from "nanoid";
+import {
+  getPublishPauseState,
+  type PublishPauseState,
+} from "@/server/services/pipeline/pipeline-control.service";
 
-/**
- * POOL ẢNH CHẤT LƯỢNG CAO MIỄN PHÍ 100% (UNSPLASH LICENSE)
- * Dùng trực tiếp CDN miễn phí, không tốn bất kỳ chi phí API nào.
- */
-const UNSPLASH_FREE_PHOTO_POOLS = {
-  cafe: [
-    {
-      url: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80",
-      caption: "Không gian cafe vintage ấm cúng",
-      credit: "Unsplash Free",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80",
-      caption: "Góc ban công thoáng đãng",
-      credit: "Unsplash Free",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80",
-      caption: "Hương vị cà phê nồng nàn",
-      credit: "Unsplash Free",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=1200&q=80",
-      caption: "Ánh sáng tự nhiên lãng mạn",
-      credit: "Unsplash Free",
-    },
-  ],
-  food: [
-    {
-      url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
-      caption: "Bàn tiệc tối lung linh nến",
-      credit: "Unsplash Free",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1200&q=80",
-      caption: "Không gian ẩm thực tinh tế",
-      credit: "Unsplash Free",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80",
-      caption: "Món ngon đậm vị cho buổi hẹn",
-      credit: "Unsplash Free",
-    },
-  ],
-  chill: [
-    {
-      url: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
-      caption: "Quầy bar cocktail ấm áp",
-      credit: "Unsplash Free",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=1200&q=80",
-      caption: "Góc chill ngắm hoàng hôn",
-      credit: "Unsplash Free",
-    },
-  ],
-  nature: [
-    {
-      url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
-      caption: "Không gian thoáng đãng ngoài trời",
-      credit: "Unsplash Free",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80",
-      caption: "Lối đi rợp bóng cây xanh",
-      credit: "Unsplash Free",
-    },
-  ],
-  fun: [
-    {
-      url: "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=1200&q=80",
-      caption: "Khu triển lãm nghệ thuật",
-      credit: "Unsplash Free",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80",
-      caption: "Rạp chiếu phim lãng mạn",
-      credit: "Unsplash Free",
-    },
-  ],
-};
-
-function determineArea(candidate: CandidatePlace): string {
-  const addr = (candidate.address || "").toLowerCase();
-  for (const d of HANOI_DISTRICTS) {
-    if (addr.includes(d.name.replace(/_/g, " "))) {
-      return d.name;
-    }
-  }
-  return "Hà Nội";
-}
-
-/**
- * MASTER DAILY PIPELINE RUNNER (TỰ ĐỘNG CHẠY HÀNG NGÀY LÚC 03:30 SÁNG)
- * Đảm bảo 100% FREE:
- * - OSM Overpass Community Mirrors: $0
- * - YouTube Data API Free Tier Quota: $0
- * - Unsplash Free License Media: $0
- * - Open-Meteo Weather: $0
- * - Bounding-box Subdivison: Loại bỏ hoàn toàn 502/504 Timeout
- */
 /**
  * Chạy pipeline hằng ngày và ghi một bản ghi pipeline_runs (running → success/paused/failed)
  * để Radar và badge sức khỏe admin biết lần chạy gần nhất.
@@ -155,7 +49,7 @@ export async function runDailyPipeline(
 }
 
 async function executeDailyPipeline(
-  options: { forceCrawlYoutube?: boolean },
+  _options: { forceCrawlYoutube?: boolean },
   pause: PublishPauseState,
 ) {
   const startTime = Date.now();
@@ -193,7 +87,7 @@ async function executeDailyPipeline(
     delayMs: 2000,
     insertToDb: true,
     executor: db,
-    subdivideDense: true, // Chia nhỏ 2x2 cho các quận đông đúc
+    subdivideDense: true,
   });
   console.log(
     `=> Đã quét OSM: tìm thấy ${osmResult.qualifyingCandidatesCount} ứng viên đạt chuẩn hẹn hò.`,
@@ -206,7 +100,6 @@ async function executeDailyPipeline(
   let crawledVideosCount = 0;
   try {
     const crawler = new YouTubeCoupleReviewCrawler();
-    // 6 truy vấn trọng tâm = ~600 quota units / 10,000 units miễn phí mỗi ngày của Google
     const crawlMatrix = [
       {
         category: "quán cafe hẹn hò lãng mạn",
@@ -256,195 +149,20 @@ async function executeDailyPipeline(
     );
   }
 
-  // 4. GIAI ĐOẠN 3: BATCH PROMOTE CÁC CANDIDATE ĐỦ ĐIỀU KIỆN
+  // Stage 3: Evaluate candidate tiers via Shadow Worker, then run atomic Controlled Promotion
   console.log(
-    "\n--- [Giai đoạn 3] Thẩm định & Thăng hạng Ứng viên lên Tọa độ Chính thức ---",
+    "\n--- [Giai đoạn 3] Thẩm định Shadow Worker & Thăng hạng Ứng viên Nguyên tử ---",
   );
-  // Đang phanh thì không thăng hạng ứng viên nào
-  const pendingCandidates: CandidatePlace[] = pause.isPaused
-    ? []
-    : await db
-        .select()
-        .from(candidatePlaces)
-        .where(eq(candidatePlaces.status, "pending"));
-
-  console.log(`✓ Đang có ${pendingCandidates.length} ứng viên chờ thăng hạng.`);
+  await runShadowWorker({ batchId: "daily_shadow", executor: db });
 
   let promotedCount = 0;
   const now = new Date();
-
-  for (let i = 0; i < pendingCandidates.length; i++) {
-    const candidate = pendingCandidates[i];
-
-    // Kiểm tra Blocklist
-    try {
-      assertNotBlocklisted(
-        {
-          osmId: candidate.osmId,
-          name: candidate.name,
-          lat: Number(candidate.lat),
-          lng: Number(candidate.lng),
-        },
-        blocklist,
-      );
-    } catch {
-      continue;
-    }
-
-    const area = determineArea(candidate);
-    const catRaw = (candidate.category || "").toLowerCase();
-
-    let category: "cafe" | "food" | "photo" | "nature" | "fun" | "walk" =
-      "cafe";
-    let pool = UNSPLASH_FREE_PHOTO_POOLS.cafe;
-
-    if (
-      catRaw.includes("restaurant") ||
-      catRaw.includes("food") ||
-      catRaw.includes("bakery")
-    ) {
-      category = "food";
-      pool = UNSPLASH_FREE_PHOTO_POOLS.food;
-    } else if (catRaw.includes("bar") || catRaw.includes("pub")) {
-      category = "fun";
-      pool = UNSPLASH_FREE_PHOTO_POOLS.chill;
-    } else if (
-      catRaw.includes("park") ||
-      catRaw.includes("garden") ||
-      catRaw.includes("picnic")
-    ) {
-      category = "nature";
-      pool = UNSPLASH_FREE_PHOTO_POOLS.nature;
-    } else if (
-      catRaw.includes("gallery") ||
-      catRaw.includes("museum") ||
-      catRaw.includes("cinema")
-    ) {
-      category = "photo";
-      pool = UNSPLASH_FREE_PHOTO_POOLS.fun;
-    }
-
-    const newPlaceId = `plc_${nanoid(16)}`;
-    const baseSlug = candidate.name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    const slug = `${baseSlug}-${newPlaceId.slice(-6)}`;
-
-    const isFood = category === "food";
-    const gallery = getCuratedUnsplashGalleryForPlace(category, newPlaceId, 4);
-    const coverPhoto = gallery[0];
-
-    // Insert Place
-    await db.insert(places).values({
-      id: newPlaceId,
-      slug,
-      name: candidate.name,
-      searchName: candidate.name.toLowerCase(),
-      searchText: `${candidate.name} ${candidate.address} ${area}`,
-      address: candidate.address,
-      lat: candidate.lat,
-      lng: candidate.lng,
-      city: "hanoi",
-      area,
-      category: category as any,
-      priceLevel: isFood ? 2 : 1,
-      estCostMin: isFood ? 150000 : 50000,
-      estCostMax: isFood ? 400000 : 120000,
-      moods: isFood
-        ? ["lãng mạn", "ẩm thực", "ấm cúng"]
-        : ["thư thái", "chụp ảnh", "tâm tình"],
-      tags: ["auto_pipeline", "hanoi_places", category, area.toLowerCase()],
-      indoor: category !== "nature",
-      coverUrl: coverPhoto.url,
-      summary: `${candidate.name} tại ${area}, điểm hẹn hò ấm cúng và thích hợp cho cặp đôi.`,
-      tier: "B",
-      status: "published",
-      publishState: "published",
-      dateFit: isFood ? "romantic" : "chill",
+  if (!pause.isPaused) {
+    const promotionResult = await runControlledPromotion({
+      stage: 2,
       batchId: "daily_auto_pipeline",
-      createdAt: now,
-      updatedAt: now,
     });
-
-    // Insert PlaceGuide
-    await db.insert(placeGuides).values({
-      placeId: newPlaceId,
-      bestTimes: [
-        {
-          label: isFood ? "Buổi tối lãng mạn" : "Chiều hoàng hôn",
-          start: isFood ? "18:00" : "15:30",
-          end: isFood ? "21:00" : "22:00",
-          type: "golden",
-          note: "Khoảng thời gian lý tưởng nhất",
-        },
-      ],
-      bestWeekdays: [2, 3, 4, 0],
-      avoidWeekdays: [6],
-      crowdNotes:
-        "Khung giờ hoàng hôn và tối cuối tuần thường kín bàn đẹp, nên đến sớm.",
-      photoSpots: [
-        {
-          name: "Khu vực cạnh cửa sổ / ban công",
-          howToFind: "Khu vực bàn đôi cạnh cửa kính hoặc ban công ngoài trời",
-          tip: "Tận dụng ánh sáng tự nhiên dịu nhẹ lúc chiều tà.",
-        },
-        {
-          name: "Góc quầy bar / trang trí vintage",
-          howToFind: "Khu vực gần quầy pha chế hoặc góc check-in của quán",
-          tip: "Góc chụp bán thân bắt trọn nụ cười tự nhiên.",
-        },
-      ],
-      poses: [
-        {
-          title: "Nâng ly / Cùng thưởng thức đồ uống",
-          desc: "Hai người cùng mỉm cười nhìn nhau, bật chân dung xóa phông.",
-        },
-      ],
-      outfit: {
-        palette: isFood
-          ? ["#1D2D44", "#C93F52", "#FAF0CA"]
-          : ["#FAF0CA", "#0D3B66", "#F4D35E"],
-        tonSurTon: isFood
-          ? "Trang phục thanh lịch, sơ mi hoặc đầm nhẹ."
-          : "Phong cách trẻ trung pastel, tone màu kem be ấm.",
-        contrast: "Áo sơ mi trắng kết hợp quần âu hoặc váy suông.",
-        avoid: "Tránh trang phục quá rườm rà hoặc đồ tập thể thao.",
-        weatherTip:
-          "Không gian máy lạnh mát mẻ, mang theo áo khoác mỏng nếu ngồi lâu.",
-      },
-      tips: "Có thể gọi điện đặt bàn trước để giữ vị trí đẹp.",
-      sourceLinks: ["https://datemate.vn"],
-    });
-
-    // Insert 4 Distinct Unsplash Photos (Overview, Table, Detail, Aesthetic)
-    for (let sortOrder = 0; sortOrder < gallery.length; sortOrder++) {
-      const photo = gallery[sortOrder];
-      await db.insert(placeMedia).values({
-        id: `med_${nanoid(16)}`,
-        placeId: newPlaceId,
-        type: "image",
-        url: photo.url,
-        platform: "unsplash",
-        embedId: null,
-        caption: `${candidate.name} - ${photo.caption}`,
-        credit: photo.credit,
-        sourceUrl: photo.url,
-        licenseNote: "Unsplash Free License",
-        license: "licensed",
-        sortOrder,
-      });
-    }
-
-    // Cập nhật candidate status
-    await db
-      .update(candidatePlaces)
-      .set({ status: "promoted", updatedAt: now })
-      .where(eq(candidatePlaces.id, candidate.id));
-
-    promotedCount++;
+    promotedCount = promotionResult.promotedCount;
   }
   console.log(
     `=> Đã thăng hạng thành công ${promotedCount} địa điểm mới vào hệ thống.`,
@@ -482,12 +200,13 @@ async function executeDailyPipeline(
       `=> Tìm thấy ${matches.length} cặp liên kết giữa Video và Tọa độ hẹn hò.`,
     );
 
-    // Batch insert placeVideos (chunk 50)
     const CHUNK_SIZE = 50;
     for (let mIdx = 0; mIdx < matches.length; mIdx += CHUNK_SIZE) {
       const chunk = matches.slice(mIdx, mIdx + CHUNK_SIZE);
       for (const m of chunk) {
         const vid = vidsForMatch.find((v) => v.videoId === m.videoId);
+        const nextVideoStatus =
+          !pause.isPaused && m.score >= 65 ? "auto_linked" : "pending_review";
         await db
           .insert(placeVideos)
           .values({
@@ -496,30 +215,28 @@ async function executeDailyPipeline(
             channelId: vid?.channelId,
             channelTitle: vid?.channelTitle,
             hasPaidPlacement: false,
-            confidenceScore: m.score.toString(),
-            status: !pause.isPaused && m.score >= 65 ? "auto_linked" : "pending_review",
+            confidenceScore: m.score.toFixed(2),
+            status: nextVideoStatus,
             publishedAt: vid?.publishedAt ? new Date(vid.publishedAt) : now,
             lastCheckedAt: now,
           })
           .onDuplicateKeyUpdate({
             set: {
-              confidenceScore: m.score.toString(),
-              status: !pause.isPaused && m.score >= 65 ? "auto_linked" : "pending_review",
+              confidenceScore: m.score.toFixed(2),
+              status: sql`CASE WHEN ${placeVideos.status} IN ('verified', 'rejected') THEN ${placeVideos.status} ELSE ${nextVideoStatus} END`,
               lastCheckedAt: now,
             },
           });
       }
     }
 
-    // Mốc hotspot từ chapter (chủ kênh tự ghi): tự duyệt trừ khi đang phanh publish
     const chapterHotspots = await syncChapterHotspots(rawVideos, allPublishedPlaces, !pause.isPaused);
     console.log(`=> Tạo ${chapterHotspots} mốc hotspot từ chapter video.`);
 
-    // Auto-publish matched videos to placeMedia (bỏ qua khi đang phanh)
     if (!pause.isPaused) {
       await autoPublishMatchedVideos({
         executor: db,
-        minConfidence: 60,
+        minConfidence: 65,
         revalidate: false,
       });
     }

@@ -258,7 +258,13 @@ export function optimizeItinerarySequence<
 } {
   const roleOrder: Record<string, number> = {
     coffee: 1,
+    cafe: 1,
     activity: 2,
+    photo: 2,
+    walk: 2,
+    fun: 2,
+    nature: 2,
+    indoor: 2,
     sunset: 2,
     food: 3,
   };
@@ -269,7 +275,7 @@ export function optimizeItinerarySequence<
   const scored = copy.map((stop) => {
     const cat = (stop.category || "activity").toLowerCase();
     let score = roleOrder[cat] || 2;
-    if (cat === "coffee") {
+    if (cat === "coffee" || cat === "cafe") {
       const name = ((stop as { name?: string | null }).name || "").toLowerCase();
       const isEvening =
         name.includes("tối") ||

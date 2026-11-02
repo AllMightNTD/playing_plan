@@ -190,5 +190,22 @@ describe("lib/plan-optimizer", () => {
       expect(result.stops[1].isLocked).toBe(true);
       expect(result.stops[1].lockedStartTime).toBe("16:15");
     });
+
+    it("supports standard catalog PlaceCategory keys (cafe, photo, food)", () => {
+      const catalogStops = [
+        { id: "c-food", category: "food", name: "Bún chả Hàng Quạt" },
+        { id: "c-cafe-night", category: "cafe", name: "Cafe chill tối" },
+        { id: "c-photo", category: "photo", name: "Bảo tàng Mỹ Thuật" },
+        { id: "c-cafe-open", category: "cafe", name: "420 Lab" },
+      ];
+
+      const result = optimizeItinerarySequence(catalogStops);
+      expect(result.stops.map((s) => s.id)).toEqual([
+        "c-cafe-open",
+        "c-photo",
+        "c-food",
+        "c-cafe-night",
+      ]);
+    });
   });
 });

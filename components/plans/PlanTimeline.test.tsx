@@ -149,4 +149,68 @@ describe("components/plans/PlanTimeline", () => {
     expect(html).toContain("Foodtour Hà Nội");
     expect(html).toContain("Thêm chặng đầu tiên");
   });
+
+  it("renders catalog category icons (cafe/photo), AI optimizer button, and complete plan button", () => {
+    const catalogPlaces = [
+      {
+        id: "p1",
+        name: "Là Việt Coffee",
+        slug: "la-viet-coffee",
+        category: "cafe" as const,
+        area: "Đống Đa",
+        address: "Đống Đa, Hà Nội",
+        coverUrl: "https://images.unsplash.com/photo-1",
+        lat: 21.0125,
+        lng: 105.8265,
+        indoor: true,
+      },
+      {
+        id: "p2",
+        name: "Hồ Tây - Phố Từ Hoa",
+        slug: "ho-tay-tu-hoa",
+        category: "photo" as const,
+        area: "Tây Hồ",
+        address: "Tây Hồ, Hà Nội",
+        coverUrl: null,
+        lat: 21.0585,
+        lng: 105.8295,
+        indoor: false,
+      },
+    ] as unknown as import("@/lib/types/catalog").HanoiPlace[];
+
+    const html = renderToString(
+      <PlanTimeline
+        plan={mockPlan}
+        places={catalogPlaces}
+        onRefresh={vi.fn().mockResolvedValue(undefined)}
+        onCompletePlan={vi.fn()}
+        onOpenPlaceDetail={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("☕");
+    expect(html).toContain("📸");
+    expect(html).toContain("✨ Tối ưu thứ tự");
+    expect(html).toContain("Hoàn thành buổi hẹn");
+    expect(html).toContain("Xem quán");
+  });
+
+  it("renders completed badge when plan status is done and hides complete trigger", () => {
+    const donePlan: PlanDetailDto = {
+      ...mockPlan,
+      status: "done",
+    };
+
+    const html = renderToString(
+      <PlanTimeline
+        plan={donePlan}
+        places={mockPlaces}
+        onRefresh={vi.fn().mockResolvedValue(undefined)}
+        onCompletePlan={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("✅ Đã hoàn thành");
+    expect(html).not.toContain("Hoàn thành buổi hẹn");
+  });
 });

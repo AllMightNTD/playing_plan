@@ -4,31 +4,20 @@ import React, { useCallback, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "@/context/AppContext";
-import {
-  Compass,
-  Flame,
-  CheckCircle2,
-  Calendar,
-  Clock,
-  Heart,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Compass, Flame, Gift, Plus } from "lucide-react";
 import { PlanTimeline } from "@/components/plans/PlanTimeline";
 import { PlanAirmailCard } from "@/components/plans/PlanAirmailCard";
+import { PlanSwitcherBar, type PlanFilterTab } from "@/components/plans/PlanSwitcherBar";
+import { CreatePlanModal, type CreatePlanFormInput } from "@/components/plans/modals/CreatePlanModal";
+import { CompletePlanModal } from "@/components/plans/modals/CompletePlanModal";
 import { PosterShareModal } from "@/components/scrapbook/modals/PosterShareModal";
+import { enrichPlanStops } from "@/lib/plan-enrichment";
 import {
   computePlanTimeline,
   computeItineraryStats,
   formatVietnameseDate,
 } from "@/lib/plan-optimizer";
 import { fetchPlansList, fetchPlanDetail } from "./plans-fetchers";
-
-const CATEGORY_ICONS: Record<string, string> = {
-  coffee: "☕",
-  food: "🍜",
-  activity: "📸",
-  sunset: "🌅",
-};
 
 function nextSaturday(): string {
   const date = new Date();
@@ -54,18 +43,22 @@ export default function PlansPage() {
     refetchHomeSummary,
     roomProfile,
     setActiveDetailSlug,
+    setIsRoomModalOpen,
     addToast,
   } = useApp();
   const queryClient = useQueryClient();
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [filterTab, setFilterTab] = useState<PlanFilterTab>("upcoming");
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
 
-  // Form tạo kế hoạch mới khi chưa có buổi hẹn nào
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDate, setDraftDate] = useState(nextSaturday);
   const [draftTime, setDraftTime] = useState("16:30");
   const [draftBudget, setDraftBudget] = useState("");
+  const [draftSecret, setDraftSecret] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   const upcomingPlanId = homeSummary?.upcomingPlan?.id ?? null;
@@ -77,18 +70,34 @@ export default function PlansPage() {
   });
 
   useEffect(() => {
-    if (plans.length > 0) {
-      setSelectedPlanId((current) =>
-        current && plans.some((p) => p.id === current)
-          ? current
-          : upcomingPlanId && plans.some((p) => p.id === upcomingPlanId)
-          ? upcomingPlanId
-          : plans[0]?.id ?? null
-      );
-    } else {
+    if (plans.length === 0) {
       setSelectedPlanId(null);
+      return;
     }
-  }, [plans, upcomingPlanId]);
+
+    const tabCandidates = plans.filter((p) =>
+      filterTab === "upcoming" ? p.status === "planned" : p.status === "done"
+    );
+
+    if (tabCandidates.length > 0) {
+      setSelectedPlanId((current) => {
+        if (current && tabCandidates.some((p) => p.id === current)) return current;
+        if (
+          filterTab === "upcoming" &&
+          upcomingPlanId &&
+          tabCandidates.some((p) => p.id === upcomingPlanId)
+        ) {
+          return upcomingPlanId;
+        }
+        return tabCandidates[0]?.id ?? null;
+      });
+    } else {
+      setSelectedPlanId((current) => {
+        if (current && plans.some((p) => p.id === current)) return current;
+        return null;
+      });
+    }
+  }, [plans, filterTab, upcomingPlanId]);
 
   const { data: plan = null, isLoading: isLoadingPlan } = useQuery({
     queryKey: ["user", "plan", selectedPlanId],
@@ -98,7 +107,6 @@ export default function PlansPage() {
 
   const isLoading = isLoadingPlans || (Boolean(selectedPlanId) && isLoadingPlan && !plan);
 
-  // Đồng bộ lại dữ liệu sau khi sửa chặng hoặc thông tin buổi hẹn
   const refreshPlan = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["user", "plan", selectedPlanId] }),
@@ -107,62 +115,111 @@ export default function PlansPage() {
     ]);
   }, [queryClient, refetchHomeSummary, selectedPlanId]);
 
-  // Lưu ghi chú chung vào backend qua PATCH API
-  const handleSavePlanNote = async (note: string) => {
-    if (!selectedPlanId) return;
+  const submitCreatePlan = async (input: CreatePlanFormInput): Promise<boolean> => {
     try {
-      await fetch(`/api/v1/user/plans/${selectedPlanId}`, {
-        method: "PATCH",
+      const res = await fetch("/api/v1/user/plans", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: note.trim() || null }),
+        body: JSON.stringify(input),
       });
-      await refreshPlan();
-    } catch (err) {
-      console.error(err);
-      addToast("Chưa lưu được ghi chú chung, thử lại nhé.", "error");
+      if (!res.ok) {
+        addToast(await readError(res, "Chưa tạo được kế hoạch, thử lại nhé."), "error");
+        return false;
+      }
+      const json = await res.json();
+      setFilterTab("upcoming");
+      setSelectedPlanId(json.data.id);
+      addToast(`📅 Đã tạo kế hoạch "${input.title}"!`, "success");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["user", "plans"] }),
+        refetchHomeSummary(),
+      ]);
+      return true;
+    } catch {
+      addToast("Mất kết nối, chưa tạo được kế hoạch.", "error");
+      return false;
     }
   };
 
-  // Tạo kế hoạch mới
-  const handleCreatePlan = async (e: React.FormEvent) => {
+  const handleEmptyCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const title = draftTitle.trim();
     if (!title || isCreating) return;
     const budget = Number(draftBudget.replace(/\D/g, ""));
     setIsCreating(true);
     try {
-      const res = await fetch("/api/v1/user/plans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          planDate: draftDate,
-          startTime: draftTime,
-          ...(budget > 0 ? { budget } : {}),
-        }),
+      const ok = await submitCreatePlan({
+        title,
+        planDate: draftDate,
+        startTime: draftTime,
+        ...(budget > 0 ? { budget } : {}),
+        ...(draftSecret ? { isSecret: true } : {}),
       });
-      if (!res.ok) {
-        addToast(await readError(res, "Chưa tạo được kế hoạch, thử lại nhé."), "error");
-        return;
+      if (ok) {
+        setDraftTitle("");
+        setDraftBudget("");
+        setDraftSecret(false);
       }
-      const json = await res.json();
-      setSelectedPlanId(json.data.id);
-      setDraftTitle("");
-      addToast(`📅 Đã tạo kế hoạch "${title}"!`, "success");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["user", "plans"] }),
-        refetchHomeSummary(),
-      ]);
-    } catch (err) {
-      console.warn("Lỗi tạo kế hoạch:", err);
-      addToast("Mất kết nối, chưa tạo được kế hoạch.", "error");
     } finally {
       setIsCreating(false);
     }
   };
 
-  // Thành viên đối phương (người thương)
+  const handleSavePlanNote = async (note: string) => {
+    if (!selectedPlanId) return;
+    try {
+      const res = await fetch(`/api/v1/user/plans/${selectedPlanId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: note.trim() || null }),
+      });
+      if (!res.ok) throw new Error("Save note failed");
+      await refreshPlan();
+    } catch {
+      addToast("Chưa lưu được ghi chú chung, thử lại nhé.", "error");
+    }
+  };
+
+  const handleCompletePlan = async (payload: {
+    rating: number;
+    journal: string;
+  }): Promise<boolean> => {
+    if (!plan) return false;
+    try {
+      const res = await fetch("/api/v1/user/memories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: plan.id,
+          rating: payload.rating,
+          ...(payload.journal ? { journal: payload.journal } : {}),
+        }),
+      });
+      if (!res.ok) {
+        addToast(await readError(res, "Chưa lưu được kỷ niệm, thử lại nhé."), "error");
+        return false;
+      }
+      setFilterTab("done");
+      addToast("💖 Đã hoàn thành buổi hẹn và lưu vào Kho Kỷ Niệm!", "success");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["user", "plan", plan.id] }),
+        queryClient.invalidateQueries({ queryKey: ["user", "plans"] }),
+        queryClient.invalidateQueries({ queryKey: ["user", "memories"] }),
+        refetchHomeSummary(),
+      ]);
+      return true;
+    } catch {
+      addToast("Mất kết nối khi lưu kỷ niệm.", "error");
+      return false;
+    }
+  };
+
   const partnerMember = roomProfile?.members.find((m) => !m.isMe);
+  const isPaired =
+    Boolean(partnerMember) ||
+    (roomProfile?.room.memberCount ?? 1) >= 2 ||
+    roomProfile?.room.status === "paired";
+
   const handleNotifyPartner = () => {
     if (typeof window !== "undefined") {
       navigator.clipboard?.writeText(window.location.href);
@@ -170,26 +227,9 @@ export default function PlansPage() {
     }
   };
 
-  // Tính toán timeline cho Bưu thiếp Airmail
   const enrichedStops = useMemo(() => {
     if (!plan) return [];
-    return plan.stops.map((stop) => {
-      const place = stop.placeId ? places.find((p) => p.id === stop.placeId) : undefined;
-      const name = stop.customName || place?.name || "Địa điểm hẹn hò";
-      const category = (place?.category || "coffee").toLowerCase();
-      const icon = CATEGORY_ICONS[category] || "📍";
-      return {
-        ...stop,
-        name,
-        category,
-        icon,
-        lat: place?.lat ?? null,
-        lng: place?.lng ?? null,
-        duration: stop.durationMin,
-        isLocked: stop.isPinnedTime,
-        lockedStartTime: stop.plannedTime,
-      };
-    });
+    return enrichPlanStops(plan.stops, places);
   }, [plan, places]);
 
   const computedTimeline = useMemo(() => {
@@ -208,7 +248,6 @@ export default function PlansPage() {
     );
   }
 
-  // Chưa có kế hoạch nào: form tạo mới thân thiện
   if (plans.length === 0) {
     return (
       <div className="max-w-xl mx-auto bg-[#FFFDF9] rounded-3xl p-6 sm:p-8 border border-[#E6D7C3] shadow-xs space-y-5 relative animate-in fade-in duration-300">
@@ -223,7 +262,7 @@ export default function PlansPage() {
           </p>
         </div>
 
-        <form onSubmit={handleCreatePlan} className="space-y-3">
+        <form onSubmit={handleEmptyCreateSubmit} className="space-y-3">
           <input
             value={draftTitle}
             onChange={(e) => setDraftTitle(e.target.value)}
@@ -255,16 +294,28 @@ export default function PlansPage() {
             placeholder="Ngân sách dự kiến (VND, không bắt buộc)"
             className="w-full px-3 py-2.5 rounded-xl bg-[#FAF4E8] border border-[#E6D7C3] text-sm focus:outline-none focus:border-brand-terracotta text-paper-ink"
           />
+          <label className="flex items-center gap-2 text-xs text-paper-ink bg-[#fdf3dc] border border-[#e3c383] rounded-xl px-3 py-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={draftSecret}
+              onChange={(e) => setDraftSecret(e.target.checked)}
+              className="accent-[#c84b31]"
+            />
+            <Gift className="w-3.5 h-3.5 text-[#c84b31] shrink-0" />
+            <span className="font-semibold">
+              Bật chế độ Buổi hẹn bất ngờ (giấu điểm dừng đến sát giờ)
+            </span>
+          </label>
           <button
             type="submit"
             disabled={isCreating || !draftTitle.trim()}
-            className="w-full py-3 rounded-2xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-sm shadow-xs transition disabled:opacity-50"
+            className="w-full py-3 rounded-2xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-sm shadow-xs transition disabled:opacity-50 cursor-pointer"
           >
             {isCreating ? "Đang tạo..." : "📅 Tạo kế hoạch"}
           </button>
         </form>
 
-        <div className="flex justify-center gap-3 text-xs font-bold">
+        <div className="flex justify-center gap-4 text-xs font-bold">
           <Link
             href="/explore"
             className="text-brand-terracotta hover:underline flex items-center gap-1"
@@ -282,47 +333,58 @@ export default function PlansPage() {
     );
   }
 
-  return (
-    <div
-      className="min-h-screen py-4 px-2 sm:px-6 lg:px-8 space-y-5"
-      style={{
-        backgroundColor: "#f3ede2",
-        backgroundImage: "radial-gradient(#cbbba0 1.35px, transparent 1.35px)",
-        backgroundSize: "18px 18px",
-      }}
-    >
-      {/* CHUYỂN ĐỔI NHIỀU BUỔI HẸN */}
-      {plans.length > 1 && (
-        <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {plans.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setSelectedPlanId(p.id)}
-              className={cn(
-                "px-3.5 py-2 rounded-2xl text-xs font-bold border whitespace-nowrap transition flex items-center gap-1.5",
-                p.id === selectedPlanId
-                  ? "bg-[#c84b31] text-white border-[#c84b31] shadow-xs"
-                  : "bg-[#FFFDF9] text-[#4a3423] border-[#E6D7C3] hover:bg-[#fff5f2]"
-              )}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{p.title}</span>
-              <span>•</span>
-              <span className="opacity-80">{formatVietnameseDate(p.planDate)}</span>
-            </button>
-          ))}
-        </div>
-      )}
+  const visiblePlansInTab = plans.filter((p) =>
+    filterTab === "upcoming" ? p.status === "planned" : p.status === "done"
+  );
 
-      {/* NỘI DUNG CHÍNH: BỐ CỤC 2 CỘT */}
-      {!plan ? (
+  return (
+    <div className="max-w-6xl mx-auto space-y-5">
+      <PlanSwitcherBar
+        plans={plans}
+        selectedPlanId={selectedPlanId}
+        filterTab={filterTab}
+        onChangeFilterTab={setFilterTab}
+        onSelectPlan={setSelectedPlanId}
+        onOpenCreateModal={() => setIsCreateModalOpen(true)}
+      />
+
+      {visiblePlansInTab.length === 0 ? (
+        <div className="bg-[#FFFDF9] rounded-3xl p-8 text-center border border-[#E6D7C3] space-y-3">
+          <div className="text-3xl">{filterTab === "upcoming" ? "🗓️" : "📸"}</div>
+          <h3 className="font-serif font-extrabold text-lg text-paper-ink">
+            {filterTab === "upcoming"
+              ? "Không còn buổi hẹn sắp tới nào"
+              : "Chưa có buổi hẹn nào hoàn thành"}
+          </h3>
+          <p className="text-xs text-paper-muted max-w-md mx-auto">
+            {filterTab === "upcoming"
+              ? "Lên lịch buổi hẹn mới ngay để hai đứa cùng háo hức chờ cuối tuần nhé!"
+              : "Khi đi chơi về, bấm nút “Hoàn thành buổi hẹn” để chấm tim và lưu thẳng vào Kho Kỷ Niệm."}
+          </p>
+          {filterTab === "upcoming" ? (
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#c84b31] hover:bg-[#ad3b23] text-white text-xs font-extrabold transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Tạo buổi hẹn mới
+            </button>
+          ) : (
+            <Link
+              href="/memories"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#e8f4ec] text-[#2b6e44] border border-[#bce0c8] text-xs font-bold"
+            >
+              💖 Mở Kho Kỷ Niệm
+            </Link>
+          )}
+        </div>
+      ) : !plan ? (
         <div className="p-12 text-center text-sm text-[#7d6856] animate-pulse">
           Đang tải lịch trình chi tiết...
         </div>
       ) : (
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* CỘT TRÁI (7/12): LỊCH HẸN & TIMELINE DRAG & DROP */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left column (7/12): Interactive PlanTimeline */}
           <div className="lg:col-span-7">
             {plan.isSecretLocked ? (
               <div className="p-6 sm:p-8 rounded-3xl bg-[#362721] text-white text-center space-y-4 border-2 border-dashed border-[#E6D7C3] shadow-md">
@@ -343,13 +405,16 @@ export default function PlansPage() {
                 onOpenPlaceDetail={setActiveDetailSlug}
                 onShareStory={() => setIsShareOpen(true)}
                 onNotifyPartner={handleNotifyPartner}
+                onCompletePlan={
+                  plan.status === "planned" ? () => setIsCompleteModalOpen(true) : undefined
+                }
+                onNotifyMessage={addToast}
                 goldenHourStart={homePublic?.sun.goldenHour.start}
-                partnerContact={partnerMember?.nickname || "Người thương 💕"}
               />
             )}
           </div>
 
-          {/* CỘT PHẢI (5/12): BƯU THIẾP AIRMAIL */}
+          {/* Right column (5/12): Zero-PII Airmail Postcard */}
           <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4">
             <PlanAirmailCard
               planId={plan.id}
@@ -368,12 +433,13 @@ export default function PlansPage() {
                   : null
               }
               sun={homePublic?.sun}
-              partner={{
-                name: partnerMember?.nickname || "Người thương 💕",
-                phone: "0987 654 321",
-                email: "nguoithuong.hanoi@gmail.com",
-                lastSync: "2 phút trước",
+              roomConnection={{
+                isPaired,
+                partnerNickname: partnerMember?.nickname ?? null,
+                partnerLastSeenAt: partnerMember?.lastSeenAt ?? null,
               }}
+              onOpenRoomModal={() => setIsRoomModalOpen(true)}
+              onShareInvitation={() => setIsShareOpen(true)}
               computedTimeline={computedTimeline.map((s) => ({
                 id: s.item.id,
                 name: s.item.name,
@@ -388,7 +454,6 @@ export default function PlansPage() {
             />
           </div>
 
-          {/* Modal chia sẻ Poster / Story */}
           <PosterShareModal
             isOpen={isShareOpen}
             onClose={() => setIsShareOpen(false)}
@@ -397,6 +462,22 @@ export default function PlansPage() {
             onRefresh={refreshPlan}
           />
         </div>
+      )}
+
+      <CreatePlanModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        defaultDate={nextSaturday()}
+        onSubmitPlan={submitCreatePlan}
+      />
+
+      {plan && (
+        <CompletePlanModal
+          isOpen={isCompleteModalOpen}
+          onClose={() => setIsCompleteModalOpen(false)}
+          planTitle={plan.title}
+          onConfirmComplete={handleCompletePlan}
+        />
       )}
     </div>
   );

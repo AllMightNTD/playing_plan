@@ -12,6 +12,8 @@ import { UpcomingPlanCard } from "@/components/home/UpcomingPlanCard";
 import { WeatherPostcard } from "@/components/home/WeatherPostcard";
 import { PlanTimeline } from "@/components/plans/PlanTimeline";
 import { PlanAirmailCard } from "@/components/plans/PlanAirmailCard";
+import { CompletePlanModal } from "@/components/plans/modals/CompletePlanModal";
+import { enrichPlanStops } from "@/lib/plan-enrichment";
 import {
   computePlanTimeline,
   computeItineraryStats,
@@ -19,12 +21,6 @@ import {
 import type { VideoCatalogItem } from "@/server/services/user/videos.service";
 
 const PREVIEW_PLACES = 3;
-const CATEGORY_ICONS: Record<string, string> = {
-  coffee: "☕",
-  food: "🍜",
-  activity: "📸",
-  sunset: "🌅",
-};
 
 export default function HomePage() {
   const {
@@ -36,6 +32,7 @@ export default function HomePage() {
     refreshUpcomingPlan,
     roomProfile,
     setActiveDetailSlug,
+    setIsRoomModalOpen,
     addToast,
   } = useApp();
 
@@ -43,6 +40,7 @@ export default function HomePage() {
   const [isLoadingVideos, setIsLoadingVideos] = useState<boolean>(true);
   const [activeVideo, setActiveVideo] = useState<VideoCatalogItem | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -80,6 +78,11 @@ export default function HomePage() {
   };
 
   const partnerMember = roomProfile?.members.find((m) => !m.isMe);
+  const isPaired =
+    Boolean(partnerMember) ||
+    (roomProfile?.room.memberCount ?? 1) >= 2 ||
+    roomProfile?.room.status === "paired";
+
   const handleNotifyPartner = () => {
     if (typeof window !== "undefined") {
       navigator.clipboard?.writeText(window.location.href);
@@ -90,37 +93,49 @@ export default function HomePage() {
   const handleSavePlanNote = async (note: string) => {
     if (!upcomingPlan) return;
     try {
-      await fetch(`/api/v1/user/plans/${upcomingPlan.id}`, {
+      const res = await fetch(`/api/v1/user/plans/${upcomingPlan.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note: note.trim() || null }),
       });
+      if (!res.ok) throw new Error("Save note failed");
       await Promise.all([refetchHomeSummary(), refreshUpcomingPlan()]);
-    } catch (err) {
-      console.error(err);
+    } catch {
       addToast("Chưa lưu được ghi chú chung, thử lại nhé.", "error");
+    }
+  };
+
+  const handleCompleteUpcomingPlan = async (payload: {
+    rating: number;
+    journal: string;
+  }): Promise<boolean> => {
+    if (!upcomingPlan) return false;
+    try {
+      const res = await fetch("/api/v1/user/memories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: upcomingPlan.id,
+          rating: payload.rating,
+          ...(payload.journal ? { journal: payload.journal } : {}),
+        }),
+      });
+      if (!res.ok) {
+        addToast("Chưa lưu được kỷ niệm, thử lại nhé.", "error");
+        return false;
+      }
+      addToast("💖 Đã hoàn thành buổi hẹn và lưu vào Kho Kỷ Niệm!", "success");
+      await Promise.all([refetchHomeSummary(), refreshUpcomingPlan()]);
+      return true;
+    } catch {
+      addToast("Mất kết nối khi lưu kỷ niệm.", "error");
+      return false;
     }
   };
 
   const enrichedStops = useMemo(() => {
     if (!upcomingPlan) return [];
-    return upcomingPlan.stops.map((stop) => {
-      const place = stop.placeId ? places.find((p) => p.id === stop.placeId) : undefined;
-      const name = stop.customName || place?.name || "Địa điểm hẹn hò";
-      const category = (place?.category || "coffee").toLowerCase();
-      const icon = CATEGORY_ICONS[category] || "📍";
-      return {
-        ...stop,
-        name,
-        category,
-        icon,
-        lat: place?.lat ?? null,
-        lng: place?.lng ?? null,
-        duration: stop.durationMin,
-        isLocked: stop.isPinnedTime,
-        lockedStartTime: stop.plannedTime,
-      };
-    });
+    return enrichPlanStops(upcomingPlan.stops, places);
   }, [upcomingPlan, places]);
 
   const computedTimeline = useMemo(() => {
@@ -159,8 +174,13 @@ export default function HomePage() {
                   onOpenPlaceDetail={setActiveDetailSlug}
                   onShareStory={openShare}
                   onNotifyPartner={handleNotifyPartner}
+                  onCompletePlan={
+                    upcomingPlan.status === "planned"
+                      ? () => setIsCompleteModalOpen(true)
+                      : undefined
+                  }
+                  onNotifyMessage={addToast}
                   goldenHourStart={homePublic?.sun.goldenHour.start}
-                  partnerContact={partnerMember?.nickname || "Người thương 💕"}
                 />
               )}
             </div>
@@ -182,12 +202,13 @@ export default function HomePage() {
                     : null
                 }
                 sun={homePublic?.sun}
-                partner={{
-                  name: partnerMember?.nickname || "Người thương 💕",
-                  phone: "0987 654 321",
-                  email: "nguoithuong.hanoi@gmail.com",
-                  lastSync: "2 phút trước",
+                roomConnection={{
+                  isPaired,
+                  partnerNickname: partnerMember?.nickname ?? null,
+                  partnerLastSeenAt: partnerMember?.lastSeenAt ?? null,
                 }}
+                onOpenRoomModal={() => setIsRoomModalOpen(true)}
+                onShareInvitation={openShare}
                 computedTimeline={computedTimeline.map((s) => ({
                   id: s.item.id,
                   name: s.item.name,
@@ -302,13 +323,21 @@ export default function HomePage() {
 
       <VideoPlayerModal video={activeVideo} onClose={() => setActiveVideo(null)} />
       {upcomingPlan && (
-        <PosterShareModal
-          isOpen={isShareOpen}
-          onClose={() => setIsShareOpen(false)}
-          plan={upcomingPlan}
-          places={places}
-          onRefresh={refetchHomeSummary}
-        />
+        <>
+          <PosterShareModal
+            isOpen={isShareOpen}
+            onClose={() => setIsShareOpen(false)}
+            plan={upcomingPlan}
+            places={places}
+            onRefresh={refetchHomeSummary}
+          />
+          <CompletePlanModal
+            isOpen={isCompleteModalOpen}
+            onClose={() => setIsCompleteModalOpen(false)}
+            planTitle={upcomingPlan.title}
+            onConfirmComplete={handleCompleteUpcomingPlan}
+          />
+        </>
       )}
     </div>
   );

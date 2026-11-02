@@ -91,6 +91,16 @@ export const ERRORS = {
       status: 502,
       message: "AI trả về dữ liệu không đúng định dạng, thử lại nhé.",
     },
+    QUOTA_EXCEEDED: {
+      code: "AI_QUOTA_EXCEEDED",
+      status: 429,
+      message: "Hạn mức AI tạm thời chạm trần, thử lại sau ít phút nhé.",
+    },
+    UNAVAILABLE: {
+      code: "AI_UNAVAILABLE",
+      status: 503,
+      message: "Trợ lý AI đang bận hoặc phản hồi chậm, thử lại sau nhé.",
+    },
   },
   PLAN: {
     NOT_FOUND: { code: "PLAN_NOT_FOUND", status: 404, message: "Không tìm thấy kế hoạch này." },

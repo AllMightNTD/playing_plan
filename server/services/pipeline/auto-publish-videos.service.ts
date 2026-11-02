@@ -1,15 +1,15 @@
 import { assertPublishNotPaused } from "@/server/services/pipeline/pipeline-control.service";
-import { db } from "@/server/db/client";
+import { db, type DbExecutor } from "@/server/db/client";
 import { places, placeMedia, Place } from "@/server/db/schema/places";
-import { placeVideos, candidatePlaces } from "@/server/db/schema/governance";
+import { placeVideos } from "@/server/db/schema/governance";
 import { matchVideosWithPlaces, VideoForMatching, PlaceForMatching } from "@/server/services/matching/place-video.matcher";
 import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
 import { nanoid } from "nanoid";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { loadCatalogVideos, readLocalRawVideos } from "@/server/services/videos/video-catalog.service";
 
 export interface AutoPublishOptions {
-  executor?: any;
+  executor?: DbExecutor;
   minConfidence?: number;
   rawVideosPath?: string;
   revalidate?: boolean;
@@ -46,7 +46,7 @@ export async function autoPublishMatchedVideos(
   options: AutoPublishOptions = {}
 ): Promise<AutoPublishResult> {
   const executor = options.executor || db;
-  const minConfidence = options.minConfidence ?? 60;
+  const minConfidence = options.minConfidence ?? 65;
   const revalidate = options.revalidate ?? true;
 
   // Phanh publish đang bật (circuit breaker/admin/env) thì không xuất bản video nào
@@ -128,8 +128,9 @@ export async function autoPublishMatchedVideos(
     if (!place || !video) continue;
 
     const key = `${place.id}:${video.videoId}`;
+    const nextStatus = m.score >= 65 ? "auto_linked" : "pending_review";
 
-    // Lưu / Cập nhật vào place_videos
+    // Lưu / Cập nhật vào place_videos (bảo vệ trạng thái verified/rejected do Admin duyệt)
     await executor
       .insert(placeVideos)
       .values({
@@ -139,20 +140,20 @@ export async function autoPublishMatchedVideos(
         channelTitle: video.channelTitle,
         hasPaidPlacement: false,
         confidenceScore: m.score.toFixed(2),
-        status: m.score >= 70 ? "auto_linked" : "verified",
+        status: nextStatus,
         publishedAt: video.publishedAt ? new Date(video.publishedAt) : now,
         lastCheckedAt: now,
       })
       .onDuplicateKeyUpdate({
         set: {
           confidenceScore: m.score.toFixed(2),
-          status: m.score >= 70 ? "auto_linked" : "verified",
+          status: sql`CASE WHEN ${placeVideos.status} IN ('verified', 'rejected') THEN ${placeVideos.status} ELSE ${nextStatus} END`,
           lastCheckedAt: now,
         },
       });
 
-    // Nếu chưa có trong place_media, tiến hành xuất bản
-    if (!existingMediaSet.has(key)) {
+    // Chỉ xuất bản vào place_media công khai khi đạt chuẩn auto_linked (>= 65) và chưa tồn tại
+    if (nextStatus === "auto_linked" && !existingMediaSet.has(key)) {
       await executor.insert(placeMedia).values({
         id: `med_${nanoid(16)}`,
         placeId: place.id,

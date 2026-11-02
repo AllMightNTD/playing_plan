@@ -6,7 +6,7 @@ import {
   pipelineRuns,
 } from "@/server/db/schema/governance";
 import { getQuotaStatus, MAX_DAILY_YOUTUBE_QUOTA } from "@/server/services/youtube/quota-ledger";
-import { sql, eq, not, and } from "drizzle-orm";
+import { sql, eq, not } from "drizzle-orm";
 import * as crypto from "crypto";
 
 export interface ShadowWorkerOptions {
@@ -152,7 +152,7 @@ export async function runShadowWorker(options?: ShadowWorkerOptions): Promise<Sh
   }
 
   // 2. Tạo bản ghi pipelineRuns trạng thái running
-  await db.insert(pipelineRuns).values({
+  await executor.insert(pipelineRuns).values({
     id: runId,
     runType: "shadow_eval",
     startedAt: now,
@@ -163,12 +163,12 @@ export async function runShadowWorker(options?: ShadowWorkerOptions): Promise<Sh
 
   try {
     // 3. Lấy danh sách blocklist để lọc
-    const blocklists = await db.select().from(placeBlocklist);
+    const blocklists = await executor.select().from(placeBlocklist);
     const blockedOsmIds = new Set(blocklists.filter((b) => b.osmId).map((b) => b.osmId!));
     const blockedPatterns = blocklists.filter((b) => b.namePattern).map((b) => b.namePattern!.toLowerCase());
 
     // 4. Lấy các ứng viên chưa bị reject từ candidate_places
-    const candidates = await db
+    const candidates = await executor
       .select()
       .from(candidatePlaces)
       .where(not(eq(candidatePlaces.status, "rejected")));
@@ -186,7 +186,7 @@ export async function runShadowWorker(options?: ShadowWorkerOptions): Promise<Sh
         blockedPatterns.some((p) => nameLower.includes(p));
 
       if (isBlocked) {
-        await db
+        await executor
           .update(candidatePlaces)
           .set({
             status: "rejected",
@@ -207,7 +207,7 @@ export async function runShadowWorker(options?: ShadowWorkerOptions): Promise<Sh
       else tierCCount++;
 
       // Ghi cập nhật ngầm vào candidate_places (KHÔNG đụng vào bảng places)
-      await db
+      await executor
         .update(candidatePlaces)
         .set({
           evaluatedTier,
@@ -222,26 +222,30 @@ export async function runShadowWorker(options?: ShadowWorkerOptions): Promise<Sh
     // Ngưỡng Auto-link chốt cứng từ Phase 1: >= 65.00
     // Ngưỡng Pending review: 50.00 - 64.99
     // Ngưỡng Rejected: < 50.00
-    await db.execute(sql`
+    // BẢO TỒN BẤT BIẾN: Tuyệt đối không ghi đè trạng thái đã được Admin xác nhận (verified hoặc rejected)
+    await executor.execute(sql`
       UPDATE place_videos
       SET status = 'auto_linked'
       WHERE CAST(confidence_score AS DECIMAL(5,2)) >= 65.00
+        AND status NOT IN ('verified', 'rejected')
     `);
 
-    await db.execute(sql`
+    await executor.execute(sql`
       UPDATE place_videos
       SET status = 'pending_review'
       WHERE CAST(confidence_score AS DECIMAL(5,2)) >= 50.00
         AND CAST(confidence_score AS DECIMAL(5,2)) < 65.00
+        AND status NOT IN ('verified', 'rejected')
     `);
 
-    await db.execute(sql`
+    await executor.execute(sql`
       UPDATE place_videos
       SET status = 'rejected'
       WHERE CAST(confidence_score AS DECIMAL(5,2)) < 50.00
+        AND status NOT IN ('verified', 'rejected')
     `);
 
-    const [videoStats] = await db.select({
+    const [videoStats] = await executor.select({
       autoLinked: sql<number>`SUM(CASE WHEN status = 'auto_linked' THEN 1 ELSE 0 END)`,
       pendingReview: sql<number>`SUM(CASE WHEN status = 'pending_review' THEN 1 ELSE 0 END)`,
     }).from(placeVideos);
@@ -261,7 +265,7 @@ export async function runShadowWorker(options?: ShadowWorkerOptions): Promise<Sh
       pendingReviewVideosCount,
     };
 
-    await db
+    await executor
       .update(pipelineRuns)
       .set({
         finishedAt: new Date(),
@@ -287,7 +291,7 @@ export async function runShadowWorker(options?: ShadowWorkerOptions): Promise<Sh
     };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    await db
+    await executor
       .update(pipelineRuns)
       .set({
         finishedAt: new Date(),

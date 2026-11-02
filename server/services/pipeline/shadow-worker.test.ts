@@ -88,4 +88,53 @@ describe("Shadow Worker Logic & Policy", () => {
       expect(result.reason).toContain("Hạn mức YouTube API");
     });
   });
+
+  describe("Executor Isolation & Admin Verdict Immunity", () => {
+    it("routes all queries through options.executor and excludes verified/rejected rows in SQL updates", async () => {
+      vi.mocked(quotaLedger.getQuotaStatus).mockResolvedValueOnce({
+        quotaDate: "2026-11-02",
+        unitsUsed: 600,
+        remaining: 7400,
+        isHalted: false,
+      });
+
+      const executedSqlChunks: string[] = [];
+      let selectCall = 0;
+
+      const mockExecutor = {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockResolvedValue(undefined),
+        }),
+        select: vi.fn().mockImplementation(() => ({
+          from: vi.fn().mockImplementation(() => {
+            selectCall += 1;
+            if (selectCall === 1) return Promise.resolve([]); // placeBlocklist
+            if (selectCall === 2) {
+              return {
+                where: vi.fn().mockResolvedValue([]), // candidatePlaces
+              };
+            }
+            return Promise.resolve([{ autoLinked: 2, pendingReview: 1 }]); // videoStats
+          }),
+        })),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        }),
+        execute: vi.fn().mockImplementation(async (queryObj: unknown) => {
+          executedSqlChunks.push(JSON.stringify(queryObj));
+        }),
+      } as unknown as DbExecutor;
+
+      const res = await runShadowWorker({ batchId: "batch_unit", executor: mockExecutor });
+
+      expect(res.status).toBe("success");
+      expect(executedSqlChunks).toHaveLength(3);
+      for (const rawSql of executedSqlChunks) {
+        expect(rawSql).toContain("verified");
+        expect(rawSql).toContain("rejected");
+      }
+    });
+  });
 });

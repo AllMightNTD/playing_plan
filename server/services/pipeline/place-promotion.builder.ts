@@ -344,3 +344,4 @@ export async function persistPromotedPlaceBundle(
     })
     .where(eq(candidatePlaces.id, bundle.candidateId));
 }
+

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import type { DbExecutor } from "@/server/db/client";
 import {
   classifyVideoCategory,
   evaluateVideoRecommend,
@@ -129,5 +130,97 @@ describe("Video Catalog Service & Categorisation", () => {
         fs.rmSync(dir, { recursive: true, force: true });
       }
     });
+  });
+});
+
+describe("autoPublishMatchedVideos governance safety", () => {
+  it("never self-assigns verified status, preserves verified/rejected on duplicate key update, and defaults minConfidence to 65", async () => {
+    const { autoPublishMatchedVideos } = await import("./auto-publish-videos.service");
+    const pipelineControl = await import("./pipeline-control.service");
+    vi.spyOn(pipelineControl, "assertPublishNotPaused").mockResolvedValue(undefined);
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "datemate-autopub-"));
+    const rawFile = path.join(dir, "raw_videos.json");
+    fs.writeFileSync(
+      rawFile,
+      JSON.stringify([
+        {
+          videoId: "vid_high_1",
+          title: "Review Tranquil Books & Coffee Hoàn Kiếm hẹn hò cực chill",
+          description: "Ghế đôi tại 5 Nguyễn Quang Bích, Hoàn Kiếm",
+          channelId: "ch_1",
+          channelTitle: "Ninh Titô",
+          viewCount: 50000,
+          publishedAt: "2026-10-01T00:00:00Z",
+          isEmbeddable: true,
+        },
+      ])
+    );
+
+    const insertedPayloads: Array<Record<string, unknown>> = [];
+    const duplicateKeyPayloads: Array<Record<string, unknown>> = [];
+    let selectIndex = 0;
+
+    const mockExecutor = {
+      select: vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockImplementation(() => ({
+          where: vi.fn().mockImplementation(async () => {
+            selectIndex += 1;
+            if (selectIndex === 1) {
+              return [
+                {
+                  id: "plc_tranquil",
+                  name: "Tranquil Books & Coffee",
+                  address: "5 Nguyễn Quang Bích, Hoàn Kiếm",
+                  area: "Hoàn Kiếm",
+                  city: "hanoi",
+                  status: "published",
+                },
+              ];
+            }
+            return [];
+          }),
+        })),
+      })),
+      insert: vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockImplementation((payload: Record<string, unknown>) => {
+          insertedPayloads.push(payload);
+          const p = Promise.resolve(undefined) as Promise<undefined> & {
+            onDuplicateKeyUpdate: (arg: { set: Record<string, unknown> }) => Promise<undefined>;
+          };
+          p.onDuplicateKeyUpdate = (arg) => {
+            duplicateKeyPayloads.push(arg.set);
+            return Promise.resolve(undefined);
+          };
+          return p;
+        }),
+      })),
+    } as unknown as DbExecutor;
+
+    try {
+      const result = await autoPublishMatchedVideos({
+        executor: mockExecutor,
+        rawVideosPath: rawFile,
+        revalidate: false,
+      });
+
+      expect(result.matchedWithPlacesCount).toBeGreaterThanOrEqual(1);
+      for (const row of insertedPayloads) {
+        if ("confidenceScore" in row) {
+          expect(row.status).not.toBe("verified");
+          expect(row.status).toBe("auto_linked");
+        }
+      }
+      expect(duplicateKeyPayloads.length).toBeGreaterThanOrEqual(1);
+      const statusSql = duplicateKeyPayloads[0]?.status as { queryChunks?: Array<{ value?: unknown; name?: unknown }> } | undefined;
+      expect(statusSql).toBeDefined();
+      const sqlChunksString = statusSql?.queryChunks
+        ?.map((chunk) => (Array.isArray(chunk.value) ? chunk.value.join(" ") : String(chunk.value ?? chunk.name ?? "")))
+        .join(" ") ?? "";
+      expect(sqlChunksString).toContain("verified");
+      expect(sqlChunksString).toContain("rejected");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

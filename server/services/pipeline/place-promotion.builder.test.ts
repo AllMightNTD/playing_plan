@@ -105,3 +105,4 @@ describe("place-promotion.builder", () => {
     expect(callOrder.at(-1)).toBe("update_candidate");
   });
 });
+

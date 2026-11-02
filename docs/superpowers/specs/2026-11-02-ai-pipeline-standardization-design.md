@@ -84,3 +84,4 @@
    - Chạy promote trong transaction ghi tuần tự (`for ... of`), không dùng `Promise.all` bên trong transaction.
 6. **Tầng 6 — Regression & Full Audit**:
    - Chạy `pnpm type-check` (0 lỗi), `pnpm lint` (0 cảnh báo), và toàn bộ test suite `pnpm test` trên toàn dự án đạt PASS 100%.
+

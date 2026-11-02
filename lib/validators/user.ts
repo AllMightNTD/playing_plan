@@ -232,6 +232,14 @@ export const createMemoryNoteBodySchema = z
   })
   .strict();
 
+export const createPlanMemoryBodySchema = z
+  .object({
+    planId: entityIdSchema,
+    rating: z.number().int().min(1).max(5),
+    journal: z.string().trim().max(1000).nullable().optional(),
+  })
+  .strict();
+
 export const quickAddPlanBodySchema = z
   .object({
     placeId: entityIdSchema,
@@ -251,4 +259,5 @@ export type UpdateMeBody = z.infer<typeof updateMeBodySchema>;
 export type JoinRoomBody = z.infer<typeof joinRoomBodySchema>;
 export type QuickAddPlanBody = z.infer<typeof quickAddPlanBodySchema>;
 export type CreateMemoryNoteBody = z.infer<typeof createMemoryNoteBodySchema>;
+export type CreatePlanMemoryBody = z.infer<typeof createPlanMemoryBodySchema>;
 

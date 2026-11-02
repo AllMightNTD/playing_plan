@@ -212,6 +212,17 @@ export interface MemoryWithCover {
   coverCaption: string | null;
 }
 
+export interface SaveCompletedPlanMemoryInput {
+  id: string;
+  roomId: string;
+  planId: string;
+  memberId: string;
+  planTitle: string;
+  rating: number;
+  journal: string | null;
+  now: Date;
+}
+
 export interface MemoryRepository {
   /** Mới nhất trước. */
   listNotes(roomId: string, limit: number): Promise<MemoryNote[]>;
@@ -220,6 +231,8 @@ export interface MemoryRepository {
   deleteNote(roomId: string, noteId: string): Promise<boolean>;
   /** Kỷ niệm sau buổi hẹn kèm ảnh bìa (ảnh có sortOrder nhỏ nhất), mới nhất trước. */
   listMemories(roomId: string, limit: number): Promise<MemoryWithCover[]>;
+  /** Marks plan as done and idempotently upserts its room memory record in one transaction. */
+  saveCompletedPlanMemory(input: SaveCompletedPlanMemoryInput): Promise<MemoryWithCover>;
 }
 
 export interface UploadRecord {

@@ -5,7 +5,7 @@ import { resetMemoryStore } from "@/server/db/demo/memory-store";
 import { ensureRoomSession } from "@/server/services/user/room.service";
 import { createPlan, getPlanDetail, updatePlan, deletePlan } from "@/server/services/user/plan.service";
 import { addStop, updateStop, deleteStop } from "@/server/services/user/plan-items.service";
-import { createMemoryNote, deleteMemoryNote } from "@/server/services/user/memory.service";
+import { createMemoryNote, deleteMemoryNote, completePlanWithMemory } from "@/server/services/user/memory.service";
 import { assertRoomIsolation } from "./room-isolation.helper";
 
 /**
@@ -236,6 +236,25 @@ describe("Room Isolation Suite (Multi-Tenant Cross-Access Prevention)", () => {
     // User B cố xóa ghi chú của Room A
     await assertRoomIsolation(async () => {
       await deleteMemoryNote(userB.session, noteA.id);
+    });
+  });
+
+  it("should prevent User B from completing Room A's plan into a memory", async () => {
+    const userA = await ensureRoomSession(null, nextIp(), "User A");
+    const userB = await ensureRoomSession(null, nextIp(), "User B");
+
+    const planA = await createPlan(userA.session, {
+      title: "Kế hoạch riêng tư Room A",
+      planDate: "2026-11-01",
+      startTime: "19:30",
+    });
+
+    await assertRoomIsolation(async () => {
+      await completePlanWithMemory(userB.session, {
+        planId: planA.id,
+        rating: 5,
+        journal: "Giả mạo hoàn thành",
+      });
     });
   });
 });

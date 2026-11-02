@@ -4,7 +4,8 @@ import { AppError, ERRORS } from "@/server/http/errors";
 import { DEFAULT_NICKNAME, MAX_MEMORIES_LISTED, MAX_MEMORY_NOTES, type MemoryNoteColor } from "@/lib/constants/user";
 import type { MemberSession } from "@/server/db/repositories/types";
 import type { MemoryNote } from "@/server/db/schema";
-import type { CreateMemoryNoteBody } from "@/lib/validators/user";
+import type { CreateMemoryNoteBody, CreatePlanMemoryBody } from "@/lib/validators/user";
+import { loadEditablePlan } from "@/server/services/user/plan.service";
 
 export interface MemoryNoteDto {
   id: string;
@@ -93,4 +94,37 @@ export async function createMemoryNote(session: MemberSession, input: CreateMemo
 export async function deleteMemoryNote(session: MemberSession, noteId: string): Promise<void> {
   const deleted = await getUserRepositories().memories.deleteNote(session.roomId, noteId);
   if (!deleted) throw new AppError(ERRORS.MEMORY.NOTE_NOT_FOUND);
+}
+
+/**
+ * Completes an editable plan (status = 'done') and idempotently records a shared Memory card.
+ */
+export async function completePlanWithMemory(
+  session: MemberSession,
+  input: CreatePlanMemoryBody
+): Promise<MemoryCardDto> {
+  const plan = await loadEditablePlan(session, input.planId);
+  const normalizedJournal = input.journal?.trim() ? input.journal.trim() : null;
+
+  const saved = await getUserRepositories().memories.saveCompletedPlanMemory({
+    id: nanoid(21),
+    roomId: session.roomId,
+    planId: plan.id,
+    memberId: session.memberId,
+    planTitle: plan.title,
+    rating: input.rating,
+    journal: normalizedJournal,
+    now: new Date(),
+  });
+
+  return {
+    id: saved.id,
+    planId: saved.planId,
+    title: saved.planTitle || plan.title,
+    rating: saved.rating,
+    journal: saved.journal,
+    visitedAt: saved.visitedAt,
+    coverUrl: saved.coverUrl,
+    coverCaption: saved.coverCaption,
+  };
 }

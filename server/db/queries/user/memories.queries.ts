@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { datePlans, memories, memoryNotes, memoryPhotos } from "@/server/db/schema";
 import type { MemoryRepository } from "@/server/db/repositories/types";
@@ -63,6 +63,67 @@ export const drizzleMemoryRepository: MemoryRepository = {
     return rows.map((row) => {
       const cover = coverByMemory.get(row.id);
       return { ...row, coverUrl: cover?.url ?? null, coverCaption: cover?.caption ?? null };
+    });
+  },
+
+  async saveCompletedPlanMemory(input) {
+    return db.transaction(async (tx) => {
+      await tx
+        .update(datePlans)
+        .set({
+          status: "done",
+          updatedAt: input.now,
+          updatedBy: input.memberId,
+          version: sql`${datePlans.version} + 1`,
+        })
+        .where(and(eq(datePlans.id, input.planId), eq(datePlans.roomId, input.roomId)));
+
+      const [existing] = await tx
+        .select()
+        .from(memories)
+        .where(and(eq(memories.roomId, input.roomId), eq(memories.planId, input.planId)))
+        .limit(1);
+
+      let memoryId = input.id;
+      if (existing) {
+        memoryId = existing.id;
+        await tx
+          .update(memories)
+          .set({
+            rating: input.rating,
+            journal: input.journal,
+            visitedAt: input.now,
+          })
+          .where(eq(memories.id, existing.id));
+      } else {
+        await tx.insert(memories).values({
+          id: input.id,
+          planId: input.planId,
+          roomId: input.roomId,
+          rating: input.rating,
+          journal: input.journal,
+          visitedAt: input.now,
+          createdAt: input.now,
+        });
+      }
+
+      const [cover] = await tx
+        .select()
+        .from(memoryPhotos)
+        .where(eq(memoryPhotos.memoryId, memoryId))
+        .orderBy(asc(memoryPhotos.sortOrder))
+        .limit(1);
+
+      return {
+        id: memoryId,
+        planId: input.planId,
+        planTitle: input.planTitle,
+        rating: input.rating,
+        journal: input.journal,
+        visitedAt: input.now,
+        coverUrl: cover?.url ?? null,
+        coverCaption: cover?.caption ?? null,
+      };
     });
   },
 };

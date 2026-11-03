@@ -1,4 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { revalidate, tracked } = vi.hoisted(() => ({
+  revalidate: vi.fn(async () => undefined),
+  tracked: vi.fn(),
+}));
+
+vi.mock("@/server/services/cache/revalidation", () => ({ revalidatePlaceCatalog: revalidate }));
+vi.mock("@/server/services/pipeline/pipeline-run.service", () => ({
+  runTrackedPipeline: async (
+    runType: string,
+    task: () => Promise<{ result: unknown; status?: string }>,
+  ) => {
+    const outcome = await task();
+    tracked(runType, outcome);
+    return outcome.result;
+  },
+}));
+
 import { BingBlockedError, type BingImageResult } from "./bing-image-search";
 import { runRealPhotoSync, type RealPhotoSyncDeps } from "./real-photo-sync.runner";
 
@@ -37,6 +55,12 @@ function makeDeps(over: Partial<RealPhotoSyncDeps> & { places?: ReturnType<typeo
 }
 
 describe("runRealPhotoSync", () => {
+  beforeEach(() => {
+    revalidate.mockClear();
+    tracked.mockClear();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
   it("found → replaceImages được gọi với rows và now", async () => {
     const deps = makeDeps();
     const s = await runRealPhotoSync({}, deps);
@@ -44,6 +68,7 @@ describe("runRealPhotoSync", () => {
     const call = (deps.replaceImages as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(call[0]).toBe("p1");
     expect(call[1]).toHaveLength(3);
+    expect(call[1][0]).toMatchObject({ platform: "bing", license: "unverified" });
     expect(call[2]).toEqual(new Date("2026-11-03T00:00:00Z"));
     expect(s.replaced).toBe(1);
     expect(s.photosInserted).toBe(3);
@@ -96,5 +121,32 @@ describe("runRealPhotoSync", () => {
     expect(s.needsReview[0].rejected.db_error).toBe(1);
     expect(s.replaced).toBe(1);
     expect(s.processed).toBe(2);
+  });
+
+  it("blocked → runTrackedPipeline nhận status paused; chạy thường nhận success", async () => {
+    const blocked = makeDeps({ search: vi.fn(async () => { throw new BingBlockedError("captcha"); }) });
+    await runRealPhotoSync({}, blocked);
+    expect(tracked).toHaveBeenLastCalledWith("real_photos", expect.objectContaining({ status: "paused" }));
+    await runRealPhotoSync({}, makeDeps());
+    expect(tracked).toHaveBeenLastCalledWith("real_photos", expect.objectContaining({ status: "success" }));
+  });
+
+  it("lỗi search thường → search_error kèm error, run vẫn tiếp tục", async () => {
+    const search = vi.fn().mockRejectedValueOnce(new Error("boom")).mockResolvedValue(candidates(2));
+    const s = await runRealPhotoSync({}, makeDeps({ places: [place(1), place(2)], search }));
+    expect(s.blocked).toBe(false);
+    expect(s.needsReview).toEqual([
+      { slug: "slug-1", found: 0, rejected: { search_error: 1 }, error: "boom" },
+    ]);
+    expect(s.replaced).toBe(1);
+    expect(s.processed).toBe(2);
+  });
+
+  it("revalidate gọi đúng 1 lần sau khi ghi thật, không gọi khi dryRun", async () => {
+    await runRealPhotoSync({}, makeDeps({ places: [place(1), place(2)] }));
+    expect(revalidate).toHaveBeenCalledTimes(1);
+    revalidate.mockClear();
+    await runRealPhotoSync({ dryRun: true }, makeDeps());
+    expect(revalidate).not.toHaveBeenCalled();
   });
 });

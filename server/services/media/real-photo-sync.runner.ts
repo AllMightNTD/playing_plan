@@ -21,7 +21,7 @@ export interface RealPhotoSyncSummary {
   processed: number;
   replaced: number;
   photosInserted: number;
-  needsReview: Array<{ slug: string; found: number; rejected: Record<string, number> }>;
+  needsReview: Array<{ slug: string; found: number; rejected: Record<string, number>; error?: string }>;
   blocked: boolean;
 }
 
@@ -37,6 +37,8 @@ export interface RealPhotoSyncDeps {
 
 const DEFAULT_DELAY_MS = 2500;
 const JITTER_MS = 1500;
+
+const errMsg = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 const defaultDeps: RealPhotoSyncDeps = {
   listPlaces: listPlacesForRealPhotoSync,
@@ -79,10 +81,13 @@ export async function runRealPhotoSync(
         );
       } catch (err) {
         if (err instanceof BingBlockedError) {
+          console.warn(`[real-photos] Bing chặn tại ${place.slug}: ${err.message} — dừng run`);
           result.blocked = true;
           break;
         }
-        result.needsReview.push({ slug: place.slug, found: 0, rejected: { search_error: 1 } });
+        const error = errMsg(err);
+        console.warn(`[real-photos] Lỗi tìm ảnh cho ${place.slug}: ${error}`);
+        result.needsReview.push({ slug: place.slug, found: 0, rejected: { search_error: 1 }, error });
         result.processed++;
         continue;
       }
@@ -93,11 +98,14 @@ export async function runRealPhotoSync(
           if (!opts.dryRun) await d.replaceImages(place.id, rows, d.now());
           result.replaced++;
           result.photosInserted += rows.length;
-        } catch {
+        } catch (err) {
+          const error = errMsg(err);
+          console.warn(`[real-photos] Lỗi ghi DB cho ${place.slug}: ${error}`);
           result.needsReview.push({
             slug: place.slug,
             found: outcome.photos.length,
             rejected: { ...outcome.rejected, db_error: 1 },
+            error,
           });
         }
       } else {

@@ -172,14 +172,19 @@ async function executeDailyPipeline(
   // 4b. Tìm ảnh thật (Bing) cho địa điểm chưa có; lỗi chỉ cảnh báo, không làm hỏng pipeline
   console.log("\n--- [Giai đoạn 3b] Tìm ảnh thật cho địa điểm ---");
   let realPhotos: RealPhotoSyncSummary | { error: string } | null = null;
+  // 0 = tắt bước này; NaN/âm = mặc định 20 (không bao giờ bỏ giới hạn)
+  const parsedLimit = Number.parseInt(process.env.REAL_PHOTOS_DAILY_LIMIT ?? "20", 10);
+  const realPhotosLimit = Number.isNaN(parsedLimit) || parsedLimit < 0 ? 20 : parsedLimit;
   try {
-    realPhotos = await runRealPhotoSync({
-      limit: Number(process.env.REAL_PHOTOS_DAILY_LIMIT ?? 20),
-    });
-    console.log(
-      `=> Ảnh thật: thay ${realPhotos.replaced} địa điểm, ${realPhotos.needsReview.length} cần duyệt tay` +
-        `${realPhotos.blocked ? ", Bing chặn nên dừng sớm" : ""}`,
-    );
+    if (realPhotosLimit === 0) {
+      console.log("=> Bước ảnh thật đã tắt (REAL_PHOTOS_DAILY_LIMIT=0).");
+    } else {
+      realPhotos = await runRealPhotoSync({ limit: realPhotosLimit });
+      console.log(
+        `=> Ảnh thật: thay ${realPhotos.replaced} địa điểm, ${realPhotos.needsReview.length} cần duyệt tay` +
+          `${realPhotos.blocked ? ", Bing chặn nên dừng sớm" : ""}`,
+      );
+    }
   } catch (err) {
     console.warn("=> Bỏ qua bước ảnh thật do lỗi:", err);
     realPhotos = { error: err instanceof Error ? err.message : String(err) };

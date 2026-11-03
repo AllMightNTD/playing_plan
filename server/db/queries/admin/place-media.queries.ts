@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { placeMedia, places, type NewPlaceMedia, type Place } from "@/server/db/schema/places";
 
@@ -36,8 +36,8 @@ export async function listPlacesForRealPhotoSync(opts: {
     })
     .from(places)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(asc(places.createdAt));
-  return opts.limit ? query.limit(opts.limit) : query;
+    .orderBy(desc(places.createdAt)); // mới nhất trước để place lỗi cũ không chiếm hết quota mỗi ngày
+  return opts.limit !== undefined && Number.isFinite(opts.limit) && opts.limit > 0 ? query.limit(opts.limit) : query;
 }
 
 /** Thay toàn bộ ảnh của place bằng ảnh mới trong một transaction và cập nhật ảnh bìa. */

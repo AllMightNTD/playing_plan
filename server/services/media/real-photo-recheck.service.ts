@@ -12,6 +12,9 @@ export interface RecheckSummary {
   dead: number;
   placesTouched: number;
   placesRestoredToStock: number;
+  /** Cầu dao bật: quá nhiều ảnh chết cùng lúc nên không xóa gì. */
+  aborted: boolean;
+  abortReason?: string;
 }
 
 export interface RecheckDeps {
@@ -24,6 +27,9 @@ export interface RecheckDeps {
 }
 
 const DEFAULT_CONCURRENCY = 4;
+// Cầu dao: chết hàng loạt thường do mạng/CDN chặn tạm, không phải link chết thật
+const BREAKER_MIN_DEAD = 3;
+const BREAKER_MAX_DEAD_RATIO = 0.2;
 
 const defaultDeps: RecheckDeps = {
   listMedia: listRealPhotoMedia,
@@ -35,12 +41,14 @@ const defaultDeps: RecheckDeps = {
 };
 
 /**
- * Link chết thật sự: 4xx (trừ 408/429 là tạm), hoặc nội dung không còn là ảnh.
- * Network, 5xx, ảnh đổi kích thước/tỉ lệ là lỗi tạm hoặc không phải link chết nên giữ nguyên.
+ * Link chết thật sự: 4xx (trừ 408/429 là tạm), trả trang HTML thay cho ảnh, bytes không giải mã được,
+ * hoặc URL không an toàn. Network, 5xx, loại nội dung lạ (vd octet-stream), ảnh đổi kích thước/tỉ lệ
+ * là lỗi tạm hoặc không phải link chết nên giữ nguyên.
  */
 export function isDeadImage(check: ImageCheck): boolean {
   if (check.ok) return false;
-  if (check.reason === "content_type" || check.reason === "decode_failed") return true;
+  if (check.reason === "decode_failed" || check.reason === "unsafe_url") return true;
+  if (check.reason === "content_type") return check.contentType?.startsWith("text/html") ?? false;
   if (check.reason === "http_status") {
     const status = check.httpStatus;
     return status !== undefined && status >= 400 && status < 500 && status !== 408 && status !== 429;
@@ -68,7 +76,13 @@ export async function recheckRealPhotos(deps: Partial<RecheckDeps> = {}): Promis
   const d: RecheckDeps = { ...defaultDeps, ...deps };
 
   const summary = await runTrackedPipeline("real_photos", async () => {
-    const result: RecheckSummary = { checked: 0, dead: 0, placesTouched: 0, placesRestoredToStock: 0 };
+    const result: RecheckSummary = {
+      checked: 0,
+      dead: 0,
+      placesTouched: 0,
+      placesRestoredToStock: 0,
+      aborted: false,
+    };
     const media = await d.listMedia();
     const checks = await mapWithLimit(media, d.concurrency, (m) => d.verify(m.url));
     result.checked = media.length;
@@ -80,10 +94,24 @@ export async function recheckRealPhotos(deps: Partial<RecheckDeps> = {}): Promis
       byPlace.set(item.placeId, group);
     });
 
+    for (const group of byPlace.values()) result.dead += group.filter((g) => g.isDead).length;
+
+    // Cầu dao: tỉ lệ chết quá cao thì không xóa gì, để người kiểm tra tay
+    if (result.dead >= BREAKER_MIN_DEAD && result.dead / result.checked > BREAKER_MAX_DEAD_RATIO) {
+      result.aborted = true;
+      result.abortReason = `Quá nhiều ảnh chết (${result.dead}/${result.checked}) — nghi lỗi mạng/CDN, không xóa gì`;
+      console.warn(`[real-photos-recheck] ${result.abortReason}`);
+      return {
+        result,
+        status: "paused" as const,
+        promotedCount: 0,
+        summary: { mode: "recheck", ...result },
+      };
+    }
+
     const now = d.now();
     for (const [placeId, group] of byPlace) {
       const deadIds = group.filter((g) => g.isDead).map((g) => g.item.id);
-      result.dead += deadIds.length;
       if (deadIds.length === 0) continue;
 
       const alive = group.filter((g) => !g.isDead).sort((a, b) => a.item.sortOrder - b.item.sortOrder);

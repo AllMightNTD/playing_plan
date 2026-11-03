@@ -7,6 +7,10 @@ async function main() {
     `[real-photos-recheck] Kiểm tra ${summary.checked} ảnh, chết ${summary.dead}, ` +
       `place bị chỉnh ${summary.placesTouched}, trả về ảnh stock ${summary.placesRestoredToStock}`,
   );
+  if (summary.aborted) {
+    console.warn(`[real-photos-recheck] Cầu dao bật, không xóa ảnh nào: ${summary.abortReason ?? ""}`);
+    process.exit(2);
+  }
   process.exit(0);
 }
 

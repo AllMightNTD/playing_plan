@@ -50,9 +50,14 @@ describe("isDeadImage", () => {
   it.each([408, 429, 500, 503])("http_status %i là lỗi tạm", (httpStatus) => {
     expect(isDeadImage({ ok: false, reason: "http_status", httpStatus })).toBe(false);
   });
-  it("content_type và decode_failed là chết", () => {
-    expect(isDeadImage({ ok: false, reason: "content_type" })).toBe(true);
+  it("decode_failed và unsafe_url là chết", () => {
     expect(isDeadImage({ ok: false, reason: "decode_failed" })).toBe(true);
+    expect(isDeadImage({ ok: false, reason: "unsafe_url" })).toBe(true);
+  });
+  it("content_type chỉ chết khi là trang HTML", () => {
+    expect(isDeadImage({ ok: false, reason: "content_type", contentType: "text/html" })).toBe(true);
+    expect(isDeadImage({ ok: false, reason: "content_type", contentType: "application/octet-stream" })).toBe(false);
+    expect(isDeadImage({ ok: false, reason: "content_type" })).toBe(false);
   });
   it("network, too_small, bad_aspect, too_large, ok không phải chết", () => {
     expect(isDeadImage({ ok: false, reason: "network" })).toBe(false);
@@ -77,7 +82,7 @@ describe("recheckRealPhotos", () => {
     const s = await recheckRealPhotos(deps);
     expect(deps.remove).toHaveBeenCalledWith("p1", ["a"], "https://img.example.com/b.jpg", new Date("2026-11-03T00:00:00Z"));
     expect(deps.restore).not.toHaveBeenCalled();
-    expect(s).toEqual({ checked: 3, dead: 1, placesTouched: 1, placesRestoredToStock: 0 });
+    expect(s).toEqual({ checked: 3, dead: 1, placesTouched: 1, placesRestoredToStock: 0, aborted: false });
     expect(revalidate).toHaveBeenCalledTimes(1);
     expect(tracked).toHaveBeenCalledWith("real_photos", expect.objectContaining({ status: "success" }));
   });
@@ -104,6 +109,42 @@ describe("recheckRealPhotos", () => {
     expect(deps.restore).not.toHaveBeenCalled();
     expect(s.dead).toBe(0);
     expect(revalidate).not.toHaveBeenCalled();
+  });
+
+  // 10 place mỗi place 1 ảnh (hoặc n ảnh), `deadCount` ảnh đầu là chết
+  function manyPlaces(total: number, deadCount: number) {
+    const list = Array.from({ length: total }, (_, i) => media(`m${i}`, `p${i}`, 0));
+    const deadUrls = new Set(list.slice(0, deadCount).map((m) => m.url));
+    return {
+      listMedia: vi.fn(async () => list),
+      verify: vi.fn(async (url: string) => (deadUrls.has(url) ? dead : OK)),
+    };
+  }
+
+  it("cầu dao: 3/10 ảnh chết -> không remove/restore, aborted, status paused", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const deps = makeDeps(manyPlaces(10, 3));
+    const s = await recheckRealPhotos(deps);
+    expect(deps.remove).not.toHaveBeenCalled();
+    expect(deps.restore).not.toHaveBeenCalled();
+    expect(s.aborted).toBe(true);
+    expect(s.abortReason).toBeTruthy();
+    expect(s.dead).toBe(3);
+    expect(s.placesTouched).toBe(0);
+    expect(revalidate).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalled();
+    expect(tracked).toHaveBeenCalledWith("real_photos", expect.objectContaining({ status: "paused" }));
+  });
+
+  it.each([
+    [10, 2],
+    [20, 3],
+  ])("cầu dao không bật khi %i ảnh có %i chết", async (total, deadCount) => {
+    const deps = makeDeps(manyPlaces(total, deadCount));
+    const s = await recheckRealPhotos(deps);
+    expect(s.aborted).toBe(false);
+    expect(deps.restore).toHaveBeenCalledTimes(deadCount);
+    expect(tracked).toHaveBeenCalledWith("real_photos", expect.objectContaining({ status: "success" }));
   });
 
   it("không quá concurrency verify chạy đồng thời", async () => {

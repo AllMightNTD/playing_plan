@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, or } from "drizzle-orm";
-import { db } from "@/server/db/client";
+import { db, getAffectedRows } from "@/server/db/client";
 import { roomNotices } from "@/server/db/schema";
 import type { RoomNoticeRecord, RoomNoticeRepository } from "@/server/db/repositories/types";
 
@@ -48,7 +48,7 @@ export const drizzleRoomNoticeRepository: RoomNoticeRepository = {
       .set({ readAt: now })
       .where(and(eq(roomNotices.id, noticeId), eq(roomNotices.roomId, roomId), isNull(roomNotices.readAt)));
 
-    const affected = (result as unknown as [{ affectedRows?: number }])?.[0]?.affectedRows ?? 0;
+    const affected = getAffectedRows(result);
     return affected > 0;
   },
 };

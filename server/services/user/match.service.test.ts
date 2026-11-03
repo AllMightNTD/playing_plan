@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { resetMemoryStore } from "@/server/db/demo/memory-store";
 import { AppError, ERRORS } from "@/server/http/errors";
 import { createInvite, ensureRoomSession, joinRoom, revokeRoomMember } from "./room.service";
-import { getSwipeDeck, listMatches, recordSwipe, undoSwipe } from "./match.service";
+import { getSwipeDeck, listMatches, markMatchAsSeen, recordSwipe, undoSwipe } from "./match.service";
 import { getMemoryStore } from "@/server/db/demo/memory-store";
 import { createPlan, deletePlan } from "./plan.service";
 import { addStop, deleteStop } from "./plan-items.service";
@@ -246,5 +246,15 @@ describe("match planned status follows plan stops", () => {
 
     await deletePlan(creator, planB.id);
     expect((await listMatches(creator))[0].status).toBe("open");
+  });
+
+  it("đánh dấu match đã xem thành công", async () => {
+    const { creator, partner } = await createMatchedCouple();
+    const match = (await listMatches(creator))[0];
+    expect(match.isSeen).toBe(false);
+
+    const marked = await markMatchAsSeen(creator, match.id);
+    expect(marked).toBe(true);
+    expect((await listMatches(partner))[0].isSeen).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetMemoryStore } from "@/server/db/demo/memory-store";
+import { getMemoryStore, resetMemoryStore } from "@/server/db/demo/memory-store";
 import { getUserRepositories } from "@/server/db/repositories";
 import { hashSecret } from "@/server/auth/secrets";
 import { AppError, ERRORS } from "@/server/http/errors";
@@ -168,10 +168,90 @@ describe("leave, revoke and delete", () => {
     await expectAppError(revokeRoomMember(stranger.session, creator.session.memberId), ERRORS.ROOM.MEMBER_NOT_FOUND.code);
   });
 
-  it("should hard-delete room data and invalidate every session", async () => {
+  it("should hard-delete room data and cascade delete all child entities", async () => {
     const { creator, partner } = await createPairedRoom();
+    const store = getMemoryStore();
+
+    // Populate child entities for the room
+    store.notices.set("n1", {
+      id: "n1",
+      roomId: creator.session.roomId,
+      memberId: creator.session.memberId,
+      noticeType: "new_match",
+      title: "Test",
+      content: "Test",
+      metadata: null,
+      readAt: null,
+      createdAt: new Date(),
+    });
+    store.uploads.set("u1", {
+      id: "u1",
+      roomId: creator.session.roomId,
+      memberId: creator.session.memberId,
+      memoryId: null,
+      fileName: "test.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 1000,
+      width: 100,
+      height: 100,
+      relativePath: "rooms/r1/test.jpg",
+      createdAt: new Date(),
+      deletedAt: null,
+    });
+    store.placeCheckins.set("c1", {
+      id: "c1",
+      roomId: creator.session.roomId,
+      memberId: creator.session.memberId,
+      placeId: "p1",
+      placeName: "Test Cafe",
+      district: "Ba Dinh",
+      method: "gps_auto",
+      checkedInAt: new Date(),
+    });
+    store.blindDateTickets.set("b1", {
+      id: "b1",
+      roomId: creator.session.roomId,
+      budgetTier: "medium",
+      currentStep: 1,
+      totalSteps: 3,
+      status: "in_progress",
+      steps: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    store.secretNotes.set("s1", {
+      id: "s1",
+      roomId: creator.session.roomId,
+      authorMemberId: creator.session.memberId,
+      placeId: "p1",
+      placeName: "Test Place",
+      district: "Ba Dinh",
+      hint: "hint",
+      content: "secret",
+      isUnlocked: false,
+      unlockedAt: null,
+      createdAt: new Date(),
+    });
+    store.rsvps.set("r1", {
+      id: "r1",
+      planId: "plan1",
+      roomId: creator.session.roomId,
+      responderName: "Partner",
+      status: "confirmed",
+      changeNote: null,
+      createdAt: new Date(),
+    });
+
     await deleteRoom(creator.session);
+
     expect(await getUserRepositories().rooms.findMemberBySessionHash(hashSecret(partner.issued!.sessionToken))).toBeNull();
+    expect(store.rooms.has(creator.session.roomId)).toBe(false);
+    expect(store.notices.has("n1")).toBe(false);
+    expect(store.uploads.has("u1")).toBe(false);
+    expect(store.placeCheckins.has("c1")).toBe(false);
+    expect(store.blindDateTickets.has("b1")).toBe(false);
+    expect(store.secretNotes.has("s1")).toBe(false);
+    expect(store.rsvps.has("r1")).toBe(false);
   });
 });
 

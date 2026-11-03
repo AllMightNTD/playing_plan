@@ -176,8 +176,14 @@ export const memoryRoomRepository: RoomRepository = {
     }
     for (const [key, swipe] of store.swipes) if (swipe.roomId === roomId) store.swipes.delete(key);
     for (const [key, match] of store.matches) if (match.roomId === roomId) store.matches.delete(key);
+    for (const [id, rsvp] of store.rsvps) if (rsvp.roomId === roomId) store.rsvps.delete(id);
     for (const [id, mem] of store.memories) if (mem.roomId === roomId) store.memories.delete(id);
     for (const [id, note] of store.memoryNotes) if (note.roomId === roomId) store.memoryNotes.delete(id);
+    for (const [id, notice] of store.notices) if (notice.roomId === roomId) store.notices.delete(id);
+    for (const [id, upload] of store.uploads) if (upload.roomId === roomId) store.uploads.delete(id);
+    for (const [id, checkin] of store.placeCheckins) if (checkin.roomId === roomId) store.placeCheckins.delete(id);
+    for (const [id, ticket] of store.blindDateTickets) if (ticket.roomId === roomId) store.blindDateTickets.delete(id);
+    for (const [id, note] of store.secretNotes) if (note.roomId === roomId) store.secretNotes.delete(id);
     for (const memberId of roomMemberIds) {
       store.savedByMember.delete(memberId);
       store.members.delete(memberId);

@@ -10,10 +10,10 @@ interface AdminErrorNoticeProps {
 
 function signInHref(): string {
   const callbackUrl = typeof window === "undefined" ? "/admin" : window.location.pathname;
-  return `/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  return `/admin/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 }
 
-/** Hiển thị lỗi API admin; 401/403 kèm link đăng nhập Google. */
+/** Hiển thị lỗi API admin; 401/403 kèm nút đăng nhập CMS. */
 export function AdminErrorNotice({ failure, onRetry }: AdminErrorNoticeProps) {
   if (failure.status === 401 || failure.status === 403) {
     const isForbidden = failure.status === 403;
@@ -26,15 +26,26 @@ export function AdminErrorNotice({ failure, onRetry }: AdminErrorNoticeProps) {
           </p>
           <p className="text-slate-500 text-xs">
             {isForbidden
-              ? "Email đang đăng nhập không nằm trong ADMIN_EMAILS_ALLOWLIST. Hãy đăng nhập bằng email quản trị khác."
-              : "Đăng nhập bằng tài khoản Google đã được cấp quyền để xem dữ liệu CMS."}
+              ? "Email hiện tại không nằm trong ADMIN_EMAILS_ALLOWLIST. Hãy đăng nhập bằng tài khoản quản trị khác."
+              : "Vui lòng đăng nhập tài khoản quản trị viên để xem và quản lý dữ liệu CMS."}
           </p>
-          <a
-            href={signInHref()}
-            className="inline-flex px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition-colors"
-          >
-            {isForbidden ? "Đăng nhập bằng tài khoản khác" : "Đăng nhập"}
-          </a>
+          <div className="flex items-center gap-2 pt-1">
+            <a
+              href={signInHref()}
+              className="inline-flex px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
+            >
+              {isForbidden ? "Đăng nhập bằng tài khoản khác" : "Đăng nhập CMS ngay"}
+            </a>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium rounded-lg border border-slate-200 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Thử lại</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

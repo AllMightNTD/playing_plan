@@ -13,17 +13,23 @@ import {
 } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import {
+  blindDateTickets,
   checklistItems,
   datePlans,
   matches,
   memories,
   memoryNotes,
   memoryPhotos,
+  placeCheckins,
+  planRsvps,
   planStops,
   reminders,
   roomMembers,
+  roomNotices,
   rooms,
+  roomUploads,
   savedPlaces,
+  secretNotes,
   swipes,
 } from "@/server/db/schema";
 import { MAX_ROOM_MEMBERS } from "@/lib/constants/user";
@@ -252,6 +258,7 @@ export const drizzleRoomRepository: RoomRepository = {
       await tx
         .delete(checklistItems)
         .where(inArray(checklistItems.planId, roomPlanIds));
+      await tx.delete(planRsvps).where(eq(planRsvps.roomId, roomId));
       await tx.delete(planStops).where(inArray(planStops.planId, roomPlanIds));
       await tx.delete(reminders).where(inArray(reminders.planId, roomPlanIds));
       await tx
@@ -259,6 +266,11 @@ export const drizzleRoomRepository: RoomRepository = {
         .where(inArray(memoryPhotos.memoryId, roomMemoryIds));
       await tx.delete(memories).where(eq(memories.roomId, roomId));
       await tx.delete(memoryNotes).where(eq(memoryNotes.roomId, roomId));
+      await tx.delete(roomNotices).where(eq(roomNotices.roomId, roomId));
+      await tx.delete(roomUploads).where(eq(roomUploads.roomId, roomId));
+      await tx.delete(placeCheckins).where(eq(placeCheckins.roomId, roomId));
+      await tx.delete(blindDateTickets).where(eq(blindDateTickets.roomId, roomId));
+      await tx.delete(secretNotes).where(eq(secretNotes.roomId, roomId));
       await tx.delete(datePlans).where(eq(datePlans.roomId, roomId));
       await tx.delete(swipes).where(eq(swipes.roomId, roomId));
       await tx.delete(matches).where(eq(matches.roomId, roomId));

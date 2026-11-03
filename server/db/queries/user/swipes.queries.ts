@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db } from "@/server/db/client";
+import { db, getAffectedRows } from "@/server/db/client";
 import { matches, planStops, roomMembers, rooms, swipes } from "@/server/db/schema";
 import type { SwipeRepository, SwipeSyncResult } from "@/server/db/repositories/types";
 
@@ -157,7 +157,7 @@ export const drizzleSwipeRepository: SwipeRepository = {
       .update(matches)
       .set({ isSeen: true })
       .where(and(eq(matches.roomId, roomId), eq(matches.id, matchId)));
-    const affected = (result as unknown as [{ affectedRows?: number }])?.[0]?.affectedRows ?? 0;
+    const affected = getAffectedRows(result);
     return affected > 0;
   },
 };

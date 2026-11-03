@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { db } from "@/server/db/client";
+import { db, getAffectedRows } from "@/server/db/client";
 import { roomUploads, rooms } from "@/server/db/schema";
 import type { UploadRecord, UploadRepository } from "@/server/db/repositories/types";
 
@@ -97,12 +97,7 @@ export const drizzleUploadRepository: UploadRepository = {
         )
       );
 
-    // TiDB Serverless trả về { rowsAffected: number }, còn mysql2 trả về [{ affectedRows: number }]
-    const affected =
-      (result as unknown as { rowsAffected?: number; affectedRows?: number })?.rowsAffected ??
-      (result as unknown as { rowsAffected?: number; affectedRows?: number })?.affectedRows ??
-      (result as unknown as [{ affectedRows?: number }])?.[0]?.affectedRows ??
-      0;
+    const affected = getAffectedRows(result);
     return affected > 0;
   },
 

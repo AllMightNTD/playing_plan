@@ -48,3 +48,4 @@
   - Short-circuit `0 queries` khi mảng ID rỗng (`matches.length === 0`, `savedIds.length === 0`).
   - Lọc chính xác `p.status === "planned"` cho `upcomingPlan` & `quickAddStopToPlan` trên `home.service.ts`.
   - Đảo chiều truy vấn `place_videos -> inArray(places.id, linkedIds)` trong `videos.service.ts`.
+

@@ -5,12 +5,26 @@ import { AppError, ERRORS } from "@/server/http/errors";
 
 const connectionString = process.env.DATABASE_URL || "";
 
-if (process.env.NODE_ENV !== "production") {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-}
-
 // Tạo client HTTP serverless kết nối TiDB Cloud không giữ stateful connection
 const client = connect({ url: connectionString });
+
+/**
+ * Chuẩn hóa số bản ghi bị ảnh hưởng cho các thao tác UPDATE/DELETE
+ * giữa driver TiDB Cloud Serverless ({ rowsAffected }) và mysql2 ([{ affectedRows }]).
+ */
+export function getAffectedRows(result: unknown): number {
+  if (!result) return 0;
+  if (typeof (result as { rowsAffected?: unknown }).rowsAffected === "number") {
+    return (result as { rowsAffected: number }).rowsAffected;
+  }
+  if (Array.isArray(result) && typeof result[0]?.affectedRows === "number") {
+    return result[0].affectedRows;
+  }
+  if (typeof (result as { affectedRows?: unknown }).affectedRows === "number") {
+    return (result as { affectedRows: number }).affectedRows;
+  }
+  return 0;
+}
 
 export const db = drizzle(client, { schema });
 export type Database = typeof db;

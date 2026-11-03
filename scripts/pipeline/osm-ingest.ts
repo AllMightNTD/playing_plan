@@ -219,6 +219,7 @@ export async function runOsmIngestion(options: OsmIngestOptions = {}) {
               headers: {
                 "User-Agent": "DateMate-Ingestion/2.0 (hanoi-dating-catalog)",
               },
+              signal: AbortSignal.timeout(6000),
             });
             if (res.ok) {
               const data = (await res.json()) as { elements?: typeof elements };
@@ -234,7 +235,7 @@ export async function runOsmIngestion(options: OsmIngestOptions = {}) {
             }
           } catch (err: unknown) {
             console.warn(
-              `[OSM Ingest] Mirror ${mirror} lỗi: ${err instanceof Error ? err.message : err}`,
+              `[OSM Ingest] Mirror ${mirror} lỗi / timeout: ${err instanceof Error ? err.message : err}`,
             );
           }
         }

@@ -50,3 +50,5 @@ next-env.d.ts
 
 # Local uploads & storage
 /storage/
+
+*.md

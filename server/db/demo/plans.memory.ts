@@ -78,6 +78,11 @@ export const memoryPlanRepository: PlanRepository = {
     store.plans.delete(scope.planId);
     store.stopsByPlan.delete(scope.planId);
     store.checklistByPlan.delete(scope.planId);
+    for (const [rsvpId, rsvp] of store.rsvps) {
+      if (rsvp.planId === scope.planId && rsvp.roomId === scope.roomId) {
+        store.rsvps.delete(rsvpId);
+      }
+    }
     for (const [memId, mem] of store.memories) {
       if (mem.planId === scope.planId && mem.roomId === scope.roomId) {
         store.memories.delete(memId);

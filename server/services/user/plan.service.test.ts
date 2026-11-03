@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetMemoryStore } from "@/server/db/demo/memory-store";
+import { getMemoryStore, resetMemoryStore } from "@/server/db/demo/memory-store";
 import { AppError, ERRORS } from "@/server/http/errors";
 import { MAX_PLAN_STOPS } from "@/lib/constants/user";
 import { createInvite, ensureRoomSession, joinRoom } from "./room.service";
@@ -56,6 +56,29 @@ describe("plan CRUD", () => {
 
   it("should return an empty list when there is no session", async () => {
     expect(await listPlans(null)).toEqual([]);
+  });
+
+  it("should cascade delete plan, stops, checklist, and rsvps", async () => {
+    const { creator } = await createCouple();
+    const plan = await createPlan(creator, { ...BASE_PLAN, placeId: "p1" });
+    await addChecklistItem(creator, plan.id, { content: "Mang áo khoác" });
+    const store = getMemoryStore();
+    store.rsvps.set("rsvp-1", {
+      id: "rsvp-1",
+      planId: plan.id,
+      roomId: creator.roomId,
+      responderName: "Em",
+      status: "confirmed",
+      changeNote: null,
+      createdAt: new Date(),
+    });
+
+    await deletePlan(creator, plan.id);
+
+    expect(store.plans.has(plan.id)).toBe(false);
+    expect(store.stopsByPlan.has(plan.id)).toBe(false);
+    expect(store.checklistByPlan.has(plan.id)).toBe(false);
+    expect(store.rsvps.has("rsvp-1")).toBe(false);
   });
 });
 

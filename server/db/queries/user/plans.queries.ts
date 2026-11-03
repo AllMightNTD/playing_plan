@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { db, type DbExecutor } from "@/server/db/client";
+import { db, getAffectedRows, type DbExecutor } from "@/server/db/client";
 import {
   checklistItems,
   datePlans,
@@ -138,6 +138,9 @@ export const drizzlePlanRepository: PlanRepository = {
       await tx
         .delete(checklistItems)
         .where(inArray(checklistItems.planId, planIds));
+      await tx
+        .delete(planRsvps)
+        .where(inArray(planRsvps.planId, planIds));
       await tx.delete(planStops).where(inArray(planStops.planId, planIds));
       await tx.delete(reminders).where(inArray(reminders.planId, planIds));
       await tx
@@ -330,7 +333,7 @@ export const drizzlePlanRepository: PlanRepository = {
         })
         .where(and(isScopedPlan(scope), eq(datePlans.version, expectedVersion)));
 
-      const affected = (planUpdate as unknown as [{ affectedRows?: number }])?.[0]?.affectedRows ?? (planUpdate as unknown as { rowsAffected?: number })?.rowsAffected ?? 0;
+      const affected = getAffectedRows(planUpdate);
       if (affected === 0) {
         return false;
       }
@@ -368,7 +371,7 @@ export const drizzlePlanRepository: PlanRepository = {
         })
         .where(and(isScopedPlan(scope), eq(datePlans.version, expectedVersion)));
 
-      const affected = (planUpdate as unknown as [{ affectedRows?: number }])?.[0]?.affectedRows ?? (planUpdate as unknown as { rowsAffected?: number })?.rowsAffected ?? 0;
+      const affected = getAffectedRows(planUpdate);
       if (affected === 0) {
         return false;
       }

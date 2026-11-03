@@ -1310,10 +1310,10 @@
   </div>
 
   <!-- =====================================================================
-       MODAL 5: CẨM NANG ĐỊA ĐIỂM CHI TIẾT & VIDEO HOTSPOTS MODAL & VÒNG QUAY
+       MODAL 5: CẨM NANG ĐỊỂM HẸN SỐNG ĐỘNG (MULTI-PHOTO + BẢN ĐỒ CHỈ DẪN) & VIDEO MODAL
        ===================================================================== -->
-  <div id="guideModal" class="fixed inset-0 z-50 hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto" id="guideModalContent"></div>
+  <div id="guideModal" onclick="if(event.target === this) closeModal('guideModal')" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
+    <div class="relative bg-[#F7EFE1] border-2 border-[#CBB292] rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto" id="guideModalContent"></div>
   </div>
 
   <div id="videoModal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
@@ -1374,41 +1374,207 @@
 
     const placesData = [
       {
+        id: 'an-lac-chay-quan',
+        title: 'An Lạc Chay Quán',
+        district: 'Tây Hồ',
+        address: 'Số 38 Quảng An, Quận Tây Hồ, Hà Nội',
+        lat: 21.0628,
+        lng: 105.8245,
+        parkingTip: 'Có bãi đỗ xe máy miễn phí ngay trước sân & bãi ô tô cách 40m bên bờ hồ.',
+        travelFromCenter: '18 phút (4.6 km từ Hồ Gươm)',
+        nearbyLandmark: 'Cách Phủ Tây Hồ 350m • Sát đường dạo ven hồ',
+        category: 'indoor',
+        budgetTier: 'mid',
+        hobbies: ['quiet', 'photo', 'indoor', 'sunset'],
+        bestTime: '18:30 - 21:00 nha',
+        price: '80k - 250k',
+        tags: ['#Ẩm thực chay', '#Lãng mạn', '#Tây Hồ'],
+        image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+        gallery: [
+          {
+            url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+            label: 'Bàn đôi bên khung cửa',
+            caption: 'Không gian bàn gỗ ấm cúng dưới ánh đèn vàng dịu và rèm voan nhìn ra mặt hồ.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
+            label: 'Góc sân vườn đèn lồng',
+            caption: 'Khu vườn nhỏ rải sỏi với ánh nến lung linh khi lên đèn lúc 18:30.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80',
+            label: 'Set lẩu nấm & cuốn ngũ sắc',
+            caption: 'Thực đơn chay thanh đạm trình bày trên gốm Bát Tràng mộc mạc.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80',
+            label: 'Góc thưởng trà sen',
+            caption: 'Thưởng thức trà sen Tây Hồ ấm nóng cùng bánh hạt sen sau bữa tối.'
+          }
+        ],
+        description: 'Không gian ẩm thực ấm áp tại Tây Hồ, thực đơn phong phú thích hợp cho buổi hẹn hò lãng mạn cùng người thương.',
+        photoSpots: [
+          {
+            title: 'Góc bàn đôi bên ánh nến',
+            desc: 'Chụp lúc hoàng hôn hoặc chập tối khi đèn vừa lên tạo hiệu ứng bokeh lung linh.',
+            lens: 'Chân dung 2x • Không bật Flash',
+            time: '18:15 - 19:30',
+            thumb: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=400&q=80'
+          },
+          {
+            title: 'Khung cửa gỗ nhìn ra Hồ Tây',
+            desc: 'Lấy góc nghiêng 45 độ bên rèm lụa trắng khi nắng chiều cuối ngày hắt vào bàn.',
+            lens: 'Tiêu cự 1x • Hơi hạ sáng -0.3 EV',
+            time: '17:15 - 18:00',
+            thumb: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=400&q=80'
+          }
+        ],
+        poses: 'Cụng ly trà sen mừng ngày gặp gỡ: Hai người cùng mỉm cười nhìn nhau, bật chế độ chân dung xóa phông nhẹ nhàng.',
+        outfit: 'Trang phục thanh lịch, sơ mi linen hoặc đầm nhẹ nhàng tôn vẻ sang trọng ấm cúng.',
+        ootdColors: [
+          { hex: '#1E2D40', name: 'Xanh Navy Cổ Điển', tip: 'Sơ mi/Áo khoác nam lịch lãm' },
+          { hex: '#C84B53', name: 'Đỏ Rượu Vang', tip: 'Đầm midi hoặc khăn lụa điểm nhấn' },
+          { hex: '#F3EAD8', name: 'Kem Bơ Vintage', tip: 'Tông màu sáng nổi bật dưới ánh nến' }
+        ]
+      },
+      {
         id: 'bai-da-song-hong',
         title: 'Bãi đá sông Hồng',
         district: 'Tây Hồ',
+        address: 'Ngõ 264 Âu Cơ, Nhật Tân, Quận Tây Hồ, Hà Nội',
+        lat: 21.0811,
+        lng: 105.8389,
+        parkingTip: 'Đi thẳng cuối ngõ 264 Âu Cơ, gửi xe máy/ô tô tại bãi chính gần cổng vườn hoa (10k/xe).',
+        travelFromCenter: '22 phút (6.5 km từ Phố Cổ)',
+        nearbyLandmark: 'Gần Vườn đào Nhật Tân & Thung lũng hoa Hồ Tây',
         category: 'outdoor',
         budgetTier: 'mid',
         hobbies: ['sunset', 'photo', 'quiet'],
-        bestTime: '16:24 - 17:24',
+        bestTime: '16:24 - 17:24 nha',
         price: '100k - 150k',
         tags: ['#Chụp ảnh', '#Picnic', '#Hoàng hôn'],
         image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80',
+        gallery: [
+          {
+            url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=900&q=80',
+            label: 'Cánh đồng cỏ lau giờ vàng',
+            caption: 'Cỏ lau trắng muốt chuyển sang sắc cam hồng rực rỡ lúc mặt trời buông xuống bãi bồi.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=900&q=80',
+            label: 'Góc Picnic ven sông',
+            caption: 'Trải thảm caro bên bờ sông lộng gió, cực hợp bày bánh ngọt và trái cây.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=900&q=80',
+            label: 'Nắm tay ngược nắng',
+            caption: 'Góc chụp ngược nắng thần thánh tạo viền sáng tóc tự nhiên lúc 16:45.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
+            label: 'Tiệm cà phê gỗ du mục',
+            caption: 'Quán nước nhỏ bằng gỗ mộc sát triền đê để nghỉ chân ngắm chiều tà.'
+          }
+        ],
         description: 'Đồng cỏ lau trắng muốt ven sông lộng gió cực hợp trải thảm picnic đôi ngắm mặt trời lặn.',
-        photoSpots: ['Cánh đồng cỏ lau ngược nắng lúc 16:45', 'Tiệm cà phê gỗ du mục sát bờ sông'],
-        poses: 'Chạy nắm tay nhau giữa đồng cỏ lau hoặc tựa vai nhau trên thảm picnic.',
-        outfit: 'Váy maxi kem/trắng cho nữ, sơ mi linen be cho nam.'
+        photoSpots: [
+          {
+            title: 'Cánh đồng cỏ lau ngược nắng',
+            desc: 'Đặt máy thấp ngang tầm bông cỏ lau, chụp ngược về phía mặt trời lặn lúc 16:45.',
+            lens: 'Chân dung 2x hoặc 3x • Khóa nét vào mắt',
+            time: '16:30 - 17:15',
+            thumb: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=400&q=80'
+          },
+          {
+            title: 'Thảm Picnic gỗ ven sông Hồng',
+            desc: 'Góc chụp từ trên cao xuống tấm thảm picnic cùng giỏ mây, hoa cúc họa mi.',
+            lens: 'Góc rộng 1x • Filter màu Film Kodak',
+            time: '16:00 - 17:30',
+            thumb: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=400&q=80'
+          }
+        ],
+        poses: 'Chạy nắm tay nhau giữa đồng cỏ lau hoặc tựa vai nhau trên thảm picnic nhìn về phía hoàng hôn.',
+        outfit: 'Váy maxi kem/trắng bay bổng cho nữ, sơ mi linen be hoặc nâu nhạt cho nam.',
+        ootdColors: [
+          { hex: '#FAF0CA', name: 'Kem Nắng Sớm', tip: 'Bắt sáng cực tốt dưới nắng hoàng hôn' },
+          { hex: '#C87D55', name: 'Cam Đất Terracotta', tip: 'Đồng điệu với sắc chiều thu Hà Nội' },
+          { hex: '#6E8361', name: 'Xanh Rêu Thảo Nguyên', tip: 'Hài hòa với thiên nhiên bãi cỏ' }
+        ]
       },
       {
         id: 'cafe-long-bien',
         title: 'Serein Café Cầu Long Biên',
         district: 'Hoàn Kiếm',
+        address: 'Số 16 Tập thể Ga Long Biên, Trần Nhật Duật, Hoàn Kiếm',
+        lat: 21.0409,
+        lng: 105.8498,
+        parkingTip: 'Gửi xe máy ngay dưới chân cầu thang tập thể (có bảo vệ trông xe riêng của quán).',
+        travelFromCenter: '8 phút (1.8 km từ Hồ Gươm)',
+        nearbyLandmark: 'Sát Ga Long Biên & Phố bích họa Phùng Hưng',
         category: 'outdoor',
         budgetTier: 'free',
         hobbies: ['sunset', 'cafe', 'photo', 'budget'],
-        bestTime: '16:15 - 17:45',
+        bestTime: '16:15 - 17:45 nha',
         price: '60k - 110k',
         tags: ['#Hoàng hôn', '#Cà phê cổ', '#Tàu lửa'],
         image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
+        gallery: [
+          {
+            url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80',
+            label: 'Ban công tầng 4 view Cầu Long Biên',
+            caption: 'Góc nhìn toàn cảnh nhịp cầu sắt trăm tuổi nhuộm nắng vàng chiều thu.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
+            label: 'Cà phê trứng & Trà cam quế',
+            caption: 'Hai món đồ uống signature ấm nóng cho buổi chiều gió se lạnh.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=80',
+            label: 'Nội thất biệt thự Pháp cổ',
+            caption: 'Không gian tầng 3 mang đậm kiến trúc Đông Dương với gạch bông và đèn chùm cổ.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+            label: 'Khoảnh khắc tàu hỏa đi qua',
+            caption: 'Chuyến tàu lúc 17:10 chạy ngang tầm mắt ngay trước ban công quán.'
+          }
+        ],
         description: 'Ban công biệt thự Pháp cổ nhìn thẳng ra cầu Long Biên lịch sử và đoàn tàu chạy qua lúc chiều tà.',
-        photoSpots: ['Ban công tầng 4 lấy trọn nhịp cầu Long Biên', 'Góc nâng ly trà khi tàu chạy qua lúc 17:10'],
-        poses: 'Nâng tách trà chiều chạm nhẹ vào nhau.',
-        outfit: 'Tông màu trầm ấm: Đỏ rượu, cam đất hoặc kem sữa.'
+        photoSpots: [
+          {
+            title: 'Ban công sắt tầng 4 lấy trọn nhịp cầu',
+            desc: 'Đứng tựa lan can tầng 4 khi nắng xiên qua các nhịp dầm thép cầu Long Biên.',
+            lens: 'Góc chuẩn 1x hoặc 2x • Lấy đường dẫn nhịp cầu',
+            time: '16:30 - 17:30',
+            thumb: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80'
+          },
+          {
+            title: 'Khoảnh khắc đoàn tàu chạy qua lúc 17:10',
+            desc: 'Bật chế độ Live Photo hoặc chụp liên tục khi đoàn tàu vừa kéo còi qua ga.',
+            lens: 'Live Photo • Hiệu ứng Phơi sáng dài',
+            time: '17:05 - 17:20',
+            thumb: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=400&q=80'
+          }
+        ],
+        poses: 'Nâng tách cà phê trứng chạm nhẹ vào nhau trước hậu cảnh nhịp cầu cổ kính.',
+        outfit: 'Tông màu trầm ấm cổ điển: Đỏ rượu, cam đất, nâu caramel hoặc kem sữa.',
+        ootdColors: [
+          { hex: '#8F2D19', name: 'Đỏ Gạch Phố Cổ', tip: 'Nổi bật trên nền thép xám của cầu' },
+          { hex: '#D99B26', name: 'Vàng Mù Tạt Vintage', tip: 'Tạo cảm giác hoài niệm thập niên 90' },
+          { hex: '#362721', name: 'Nâu Espresso', tip: 'Hợp với kiến trúc biệt thự Pháp' }
+        ]
       },
       {
         id: 'royal-city',
         title: 'Bowling & Trượt Băng Royal City',
         district: 'Thanh Xuân',
+        address: 'Tầng hầm B1-B2 Vincom Mega Mall Royal City, 72A Nguyễn Trãi',
+        lat: 21.0031,
+        lng: 105.8146,
+        parkingTip: 'Gửi xe tại hầm B3 khu R1-R2, đi thang cuốn lên thẳng sảnh Ice Rink & Bowling.',
+        travelFromCenter: '20 phút (5.4 km từ Trung tâm)',
+        nearbyLandmark: 'Ngay Ngã Tư Sở • Có trạm tàu điện Cát Linh - Hà Đông',
         category: 'indoor',
         budgetTier: 'mid',
         hobbies: ['indoor', 'active', 'photo'],
@@ -1416,182 +1582,435 @@
         price: '100k - 180k',
         tags: ['#Indoor', '#Trượt băng', '#Vui chơi'],
         image: 'https://images.unsplash.com/photo-1545232972-90766021656f?auto=format&fit=crop&w=800&q=80',
+        gallery: [
+          {
+            url: 'https://images.unsplash.com/photo-1545232972-90766021656f?auto=format&fit=crop&w=900&q=80',
+            label: 'Đường băng Bowling Neon',
+            caption: 'Ánh sáng tím hồng retro cực chất cho những bức ảnh cặp đôi năng động.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=900&q=80',
+            label: 'Sân trượt băng tự nhiên Ice Rink',
+            caption: 'Nắm tay nhau lướt trên mặt băng mát lạnh quanh năm.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1511882150382-421056c89033?auto=format&fit=crop&w=900&q=80',
+            label: 'Khu trò chơi Arcade & Gắp thú',
+            caption: 'Cùng nhau thi đấu gắp gấu bông và đua xe điện tử.'
+          }
+        ],
         description: 'Tổ hợp ném bowling và sân trượt băng trong nhà mát lạnh bất chấp ngày mưa hay nắng gắt.',
-        photoSpots: ['Đường băng Bowling neon', 'Khoảnh khắc nắm tay giữ thăng bằng trên sân băng'],
-        poses: 'Buộc dây giày trượt cho nhau hoặc đập tay ăn mừng cú Strike.',
-        outfit: 'Áo hoodie/sweater năng động kèm quần jeans.'
+        photoSpots: [
+          {
+            title: 'Đường băng Bowling ánh đèn Neon',
+            desc: 'Ngồi trên hàng ghế chờ cầm bóng bowling màu sắc với dải đèn led phía sau.',
+            lens: 'Góc rộng 0.5x từ trên cao',
+            time: 'Cả ngày',
+            thumb: 'https://images.unsplash.com/photo-1545232972-90766021656f?auto=format&fit=crop&w=400&q=80'
+          },
+          {
+            title: 'Giữa sân băng trắng muốt',
+            desc: 'Khoảnh khắc dìu nhau giữ thăng bằng hoặc cùng tựa vào thành sân băng.',
+            lens: 'Chế độ Thể thao / Chụp nhanh',
+            time: '14:00 - 21:00',
+            thumb: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=400&q=80'
+          }
+        ],
+        poses: 'Buộc dây giày trượt cho nhau hoặc đập tay ăn mừng cú ném Strike.',
+        outfit: 'Áo hoodie/sweater đôi năng động kèm quần jeans và tất cao cổ ấm áp.',
+        ootdColors: [
+          { hex: '#3E5C76', name: 'Xanh Denim', tip: 'Trẻ trung, khỏe khoắn trên sân băng' },
+          { hex: '#F29B7E', name: 'Hồng San Hô', tip: 'Nổi bật trên nền băng trắng' },
+          { hex: '#FFFDF9', name: 'Trắng Kem', tip: 'Dễ phối layer cùng áo len' }
+        ]
       },
       {
         id: 'bao-tang-my-thuat',
         title: 'Bảo Tàng Mỹ Thuật Việt Nam',
         district: 'Ba Đình',
+        address: 'Số 66 Nguyễn Thái Học, Quận Ba Đình, Hà Nội',
+        lat: 21.0305,
+        lng: 105.8372,
+        parkingTip: 'Gửi xe máy ngay trong khuôn viên cổng chính 66 Nguyễn Thái Học (5k/xe).',
+        travelFromCenter: '10 phút (2.2 km từ Hồ Gươm)',
+        nearbyLandmark: 'Đối diện Văn Miếu Quốc Tử Giám',
         category: 'art',
         budgetTier: 'free',
         hobbies: ['art', 'photo', 'indoor', 'quiet', 'budget'],
-        bestTime: '14:00 - 17:00',
+        bestTime: '14:00 - 17:00 nha',
         price: '40k/vé',
         tags: ['#Bảo tàng', '#Indoor', '#Lãng mạn'],
         image: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=800&q=80',
+        gallery: [
+          {
+            url: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=900&q=80',
+            label: 'Hành lang gỗ & Khung tranh cổ',
+            caption: 'Không gian tĩnh lặng đầy chất nghệ thuật với ánh sáng tự nhiên dịu nhẹ.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=900&q=80',
+            label: 'Khung cửa sổ chớp xanh Đông Dương',
+            caption: 'Góc cửa sổ nhìn ra khoảng sân lá vàng rơi cực thơ mộng.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1544967082-d9d25d867d66?auto=format&fit=crop&w=900&q=80',
+            label: 'Cầu thang xoắn ốc cổ điển',
+            caption: 'Góc chụp từ tầng trên xuống cầu thang đá hoa cương thời Pháp.'
+          }
+        ],
         description: 'Kiến trúc Pháp cổ Đông Dương với hành lang gỗ lim và cửa sổ chớp xanh cực tình.',
-        photoSpots: ['Khung cửa sổ chớp xanh nhìn ra sân lá vàng', 'Cầu thang gỗ xoắn tầng 2'],
-        poses: 'Đứng cạnh nhau cùng ngắm một bức tranh sơn mài, chụp từ phía sau.',
-        outfit: 'Phong cách cổ điển Academia: Gile len, sơ mi, chân váy dài.'
+        photoSpots: [
+          {
+            title: 'Khung cửa sổ chớp xanh tầng 2',
+            desc: 'Hai người đứng bên khung cửa sổ mở rộng đón vạt nắng chiều chiếu xiên vào sàn gỗ.',
+            lens: 'Chân dung 2x • Bố cục đối xứng',
+            time: '15:00 - 16:45',
+            thumb: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=400&q=80'
+          },
+          {
+            title: 'Hành lang phòng tranh sơn mài',
+            desc: 'Chụp từ phía sau lưng khi hai bạn đang đứng cạnh nhau thưởng lãm bức tranh lớn.',
+            lens: 'Tiêu cự 1x • Tắt âm chụp ảnh',
+            time: '09:00 - 16:30',
+            thumb: 'https://images.unsplash.com/photo-1544967082-d9d25d867d66?auto=format&fit=crop&w=400&q=80'
+          }
+        ],
+        poses: 'Đứng cạnh nhau cùng ngắm một bức tranh sơn mài, chụp tự nhiên từ phía sau.',
+        outfit: 'Phong cách cổ điển Dark/Light Academia: Gile len, sơ mi, chân váy midi dài.',
+        ootdColors: [
+          { hex: '#4A5D4E', name: 'Xanh Lá Chớp Cổ', tip: 'Tông xuyệt tông với cửa sổ bảo tàng' },
+          { hex: '#D8C3A5', name: 'Be Kem Đông Dương', tip: 'Thanh lịch, sang trọng trong phòng tranh' },
+          { hex: '#5C3D2E', name: 'Nâu Gỗ Lim', tip: 'Đậm chất cổ điển hoài niệm' }
+        ]
       },
       {
         id: 'workshop-gom',
         title: 'Workshop Làm Gốm Bát Tràng Thu Nhỏ',
         district: 'Tây Hồ',
+        address: 'Ngõ 11 Tô Ngọc Vân, Quảng An, Quận Tây Hồ, Hà Nội',
+        lat: 21.0662,
+        lng: 105.8281,
+        parkingTip: 'Có sân để xe máy miễn phí ngay trong xưởng gốm.',
+        travelFromCenter: '19 phút (5.0 km từ Hồ Gươm)',
+        nearbyLandmark: 'Gần Chợ hoa Quảng Bá & Hồ Tây',
         category: 'art',
         budgetTier: 'mid',
         hobbies: ['art', 'indoor', 'quiet', 'photo'],
-        bestTime: '09:00 - 18:00',
+        bestTime: '09:00 - 18:00 nha',
         price: '150k - 220k',
         tags: ['#Làm gốm', '#Thủ công', '#Indoor'],
         image: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=800&q=80',
+        gallery: [
+          {
+            url: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=900&q=80',
+            label: 'Bàn xoay chuốt gốm đôi',
+            caption: 'Cùng nhau tự tay tạo hình chiếc cốc đôi mang dấu ấn riêng.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=900&q=80',
+            label: 'Kệ phơi gốm ngập nắng',
+            caption: 'Hàng trăm món gốm mộc xếp trên kệ gỗ bên khung cửa sổ ngập nắng.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=900&q=80',
+            label: 'Góc tô màu & Khắc tên kỷ niệm',
+            caption: 'Cùng vẽ họa tiết và khắc ngày kỷ niệm của hai đứa lên đáy cốc.'
+          }
+        ],
         description: 'Cùng nhau tự tay chuốt gốm, nặn cốc đôi và khắc tên kỷ niệm mang về nhà.',
-        photoSpots: ['Bàn xoay gốm ngập nắng bên khung cửa gỗ'],
-        poses: 'Đeo tạp dề đôi, cùng đặt tay lên bàn xoay gốm.',
-        outfit: 'Trang phục linen mộc mạc, thoải mái.'
+        photoSpots: [
+          {
+            title: 'Bàn xoay gốm ngập nắng bên cửa gỗ',
+            desc: 'Nhờ nhân viên xưởng chụp góc ngang khi cả hai đang chăm chú chuốt gốm.',
+            lens: 'Chân dung 2x • Lấy cận đôi bàn tay',
+            time: '14:30 - 16:30',
+            thumb: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=400&q=80'
+          },
+          {
+            title: 'Kệ gỗ trưng bày gốm mộc',
+            desc: 'Cầm hai chiếc cốc vừa nặn xong khoe trước kệ gốm thủ công.',
+            lens: 'Tiêu cự 1x • Tông màu ấm',
+            time: 'Cả ngày',
+            thumb: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=400&q=80'
+          }
+        ],
+        poses: 'Đeo tạp dề đôi, cùng đặt tay lên bàn xoay gốm như cảnh phim "Ghost" lãng mạn.',
+        outfit: 'Trang phục linen mộc mạc, tay áo xắn gọn gàng thoải mái.',
+        ootdColors: [
+          { hex: '#C68B59', name: 'Nâu Đất Nung', tip: 'Đồng điệu với màu đất sét và tạp dề' },
+          { hex: '#E6D3B8', name: 'Kem Vải Linen', tip: 'Mộc mạc, nhẹ nhàng trong nắng chiều' },
+          { hex: '#6E8361', name: 'Xanh Lá Cây', tip: 'Tươi mát bên khu vườn xưởng gốm' }
+        ]
       },
       {
         id: 'lotte-sky',
         title: 'Đài Quan Sát Lotte Sky 65',
         district: 'Ba Đình',
+        address: 'Tầng 65 Tòa nhà Lotte Center, 54 Liễu Giai, Ba Đình',
+        lat: 21.0321,
+        lng: 105.8125,
+        parkingTip: 'Gửi xe tại hầm B2-B3 Lotte Center, vào quầy vé tầng B1 đi thang máy tốc độ cao lên tầng 65.',
+        travelFromCenter: '15 phút (4.0 km từ Hồ Gươm)',
+        nearbyLandmark: 'Ngã tư Đào Tấn - Liễu Giai • View trọn Hồ Tây',
         category: 'indoor',
         budgetTier: 'high',
         hobbies: ['indoor', 'sunset', 'photo'],
-        bestTime: '17:00 - 19:30',
+        bestTime: '17:00 - 19:30 nha',
         price: '180k - 230k',
         tags: ['#Indoor', '#View tầng 65', '#Giờ xanh'],
         image: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=800&q=80',
+        gallery: [
+          {
+            url: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=80',
+            label: 'Sàn kính Sky Walk tầng 65',
+            caption: 'Đứng trên mặt kính trong suốt nhìn toàn cảnh Hà Nội rực sáng ánh đèn đêm.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+            label: 'Bàn Lounge ngắm Blue Hour',
+            caption: 'Nhâm nhi mocktail khi bầu trời chuyển sang màu xanh thẫm lúc 17:35.'
+          }
+        ],
         description: 'Ngắm trọn Hà Nội lên đèn từ tầng 65 trên sàn kính trong suốt Sky Walk.',
-        photoSpots: ['Sàn kính Sky Walk lúc thành phố lên đèn Blue Hour'],
-        poses: 'Chụp bóng ngược sáng trước tấm kính lớn nhìn xuống Hồ Tây.',
-        outfit: 'Lịch sự, sang trọng cho buổi tối hẹn hò.'
+        photoSpots: [
+          {
+            title: 'Sàn kính Sky Walk lúc thành phố lên đèn',
+            desc: 'Chụp bóng Silhouette của hai bạn trên nền bầu trời Giờ Xanh (17:25 - 17:50).',
+            lens: 'Góc rộng 0.5x • Night Mode',
+            time: '17:20 - 18:30',
+            thumb: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=400&q=80'
+          }
+        ],
+        poses: 'Chụp bóng ngược sáng trước tấm kính lớn nhìn xuống toàn cảnh Hồ Tây.',
+        outfit: 'Lịch sự, sang trọng cho buổi tối hẹn hò trên cao.',
+        ootdColors: [
+          { hex: '#1B263B', name: 'Xanh Đêm Midnight', tip: 'Sang trọng dưới ánh đèn lounge' },
+          { hex: '#E0AA3E', name: 'Vàng Champagne', tip: 'Bắt sáng lung linh về đêm' },
+          { hex: '#FFFFFF', name: 'Trắng Tinh Khôi', tip: 'Nổi bật khi chụp trước kính lớn' }
+        ]
       },
       {
         id: 'complex-01',
         title: 'Tổ Hợp Sáng Tạo Complex 01',
         district: 'Đống Đa',
+        address: 'Ngách 31 Ngõ 167 Tây Sơn, Quang Trung, Quận Đống Đa',
+        lat: 21.0108,
+        lng: 105.8253,
+        parkingTip: 'Bãi gửi xe máy và ô tô rộng rãi ngay cổng vào tổ hợp (5k/xe máy).',
+        travelFromCenter: '14 phút (3.8 km từ Trung tâm)',
+        nearbyLandmark: 'Sát Đại học Công Đoàn & Gò Đống Đa',
         category: 'art',
         budgetTier: 'free',
         hobbies: ['art', 'cafe', 'photo', 'budget'],
-        bestTime: '15:00 - 18:30',
+        bestTime: '15:00 - 18:30 nha',
         price: '50k - 100k',
         tags: ['#Photobooth', '#Cà phê', '#Workshop'],
         image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80',
+        gallery: [
+          {
+            url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=80',
+            label: 'Kiến trúc nhà máy in cổ',
+            caption: 'Tường gạch đỏ và khung cửa thép mang phong cách Industrial hiện đại.'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=900&q=80',
+            label: 'Buồng chụp Photobooth lấy ngay',
+            caption: 'Lưu lại dải ảnh 4 khung Hàn Quốc cực đáng yêu cùng phụ kiện tai thỏ.'
+          }
+        ],
         description: 'Nhà máy in cũ cải tạo thành tổ hợp photobooth Hàn Quốc, tiệm sách và làm nến thơm.',
-        photoSpots: ['Bức tường gạch đỏ cổ điển', 'Buồng chụp ảnh lấy ngay Photobooth'],
-        poses: 'Khoe dải ảnh 4 khung vừa chụp trước cửa tiệm.',
-        outfit: 'Streetwear trẻ trung năng động.'
-      },
-      {
-        id: 'hem-tu-hoa',
-        title: 'Hẻm Từ Hoa & Trà Chiều Ven Hồ Tây',
-        district: 'Tây Hồ',
-        category: 'outdoor',
-        budgetTier: 'free',
-        hobbies: ['sunset', 'cafe', 'quiet', 'photo', 'budget'],
-        bestTime: '16:30 - 18:15',
-        price: '45k - 85k',
-        tags: ['#Hồ Tây', '#Yên tĩnh', '#Hoàng hôn'],
-        image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
-        description: 'Con hẻm nhỏ dẫn thẳng ra mặt nước Hồ Tây bình yên để nhâm nhi trà cam quế.',
-        photoSpots: ['Con dốc nhỏ nhìn thẳng ra mặt hồ lấp lánh nắng chiều'],
-        poses: 'Ngồi tựa vai nhau nhìn ra mặt hồ.',
-        outfit: 'Cardigan mỏng màu pastel dịu mắt.'
+        photoSpots: [
+          {
+            title: 'Bức tường gạch đỏ & Cầu thang sắt',
+            desc: 'Nắng chiều chiếu qua giếng trời tạo vệt bóng đổ nghệ thuật trên tường gạch.',
+            lens: 'Tiêu cự 1x • Bố cục đường chéo',
+            time: '15:30 - 17:00',
+            thumb: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=400&q=80'
+          }
+        ],
+        poses: 'Khoe dải ảnh Photobooth 4 khung vừa chụp trước cửa tiệm cà phê.',
+        outfit: 'Streetwear trẻ trung, năng động.',
+        ootdColors: [
+          { hex: '#A44A3F', name: 'Đỏ Gạch Retro', tip: 'Ăn nhập với kiến trúc nhà máy in' },
+          { hex: '#2B2D42', name: 'Xám Than Cá Tính', tip: 'Năng động, hiện đại' },
+          { hex: '#F4F1DE', name: 'Trắng Sữa', tip: 'Lên hình Photobooth cực sáng da' }
+        ]
       }
     ];
+    let savedBookmarkIds = ['bai-da-song-hong'];
+    let activeGuideSpot = null;
+    let activeGalleryIdx = 0;
+    let activeMapMode = 'scrapbook'; // 'scrapbook' | 'google'
 
-    // 2. TRẠNG THÁI HỆ THỐNG (TIMELINE, NOTICES, SWIPE, GAMIFICATION, CANVAS, QUOTA)
-    let planVersion = 3;
-    let isRushHour = false;
-    let isRainPlanB = false;
-
-    let timelineStops = [
-      { id: 's1', name: 'Serein Café Cầu Long Biên', outdoorName: 'Serein Café Cầu Long Biên', indoorName: 'Trà chiều Bảo Tàng Mỹ Thuật (#Indoor)', startMin: 990, duration: 50, distanceKm: 3.2, pinned: false },
-      { id: 's2', name: 'Chụp Giờ Vàng Bãi đá sông Hồng', outdoorName: 'Chụp Giờ Vàng Bãi đá sông Hồng', indoorName: 'Workshop Làm Gốm Bát Tràng (#Indoor)', startMin: 1055, duration: 55, distanceKm: 4.5, pinned: false },
-      { id: 's3', name: 'Dạo bộ & Kem Hồ Tây', outdoorName: 'Dạo bộ & Kem Hồ Tây', indoorName: 'Đài Quan Sát Lotte Sky 65 (#Indoor)', startMin: 1130, duration: 60, distanceKm: 2.8, pinned: false }
-    ];
-
-    let checklistData = [
-      { id: 1, text: 'Sạc đầy pin máy ảnh & điện thoại', done: true },
-      { id: 2, text: 'Đặt trước bàn ban công tầng 4 quán cà phê', done: true },
-      { id: 3, text: 'Mang theo áo khoác cardigan mỏng', done: false },
-      { id: 4, text: 'Chuẩn bị một bó hoa nhỏ bất ngờ', done: false }
-    ];
-
-    let roomNotices = [
-      { id: 'n1', type: 'new_match', title: '💞 Match mới: Bãi đá sông Hồng!', content: 'Cả hai bạn đều đã thả tim địa điểm này.', read: false, time: '2 phút trước' },
-      { id: 'n2', type: 'plan_rsvp', title: '💌 Phản hồi thiệp mời RSVP', content: 'Người thương đã bấm "Chốt luôn! ❤️" cho lịch hẹn Chủ Nhật.', read: false, time: '15 phút trước' },
-      { id: 'n3', type: 'secret_note_unlocked', title: '🔓 Hộp thư tình tại Serein Café', content: 'Có 1 bức thư tình bí mật đang chờ bạn Check-in để mở khóa.', read: false, time: '1 giờ trước' }
-    ];
-
-    // Tìm kiếm sở thích
-    let searchQuery = '';
+    // 2. BIẾN TRẠNG THÁI TOÀN CỤC (STATE)
     let selectedHobbyTags = [];
+    let searchQuery = '';
     let selectedDistrict = 'all';
     let selectedBudget = 'all';
     let currentCategoryFilter = 'all';
 
-    // Swipe-to-Match
+    let planVersion = 3;
+    let isRainPlanB = false;
+    let isRushHour = false;
+
+    let timelineStops = [
+      {
+        id: 'stop-1',
+        name: 'Serein Café Cầu Long Biên',
+        outdoorName: 'Serein Café Cầu Long Biên',
+        indoorName: 'Serein Café (Phòng kính tầng 3)',
+        startMin: 990, // 16:30
+        duration: 50,
+        distanceKm: 0,
+        pinned: false
+      },
+      {
+        id: 'stop-2',
+        name: 'Săn Giờ Vàng Bãi đá sông Hồng',
+        outdoorName: 'Săn Giờ Vàng Bãi đá sông Hồng',
+        indoorName: 'Bảo Tàng Mỹ Thuật Việt Nam (#Indoor)',
+        startMin: 1055, // 17:35
+        duration: 45,
+        distanceKm: 4.2,
+        pinned: false
+      },
+      {
+        id: 'stop-3',
+        name: 'An Lạc Chay Quán & Dạo Hồ Tây',
+        outdoorName: 'An Lạc Chay Quán & Dạo Hồ Tây',
+        indoorName: 'Đài Quan Sát Lotte Sky 65 (#Indoor)',
+        startMin: 1115, // 18:35
+        duration: 60,
+        distanceKm: 3.1,
+        pinned: true
+      }
+    ];
+
+    let checklistData = [
+      { id: 1, text: 'Sạc đầy pin điện thoại & máy ảnh film', done: true },
+      { id: 2, text: 'Chuẩn bị trang phục tone Kem / Terracotta', done: true },
+      { id: 3, text: 'Đặt bàn trước góc cửa sổ lúc 18:30', done: false },
+      { id: 4, text: 'Mang theo 2 chiếc áo khoác mỏng gió thu', done: false }
+    ];
+
+    let roomNotices = [
+      {
+        id: 'n-1',
+        type: 'new_match',
+        title: '💞 Hợp gu mới: An Lạc Chay Quán!',
+        content: 'Cả hai bạn đều vừa thả tim địa điểm này.',
+        read: false,
+        time: '5 phút trước'
+      },
+      {
+        id: 'n-2',
+        type: 'plan_rsvp',
+        title: '💌 Người thương đã chốt lịch hẹn Chủ Nhật',
+        content: 'Lời nhắn: "Nhớ qua đón mình lúc 16:15 nhé!"',
+        read: false,
+        time: '20 phút trước'
+      },
+      {
+        id: 'n-3',
+        type: 'secret_note_unlocked',
+        title: '🔓 Có 1 thư tình bí mật đang chờ tại Serein Café',
+        content: 'Hãy tới quán và bấm Check-in để mở khóa lời nhắn.',
+        read: false,
+        time: '1 giờ trước'
+      }
+    ];
+
     let swipeRoomMode = 'couple';
     let currentSwipeIndex = 0;
     let etagVersion = 12;
     let matchedPlaces = [
-      { title: 'Bãi đá sông Hồng', district: 'Tây Hồ', time: 'Đã Match 2/2 ❤️' },
-      { title: 'Serein Café Cầu Long Biên', district: 'Hoàn Kiếm', time: 'Đã Match 2/2 ❤️' }
+      { title: 'An Lạc Chay Quán', district: 'Tây Hồ', time: 'Hợp gu 2/2 ❤️' },
+      { title: 'Bãi đá sông Hồng', district: 'Tây Hồ', time: 'Hợp gu 2/2 ❤️' }
     ];
 
-    // Gamification: Vé mù, Bản đồ cào 7 quận, Thư tình
     let blindDateCurrentStep = 1;
     const blindDateSteps = [
-      { step: 1, title: 'Chặng 1: Cà phê Tầng Thượng Phố Cổ', hint: 'Gợi ý: Nơi ngắm đoàn tàu lửa chạy qua cầu trăm tuổi', place: 'Serein Café Cầu Long Biên (Hoàn Kiếm)' },
-      { step: 2, title: 'Chặng 2: Tọa độ Săn Hoàng Hôn Ven Sông', hint: 'Gợi ý: Cánh đồng cỏ lau trắng muốt quận Tây Hồ', place: 'Bãi đá sông Hồng (Tây Hồ)' },
-      { step: 3, title: 'Chặng 3: Bữa Tối Ánh Nến Trên Cao', hint: 'Gợi ý: Tầng 65 nhìn toàn cảnh Hà Nội lên đèn', place: 'Đài Quan Sát Lotte Sky 65 (Ba Đình)' }
+      {
+        step: 1,
+        title: 'Chặng 1: Khởi động vị giác chiều thu',
+        hint: 'Gợi ý: Biệt thự Pháp cổ nhìn thẳng ra nhịp cầu sắt lịch sử.',
+        place: 'Serein Café Cầu Long Biên (16 Trần Nhật Duật)'
+      },
+      {
+        step: 2,
+        title: 'Chặng 2: Săn khoảnh khắc mặt trời lặn',
+        hint: 'Gợi ý: Cánh đồng cỏ lau trắng muốt ven sông Hồng lộng gió.',
+        place: 'Bãi đá sông Hồng (Ngõ 264 Âu Cơ, Tây Hồ)'
+      },
+      {
+        step: 3,
+        title: 'Chặng 3: Bữa tối ấm cúng dưới ánh nến',
+        hint: 'Gợi ý: Không gian chay thanh tịnh và trà sen thơm ngát.',
+        place: 'An Lạc Chay Quán (38 Quảng An, Tây Hồ)'
+      }
     ];
 
     let hanoiDistrictsScratch = [
-      { id: 'tay-ho', name: 'Quận Tây Hồ', count: '6/8 quán', scratched: true },
-      { id: 'hoan-kiem', name: 'Quận Hoàn Kiếm', count: '5/7 quán', scratched: true },
-      { id: 'ba-dinh', name: 'Quận Ba Đình', count: '4/6 quán', scratched: true },
-      { id: 'dong-da', name: 'Quận Đống Đa', count: '3/6 quán', scratched: false },
-      { id: 'thanh-xuan', name: 'Quận Thanh Xuân', count: '2/5 quán', scratched: false },
-      { id: 'hai-ba-trung', name: 'Quận Hai Bà Trưng', count: '2/5 quán', scratched: false },
-      { id: 'cau-giay', name: 'Quận Cầu Giấy', count: '1/4 quán', scratched: false }
+      { name: 'Quận Tây Hồ', count: '6 quán', scratched: true },
+      { name: 'Quận Hoàn Kiếm', count: '5 quán', scratched: true },
+      { name: 'Quận Ba Đình', count: '4 quán', scratched: true },
+      { name: 'Quận Thanh Xuân', count: '2 quán', scratched: false },
+      { name: 'Quận Đống Đa', count: '3 quán', scratched: false },
+      { name: 'Quận Cầu Giấy', count: '2 quán', scratched: false },
+      { name: 'Quận Hai Bà Trưng', count: '3 quán', scratched: false }
     ];
 
     let secretNotesData = [
-      { id: 'sn1', place: 'Serein Café Cầu Long Biên', hint: 'Nhìn xuống nhịp cầu sắt bên trái bàn số 4...', content: 'Cảm ơn cậu vì đã luôn nắm tay tớ đi qua những ngày nắng đẹp nhất Hà Nội! 💕', unlocked: false },
-      { id: 'sn2', place: 'Bãi đá sông Hồng', hint: 'Mở khi đứng giữa đồng cỏ lau lúc 17:00', content: 'Chúc mừng kỷ niệm 100 ngày tụi mình bên nhau!', unlocked: true }
+      {
+        id: 'sn-1',
+        place: 'Serein Café Cầu Long Biên',
+        hint: 'Ngồi ở bàn ban công tầng 4 nhìn ra cầu nhé',
+        content: 'Cảm ơn người thương vì luôn dịu dàng với mình suốt 365 ngày qua! ❤️',
+        unlocked: true
+      },
+      {
+        id: 'sn-2',
+        place: 'Bãi đá sông Hồng',
+        hint: 'Mở thư khi hai đứa đứng giữa đồng cỏ lau lúc hoàng hôn',
+        content: 'Hẹn nhau mỗi mùa thu Hà Nội đều quay lại đây chụp 1 tấm ảnh đôi nha!',
+        unlocked: false
+      }
     ];
 
-    // Virtual Video Canvas & Upload Quota
-    let storageUsedMB = 8.4;
-    let photoCount = 4;
-    let hasDecree13Consent = true;
+    let memoryPhotosList = [
+      {
+        url: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=900&q=80',
+        caption: 'Nắm tay dạo phố cổ Hà Nội chiều thu 29°C'
+      },
+      {
+        url: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=900&q=80',
+        caption: 'Hoàng hôn buông nhẹ trên Bãi đá sông Hồng'
+      },
+      {
+        url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+        caption: 'Bữa tối ấm áp bên ánh nến tại An Lạc Chay Quán'
+      },
+      {
+        url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80',
+        caption: 'Ngắm đoàn tàu chiều chạy qua cầu Long Biên'
+      }
+    ];
+
     let isCanvasPlaying = false;
     let isReducedMotion = false;
+    let loadedCanvasImages = [];
     let currentCanvasSlide = 0;
     let canvasSlideProgress = 0;
     let audioCtx = null;
     let beatInterval = null;
+    let hasDecree13Consent = true;
+    let storageUsedMB = 8.4;
+    let photoCount = 4;
 
-    let memoryPhotosList = [
-      { url: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=900&q=80', caption: 'Hoàng hôn Cầu Long Biên • 16:45' },
-      { url: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=900&q=80', caption: 'Nắm tay dạo Bãi đá sông Hồng • 17:20' },
-      { url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80', caption: 'Trà chiều phố cổ Hà Nội • 18:00' },
-      { url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80', caption: 'Đêm gió mát ven Hồ Tây • 19:30' }
-    ];
-    let loadedCanvasImages = [];
-
-    // =====================================================================
-    // KHỞI CHẠY ỨNG DỤNG
-    // =====================================================================
+    // 3. KHỞI TẠO GIAO DIỆN KHI TẢI TRANG
     window.addEventListener('DOMContentLoaded', () => {
       renderTimelineStops();
       renderChecklist();
-      renderNoticesList();
       renderHobbyTagChips();
       renderPolaroidCards();
       renderDrawerInstantResults();
@@ -1600,206 +2019,110 @@
       renderBlindDateSteps();
       renderScratchMap();
       renderSecretNotes();
-      initVirtualVideoCanvas();
       renderUploadedPhotosMiniGrid();
+      renderNoticesList();
+      initVirtualVideoCanvas();
       initScrollspy();
-
-      // Phím tắt '/' mở nhanh ô tìm kiếm sở thích
-      window.addEventListener('keydown', (e) => {
-        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-        if (e.key === '/' && tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
-          e.preventDefault();
-          toggleNavbarSearchDrawer(true);
-        }
-      });
     });
-
-    // =====================================================================
-    // PHẦN 1: TIMELINE SUNCALC, CÔNG THỨC HAVERSINE HÀ NỘI, AUTO-RIPPLE & 409
-    // =====================================================================
-    function formatMinutesToHHMM(totalMin) {
-      const normalized = ((totalMin % 1440) + 1440) % 1440;
-      const h = Math.floor(normalized / 60);
-      const m = normalized % 60;
-      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    }
-
-    function calculateHanoiTravelMinutes(distanceKm) {
-      const speedKmh = isRushHour ? 15 : 25;
-      const travel = Math.round(((distanceKm * 1.35) / speedKmh) * 60) + 10;
-      return travel;
-    }
-
-    function renderTimelineStops() {
-      const container = document.getElementById('timelineStopsContainer');
-      if (!container) return;
-
-      container.innerHTML = timelineStops.map((stop, idx) => {
-        const travelMin = calculateHanoiTravelMinutes(stop.distanceKm);
-        const startStr = formatMinutesToHHMM(stop.startMin);
-        const endStr = formatMinutesToHHMM(stop.startMin + stop.duration);
-
-        return `
-          <div class="bg-[#FAF4E8] border ${stop.pinned ? 'border-brand-terracotta' : 'border-[#E2D5C1]'} rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition">
-            <div class="space-y-0.5">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="bg-brand-terracotta text-white text-[11px] font-extrabold px-2 py-0.5 rounded-md">${startStr} - ${endStr}</span>
-                <span class="font-bold text-xs sm:text-sm text-paper-ink">${stop.name}</span>
-                ${stop.pinned ? '<span class="text-[10px] bg-[#F9EFC7] border border-[#D5BE7E] px-1.5 py-0.2 rounded font-bold text-brand-terracotta">📌 Giữ cố định giờ</span>' : ''}
-              </div>
-              <p class="text-[11px] text-paper-muted">
-                🛵 Thời gian di chuyển & gửi xe: ~<strong>${travelMin} phút</strong> (${stop.distanceKm} km)
-              </p>
-            </div>
-
-            <div class="flex items-center gap-1 shrink-0">
-              <button onclick="rippleShiftStop(${idx}, -15)" class="bg-[#FFFDF9] hover:bg-brand-peach border border-[#CBB292] text-paper-ink font-bold text-xs px-2.5 py-1 rounded-lg cursor-pointer" title="Lùi 15 phút">
-                -15p
-              </button>
-              <button onclick="rippleShiftStop(${idx}, 15)" class="bg-[#FFFDF9] hover:bg-brand-peach border border-[#CBB292] text-paper-ink font-bold text-xs px-2.5 py-1 rounded-lg cursor-pointer" title="Tăng thêm 15 phút">
-                +15p
-              </button>
-              <button onclick="togglePinStopTime(${idx})" class="px-2 py-1 rounded-lg text-xs font-bold cursor-pointer ${stop.pinned ? 'bg-brand-terracotta text-white' : 'bg-[#EFE5D4] text-paper-ink'}" title="Giữ cố định giờ chặng này">
-                📌
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      const verBadge = document.getElementById('planVersionBadge');
-      if (verBadge) verBadge.textContent = planVersion;
-    }
-
-    function rippleShiftStop(index, deltaMinutes) {
-      timelineStops[index].startMin += deltaMinutes;
-      for (let i = index + 1; i < timelineStops.length; i++) {
-        if (!timelineStops[i].pinned) {
-          timelineStops[i].startMin += deltaMinutes;
-        }
-      }
-      planVersion++;
-      renderTimelineStops();
-      showToast(`⏱️ Đã dời lịch ${deltaMinutes > 0 ? '+' : ''}${deltaMinutes} phút và tự động khớp lại các chặng sau!`);
-    }
-
-    function togglePinStopTime(index) {
-      timelineStops[index].pinned = !timelineStops[index].pinned;
-      renderTimelineStops();
-      showToast(timelineStops[index].pinned ? '📌 Đã khóa cố định giờ chặng này!' : '🔓 Đã mở khóa giờ chặng này.');
-    }
-
-    function toggleRushHourMode() {
-      isRushHour = !isRushHour;
-      const btn = document.getElementById('rushHourBtn');
-      if (btn) {
-        btn.textContent = isRushHour
-          ? '🚦 Giờ tan tầm (15km/h)'
-          : '🛵 Đi giờ thường (25km/h)';
-        btn.classList.toggle('!bg-brand-peach', isRushHour);
-      }
-      renderTimelineStops();
-      showToast(isRushHour ? '🚦 Đã tính trừ hao thêm thời gian kẹt xe giờ tan tầm!' : '🛵 Đã chuyển về thời gian di chuyển giờ thông thoáng.');
-    }
-
-    function toggleRainPlanB() {
-      isRainPlanB = !isRainPlanB;
-      timelineStops.forEach(s => {
-        s.name = isRainPlanB ? s.indoorName : s.outdoorName;
-      });
-      planVersion++;
-      renderTimelineStops();
-
-      const tempEl = document.getElementById('weatherTempText');
-      const descEl = document.getElementById('weatherDescText');
-      const iconEl = document.getElementById('weatherEmojiIcon');
-      const adviceEl = document.getElementById('weatherAdviceBox');
-      const inlineBtn = document.getElementById('inlineRainPlanBBtn');
-
-      if (isRainPlanB) {
-        if (tempEl) tempEl.textContent = '24°C';
-        if (descEl) descEl.innerHTML = 'Có mưa rào • Khả năng mưa <strong class="text-brand-terracotta">85%</strong>';
-        if (iconEl) iconEl.textContent = '🌧️';
-        if (adviceEl) adviceEl.innerHTML = '☔ <strong>Trời báo mưa:</strong> DateMate đã tự động đổi lịch hẹn sang các địa điểm <strong>Trong nhà ấm áp</strong> để hai bạn yên tâm đi chơi!';
-        if (inlineBtn) inlineBtn.textContent = '☀️ Quay lại lịch trình Ngoài trời';
-        showToast('☔ Đã chuyển toàn bộ điểm hẹn sang phương án Trong nhà (Phòng mưa)!');
-      } else {
-        if (tempEl) tempEl.textContent = '29°C';
-        if (descEl) descEl.innerHTML = 'Nắng thu dịu • Khả năng mưa <strong class="text-brand-terracotta">4%</strong>';
-        if (iconEl) iconEl.textContent = '🌤️';
-        if (adviceEl) adviceEl.innerHTML = '💡 <strong>Gợi ý cho hai bạn:</strong> Hôm nay trời ít mây, gió mát, cực kỳ lý tưởng để ngồi cà phê tầng thượng hoặc dạo ven Hồ Tây lúc 16:30!';
-        if (inlineBtn) inlineBtn.textContent = '☔ Đổi sang quán Trong nhà (Phòng mưa)';
-        showToast('☀️ Đã khôi phục lịch trình ngắm hoàng hôn ngoài trời.');
-      }
-    }
-
-    function autoScheduleBySunCalc() {
-      timelineStops[0].startMin = 975; // 16:15
-      timelineStops[1].startMin = 1005; // 16:45 đúng Giờ Vàng SunCalc
-      timelineStops[2].startMin = 1075; // 17:55
-      planVersion++;
-      renderTimelineStops();
-      showToast('🌅 Đã tự động căn chỉnh lịch trình khớp với khung Giờ Vàng ngắm hoàng hôn (16:24 - 17:24)!');
-    }
-
-    function trigger409ConflictSimulation() {
-      document.getElementById('serverVersionNum').textContent = planVersion + 1;
-      document.getElementById('conflict409Alert').classList.remove('hidden');
-      scrollToSection(null, 'section-home');
-      showToast('🔔 Giả lập: Người thương vừa chỉnh sửa lịch hẹn cùng lúc!');
-    }
-
-    function resolve409Conflict() {
-      planVersion++;
-      document.getElementById('conflict409Alert').classList.add('hidden');
-      renderTimelineStops();
-      showToast(`✅ Đã cập nhật lịch hẹn mới nhất từ người thương!`);
-    }
-
-    // Chuyển đổi Tab trong khu vực Trò Chơi Cặp Đôi để giao diện luôn gọn gàng
-    function switchCoupleGameTab(tabName) {
-      const matchSec = document.getElementById('section-match');
-      const gameSec = document.getElementById('section-gamification');
-      const cardBlind = document.getElementById('gameCard-blind');
-      const cardScratch = document.getElementById('gameCard-scratch');
-      const cardSecret = document.getElementById('gameCard-secret');
-
-      ['swipe', 'blind', 'scratch', 'all'].forEach(t => {
-        const btn = document.getElementById(`tabBtn-${t}`);
-        if (btn) {
-          btn.className = t === tabName
-            ? 'px-3.5 py-2 rounded-xl text-xs font-extrabold bg-brand-terracotta text-white shadow-xs transition cursor-pointer'
-            : 'px-3.5 py-2 rounded-xl text-xs font-bold text-paper-ink hover:bg-[#FFFDF9] transition cursor-pointer';
-        }
-      });
-
-      if (tabName === 'swipe') {
-        matchSec.classList.remove('hidden');
-        gameSec.classList.add('hidden');
-      } else if (tabName === 'blind') {
-        matchSec.classList.add('hidden');
-        gameSec.classList.remove('hidden');
-        cardBlind.classList.remove('hidden');
-        cardScratch.classList.remove('hidden');
-        cardSecret.classList.remove('hidden');
-      } else if (tabName === 'scratch') {
-        matchSec.classList.add('hidden');
-        gameSec.classList.remove('hidden');
-        cardBlind.classList.remove('hidden');
-        cardScratch.classList.remove('hidden');
-        cardSecret.classList.remove('hidden');
-      } else {
-        matchSec.classList.remove('hidden');
-        gameSec.classList.remove('hidden');
-      }
-    }
 
     function toggleQaFloatingPanel() {
       const panel = document.getElementById('qaFloatingPanel');
       if (panel) panel.classList.toggle('hidden');
     }
 
-    function rippleShiftStop(index, deltaMinutes) {
+    function switchCoupleGameTab(tab) {
+      const matchSec = document.getElementById('section-match');
+      const gamiSec = document.getElementById('section-gamification');
+      const cardBlind = document.getElementById('gameCard-blind');
+      const cardScratch = document.getElementById('gameCard-scratch');
+      const cardSecret = document.getElementById('gameCard-secret');
+
+      ['swipe', 'blind', 'scratch', 'all'].forEach(t => {
+        const btn = document.getElementById('tabBtn-' + t);
+        if (btn) {
+          btn.className = t === tab
+            ? 'px-3.5 py-2 rounded-xl text-xs font-extrabold bg-brand-terracotta text-white shadow-xs transition cursor-pointer'
+            : 'px-3.5 py-2 rounded-xl text-xs font-bold text-paper-ink hover:bg-[#FFFDF9] transition cursor-pointer';
+        }
+      });
+
+      if (tab === 'swipe') {
+        matchSec.classList.remove('hidden');
+        gamiSec.classList.add('hidden');
+      } else if (tab === 'blind') {
+        matchSec.classList.add('hidden');
+        gamiSec.classList.remove('hidden');
+        if (cardBlind) cardBlind.classList.remove('hidden');
+        if (cardScratch) cardScratch.classList.add('hidden');
+        if (cardSecret) cardSecret.classList.add('hidden');
+      } else if (tab === 'scratch') {
+        matchSec.classList.add('hidden');
+        gamiSec.classList.remove('hidden');
+        if (cardBlind) cardBlind.classList.add('hidden');
+        if (cardScratch) cardScratch.classList.remove('hidden');
+        if (cardSecret) cardSecret.classList.remove('hidden');
+      } else {
+        matchSec.classList.remove('hidden');
+        gamiSec.classList.remove('hidden');
+        if (cardBlind) cardBlind.classList.remove('hidden');
+        if (cardScratch) cardScratch.classList.remove('hidden');
+        if (cardSecret) cardSecret.classList.remove('hidden');
+      }
+    }
+
+    // =====================================================================
+    // PHẦN 1: TIMELINE ĐỘNG SUNCALC, AUTO-RIPPLE & PLAN B
+    // =====================================================================
+    function formatMinutesToHHMM(totalMin) {
+      const normalized = ((totalMin % 1440) + 1440) % 1440;
+      const hh = String(Math.floor(normalized / 60)).padStart(2, '0');
+      const mm = String(normalized % 60).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+
+    function calcHanoiTravelMin(distanceKm) {
+      if (!distanceKm || distanceKm <= 0) return 0;
+      const speed = isRushHour ? 15 : 25;
+      return Math.round(((distanceKm * 1.35) / speed) * 60 + 10);
+    }
+
+    function renderTimelineStops() {
+      const box = document.getElementById('timelineStopsContainer');
+      const verBadge = document.getElementById('planVersionBadge');
+      if (verBadge) verBadge.textContent = planVersion;
+      if (!box) return;
+
+      box.innerHTML = timelineStops.map((s, idx) => {
+        const displayTitle = isRainPlanB ? s.indoorName : s.outdoorName;
+        const travelMin = idx > 0 ? calcHanoiTravelMin(s.distanceKm) : 0;
+        const endMin = s.startMin + s.duration;
+        return `
+          <div class="bg-[#FAF4E8] border border-[#D8CBB8] rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="space-y-0.5">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="bg-brand-terracotta text-white text-[11px] font-extrabold px-2 py-0.5 rounded">
+                  ${formatMinutesToHHMM(s.startMin)} - ${formatMinutesToHHMM(endMin)}
+                </span>
+                <strong class="text-xs sm:text-sm font-bold text-paper-ink">${displayTitle}</strong>
+                ${s.pinned ? '<span class="text-[10px] font-bold bg-[#F9EFC7] border border-[#D5BE7E] px-1.5 py-0.5 rounded">📌 Cố định giờ</span>' : ''}
+              </div>
+              ${
+                idx > 0
+                  ? `<p class="text-[11px] text-paper-muted">🛵 Di chuyển từ chặng trước: <strong>~${travelMin} phút</strong> (${s.distanceKm} km, đã tính 10p gửi xe)</p>`
+                  : `<p class="text-[11px] text-paper-muted">📍 Điểm hẹn mở đầu hành trình chiều thu</p>`
+              }
+            </div>
+            <div class="flex items-center gap-1 self-end sm:self-center shrink-0">
+              <button onclick="shiftStopTime(${idx}, -15)" class="px-2 py-1 rounded bg-[#FFFDF9] hover:bg-[#EFE5D4] border border-[#CBB292] text-[11px] font-bold cursor-pointer" title="Lùi 15 phút">-15p</button>
+              <button onclick="shiftStopTime(${idx}, 15)" class="px-2 py-1 rounded bg-[#FFFDF9] hover:bg-[#EFE5D4] border border-[#CBB292] text-[11px] font-bold cursor-pointer" title="Tăng 15 phút">+15p</button>
+              <button onclick="togglePinStop(${idx})" class="px-2 py-1 rounded ${s.pinned ? 'bg-brand-terracotta text-white' : 'bg-[#FFFDF9] text-paper-muted'} border border-[#CBB292] text-[11px] font-bold cursor-pointer" title="Ghim cố định mốc giờ">📌</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function shiftStopTime(index, deltaMinutes) {
       timelineStops[index].startMin += deltaMinutes;
       for (let i = index + 1; i < timelineStops.length; i++) {
         if (!timelineStops[i].pinned) {
@@ -1808,33 +2131,30 @@
       }
       planVersion++;
       renderTimelineStops();
-      showToast(`⏱️ Auto-Ripple (${deltaMinutes > 0 ? '+' : ''}${deltaMinutes}p): Đã đẩy dây chuyền các chặng sau (version #${planVersion})!`);
+      showToast(`⏱️ Đã tự động đẩy giờ dây chuyền (${deltaMinutes > 0 ? '+' : ''}${deltaMinutes} phút) cho các chặng sau!`);
     }
 
-    function togglePinStopTime(index) {
+    function togglePinStop(index) {
       timelineStops[index].pinned = !timelineStops[index].pinned;
       renderTimelineStops();
-      showToast(timelineStops[index].pinned ? '📌 Đã ghim cố định giờ chặng này!' : '🔓 Đã bỏ ghim giờ chặng này.');
+      showToast(timelineStops[index].pinned ? '📌 Đã ghim cố định giờ cho chặng này!' : '🔓 Đã bỏ ghim giờ chặng này.');
     }
 
     function toggleRushHourMode() {
       isRushHour = !isRushHour;
       const btn = document.getElementById('rushHourBtn');
       if (btn) {
-        btn.textContent = isRushHour
-          ? '🚦 Cao điểm 17h-19h (15 km/h + 10p gửi xe)'
-          : '🛵 Giờ thường (25 km/h + 10p gửi xe)';
-        btn.classList.toggle('!bg-brand-peach', isRushHour);
+        btn.textContent = isRushHour ? '🚦 Giờ cao điểm (15km/h)' : '🛵 Đi giờ thường (25km/h)';
+        btn.className = isRushHour
+          ? 'px-2.5 py-1.5 rounded-lg font-bold bg-[#FADCD2] border border-brand-terracotta text-brand-terracottaDark transition cursor-pointer'
+          : 'px-2.5 py-1.5 rounded-lg font-semibold bg-[#FFFDF9] border border-[#CBB292] text-paper-muted hover:text-paper-ink transition cursor-pointer';
       }
       renderTimelineStops();
-      showToast(isRushHour ? '🚦 Đã bật công thức Giờ cao điểm Hà Nội (15 km/h)!' : '🛵 Đã chuyển về vận tốc Giờ thường (25 km/h).');
+      showToast(isRushHour ? '🚦 Đang tính thời gian di chuyển theo vận tốc giờ cao điểm Hà Nội (15 km/h).' : '🛵 Đang tính thời gian di chuyển khung giờ thông thoáng (25 km/h).');
     }
 
     function toggleRainPlanB() {
       isRainPlanB = !isRainPlanB;
-      timelineStops.forEach(s => {
-        s.name = isRainPlanB ? s.indoorName : s.outdoorName;
-      });
       planVersion++;
       renderTimelineStops();
 
@@ -2073,9 +2393,12 @@
         <article class="polaroid-card flex flex-col justify-between">
           <div class="washi-tape"></div>
           <div>
-            <div onclick="openGuideModal('${p.id}')" class="relative h-44 rounded-lg overflow-hidden cursor-pointer bg-stone-200">
-              <img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover hover:scale-105 transition duration-500" />
-              <span class="absolute top-2.5 left-2.5 bg-brand-olive/95 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">✨ ${p.bestTime}</span>
+            <div onclick="openGuideModal('${p.id}')" class="relative h-44 rounded-lg overflow-hidden cursor-pointer bg-stone-200 group">
+              <img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+              <span class="absolute top-2.5 left-2.5 bg-brand-olive/95 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow">✨ ${p.bestTime}</span>
+              <span class="absolute top-2.5 right-2.5 bg-black/75 text-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                📷 ${(p.gallery && p.gallery.length) || 4} ảnh • 🗺️ Map
+              </span>
               <span class="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-semibold px-2 py-0.5 rounded">📍 ${p.district}</span>
             </div>
             <div class="mt-3">
@@ -2088,8 +2411,8 @@
             </div>
           </div>
           <div class="grid grid-cols-5 gap-2 mt-3 pt-2.5 border-t border-dashed border-[#E5D8C5]">
-            <button onclick="openGuideModal('${p.id}')" class="col-span-3 bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs py-2 rounded-lg">📖 Cẩm nang & OOTD</button>
-            <button onclick="addPlaceToTimeline('${p.id}')" class="col-span-2 bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2 rounded-lg">+ Vào lịch</button>
+            <button onclick="openGuideModal('${p.id}')" class="col-span-3 bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs py-2 rounded-lg cursor-pointer">📖 Cẩm nang & Bản đồ</button>
+            <button onclick="addPlaceToTimeline('${p.id}')" class="col-span-2 bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2 rounded-lg cursor-pointer">+ Vào lịch</button>
           </div>
         </article>
       `).join('');
@@ -2097,29 +2420,412 @@
 
     function openGuideModal(placeId) {
       const p = placesData.find(x => x.id === placeId) || placesData[0];
+      activeGuideSpot = p;
+      activeGalleryIdx = 0;
+      activeMapMode = 'scrapbook';
+      renderGuideModalContent();
+      document.getElementById('guideModal').classList.remove('hidden');
+    }
+
+    function selectGuideGalleryPhoto(idx) {
+      if (!activeGuideSpot) return;
+      const gallery = activeGuideSpot.gallery || [{ url: activeGuideSpot.image, label: activeGuideSpot.title, caption: activeGuideSpot.description }];
+      activeGalleryIdx = (idx + gallery.length) % gallery.length;
+      renderGuideModalContent();
+    }
+
+    function switchGuideMapMode(mode) {
+      activeMapMode = mode;
+      renderGuideModalContent();
+    }
+
+    function selectOotdColorSwatch(colorName, colorTip) {
+      const tipEl = document.getElementById('ootdSelectedSwatchInfo');
+      if (tipEl) {
+        tipEl.innerHTML = `<strong class="text-brand-terracotta">${colorName}:</strong> ${colorTip}`;
+      }
+    }
+
+    function toggleSavePlaceBookmark(placeId) {
+      if (savedBookmarkIds.includes(placeId)) {
+        savedBookmarkIds = savedBookmarkIds.filter(id => id !== placeId);
+        showToast('Đã bỏ lưu khỏi sổ tay yêu thích.');
+      } else {
+        savedBookmarkIds.push(placeId);
+        showToast('❤️ Đã lưu tọa độ vào sổ tay yêu thích của hai bạn!');
+      }
+      renderGuideModalContent();
+    }
+
+    function renderGuideModalContent() {
+      const p = activeGuideSpot;
+      if (!p) return;
       const box = document.getElementById('guideModalContent');
+      const gallery = p.gallery || [{ url: p.image, label: 'Không gian quán', caption: p.description }];
+      const currentPhoto = gallery[activeGalleryIdx] || gallery[0];
+      const isBookmarked = savedBookmarkIds.includes(p.id);
+      const colors = p.ootdColors || [
+        { hex: '#1E2D40', name: 'Xanh Navy Cổ Điển', tip: 'Thanh lịch, tôn da dưới ánh đèn vàng' },
+        { hex: '#C84B53', name: 'Đỏ Rượu Vang', tip: 'Điểm nhấn lãng mạn cho buổi hẹn' },
+        { hex: '#F3EAD8', name: 'Kem Bơ Vintage', tip: 'Nhẹ nhàng, hợp không gian cổ điển' }
+      ];
+      const encodedQuery = encodeURIComponent(`${p.title} ${p.address || p.district + ' Hà Nội'}`);
+
       box.innerHTML = `
-        <div class="flex items-center justify-between border-b border-dashed border-[#CBB292] pb-2">
-          <h3 class="font-serif font-extrabold text-lg text-paper-ink">${p.title}</h3>
-          <button onclick="closeModal('guideModal')" class="w-8 h-8 rounded-full bg-[#E5D1B8] font-bold">✕</button>
+        <!-- Miếng băng keo Washi trang trí trên đỉnh Modal -->
+        <div class="hidden sm:block absolute -top-3 left-1/2 -translate-x-1/2 w-28 h-6 bg-[#EFE2BA]/90 border border-[#D8C690] rotate-[-2deg] rounded-xs shadow-xs pointer-events-none"></div>
+
+        <!-- Nút Đóng góc phải -->
+        <button onclick="closeModal('guideModal')" class="absolute top-3.5 right-3.5 z-20 w-9 h-9 rounded-full bg-[#E6D7C3] hover:bg-brand-terracotta hover:text-white text-paper-ink font-extrabold flex items-center justify-center transition cursor-pointer shadow-xs">
+          ✕
+        </button>
+
+        <!-- PHẦN 1: HEADER & BỘ SƯU TẬP ẢNH ĐA GÓC NHÌN (MULTI-PHOTO GALLERY) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start pt-1">
+          <!-- Cột Trái (7/12): Khung ảnh lớn + Dải Thumbnail 4 góc chụp -->
+          <div class="lg:col-span-7 space-y-2.5">
+            <div class="relative h-56 sm:h-64 rounded-2xl overflow-hidden border-2 border-[#CBB292] bg-stone-900 shadow-md group">
+              <img src="${currentPhoto.url}" alt="${currentPhoto.label}" class="w-full h-full object-cover transition duration-500" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20"></div>
+
+              <!-- Nhãn góc ảnh & Bộ đếm -->
+              <div class="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+                <span class="bg-brand-terracotta text-white text-[11px] font-extrabold px-2.5 py-1 rounded-full shadow">
+                  📷 Góc ${activeGalleryIdx + 1}/${gallery.length}: ${currentPhoto.label}
+                </span>
+              </div>
+
+              <!-- Nút chuyển ảnh Trái/Phải -->
+              <button onclick="selectGuideGalleryPhoto(${activeGalleryIdx - 1})" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/55 hover:bg-brand-terracotta text-white font-bold flex items-center justify-center transition cursor-pointer">
+                ‹
+              </button>
+              <button onclick="selectGuideGalleryPhoto(${activeGalleryIdx + 1})" class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/55 hover:bg-brand-terracotta text-white font-bold flex items-center justify-center transition cursor-pointer">
+                ›
+              </button>
+
+              <!-- Chú thích bức ảnh hiện tại -->
+              <div class="absolute bottom-2.5 left-3 right-3 text-white">
+                <p class="text-xs font-medium leading-snug drop-shadow">${currentPhoto.caption}</p>
+              </div>
+            </div>
+
+            <!-- Dải Filmstrip Thumbnails (Bấm để xem từng góc không gian & món ăn) -->
+            <div class="grid grid-cols-4 gap-2">
+              ${gallery.map((imgItem, idx) => `
+                <button
+                  type="button"
+                  onclick="selectGuideGalleryPhoto(${idx})"
+                  class="relative h-16 rounded-xl overflow-hidden border-2 transition cursor-pointer group text-left ${
+                    idx === activeGalleryIdx
+                      ? 'border-brand-terracotta ring-2 ring-brand-terracotta/40 scale-[1.02]'
+                      : 'border-[#D5C5B0] opacity-75 hover:opacity-100'
+                  }"
+                >
+                  <img src="${imgItem.url}" alt="${imgItem.label}" class="w-full h-full object-cover" />
+                  <div class="absolute inset-x-0 bottom-0 bg-black/65 px-1.5 py-0.5">
+                    <span class="text-[9px] text-white font-semibold block truncate">${imgItem.label}</span>
+                  </div>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Cột Phải (5/12): Thông tin tổng quan & Địa chỉ nhanh -->
+          <div class="lg:col-span-5 space-y-3 pr-2">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DCE6D5] text-[#2F4F2F]">
+                📍 ${p.district}
+              </span>
+              <span class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#FADCD2] text-brand-terracottaDark">
+                💰 ${p.price}
+              </span>
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF6EA] border border-brand-coral text-brand-terracotta">
+                ✨ Hợp đi lúc ${p.bestTime}
+              </span>
+            </div>
+
+            <h3 class="font-serif font-extrabold text-2xl sm:text-3xl text-paper-ink leading-tight">
+              ${p.title}
+            </h3>
+
+            <p class="text-xs sm:text-sm text-paper-muted leading-relaxed">
+              ${p.description}
+            </p>
+
+            <!-- Hộp Tóm tắt Địa chỉ, Thời gian di chuyển & Điểm gửi xe -->
+            <div class="bg-[#FFFDF9] border border-[#DECBB3] rounded-2xl p-3 space-y-2 text-xs shadow-2xs">
+              <div class="flex items-start gap-2">
+                <span class="text-brand-terracotta font-bold shrink-0">🏠 Địa chỉ:</span>
+                <span class="font-semibold text-paper-ink">${p.address || ('Quận ' + p.district + ', Hà Nội')}</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-brand-olive font-bold shrink-0">🛵 Di chuyển:</span>
+                <span class="text-paper-muted">${p.travelFromCenter || 'Khoảng 15 phút di chuyển nội đô'}</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-brand-airmailBlue font-bold shrink-0">🅿️ Gửi xe:</span>
+                <span class="text-paper-muted">${p.parkingTip || 'Có chỗ để xe máy thuận tiện ngay gần quán.'}</span>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-1.5">
+              ${p.tags.map(t => `<span class="text-[11px] font-semibold bg-[#EFE5D4] text-paper-ink px-2.5 py-1 rounded-full">${t}</span>`).join('')}
+            </div>
+          </div>
         </div>
-        <img src="${p.image}" class="w-full h-48 object-cover rounded-xl" />
-        <div class="space-y-2 text-xs">
-          <div class="bg-[#FFFDF9] p-3 rounded-xl border border-[#D8CBB8]">
-            <strong class="text-brand-terracotta block mb-1">📸 Góc chụp thần thánh:</strong>
-            <ul class="list-disc pl-4 space-y-1 text-paper-ink">${p.photoSpots.map(s => `<li>${s}</li>`).join('')}</ul>
+
+        <!-- PHẦN 2: GÓC CHỤP THẦN THÁNH (CÓ ẢNH MINH HỌA) & PHỐI ĐỒ OOTD TƯƠNG TÁC -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mt-5">
+          <!-- Khối Trái (7/12): Góc chụp "thần thánh" kèm ảnh & thông số ống kính -->
+          <div class="md:col-span-7 bg-[#FFFDF9] border border-[#DECBB3] rounded-2xl p-4 space-y-3 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <h4 class="font-serif font-extrabold text-sm sm:text-base text-brand-terracotta flex items-center gap-1.5">
+                <span>📸</span><span>Góc chụp "thần thánh" tại quán</span>
+              </h4>
+              <span class="text-[10px] font-bold bg-[#FAF4E8] border border-[#D8CBB8] px-2 py-0.5 rounded-full text-paper-muted">
+                Chạm vào ảnh để phóng to
+              </span>
+            </div>
+
+            <div class="space-y-2.5">
+              ${p.photoSpots.map((spot, sIdx) => {
+                const isObj = typeof spot === 'object';
+                const sTitle = isObj ? spot.title : `Góc check-in #${sIdx + 1}`;
+                const sDesc = isObj ? spot.desc : spot;
+                const sLens = isObj ? spot.lens : 'Chân dung 2x • Ánh sáng tự nhiên';
+                const sTime = isObj ? spot.time : p.bestTime;
+                const sThumb = isObj ? spot.thumb : p.image;
+                return `
+                  <div onclick="selectGuideGalleryPhoto(${sIdx % gallery.length})" class="flex items-start gap-3 p-2.5 rounded-xl bg-[#FAF5EB] hover:bg-[#FFF3EB] border border-[#E5D8C5] transition cursor-pointer">
+                    <img src="${sThumb}" alt="${sTitle}" class="w-16 h-16 rounded-xl object-cover shrink-0 border border-[#CBB292]" />
+                    <div class="min-w-0 flex-1 space-y-1">
+                      <div class="flex flex-wrap items-center justify-between gap-1">
+                        <strong class="text-xs font-extrabold text-paper-ink">${sTitle}</strong>
+                        <span class="text-[10px] font-bold bg-[#F9EFC7] text-paper-ink px-2 py-0.5 rounded-full">🕒 ${sTime}</span>
+                      </div>
+                      <p class="text-xs text-paper-muted leading-snug">${sDesc}</p>
+                      <span class="inline-block text-[10px] font-semibold text-brand-terracotta">💡 Mẹo máy ảnh: ${sLens}</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
           </div>
-          <div class="bg-[#FFFDF9] p-3 rounded-xl border border-[#D8CBB8]">
-            <strong class="text-brand-olive block mb-1">👩‍❤️‍👨 Gợi ý tạo dáng cặp đôi:</strong>
-            <p>${p.poses}</p>
+
+          <!-- Khối Phải (5/12): Cách tạo dáng tự nhiên & Bảng màu OOTD tương tác -->
+          <div class="md:col-span-5 bg-[#FAF2D6]/90 border border-[#E2CF9F] rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-2xs">
+            <div class="space-y-2">
+              <h4 class="font-serif font-extrabold text-sm sm:text-base text-paper-ink flex items-center gap-1.5">
+                <span>👩‍❤️‍👨</span><span>Cách tạo dáng tự nhiên</span>
+              </h4>
+              <p class="text-xs text-paper-ink leading-relaxed bg-[#FFFDF9]/80 p-3 rounded-xl border border-[#E5D6B0]">
+                ${p.poses}
+              </p>
+            </div>
+
+            <div class="pt-2.5 border-t border-dashed border-[#D5C08E] space-y-2">
+              <h5 class="font-extrabold text-xs sm:text-sm text-paper-ink flex items-center gap-1.5">
+                <span>👗</span><span>Gợi ý phối đồ đôi (OOTD):</span>
+              </h5>
+              <p class="text-xs text-paper-muted leading-snug">${p.outfit}</p>
+
+              <!-- Bảng chấm màu tương tác -->
+              <div class="flex items-center gap-2.5 pt-1">
+                <span class="text-xs font-bold text-paper-ink">Tone màu hợp:</span>
+                <div class="flex items-center gap-2">
+                  ${colors.map(c => `
+                    <button
+                      type="button"
+                      onclick="selectOotdColorSwatch('${c.name}', '${c.tip}')"
+                      title="${c.name}: ${c.tip}"
+                      class="w-7 h-7 rounded-full border-2 border-paper-ink/40 hover:scale-110 transition shadow-xs cursor-pointer"
+                      style="background-color: ${c.hex};"
+                    ></button>
+                  `).join('')}
+                </div>
+              </div>
+              <p id="ootdSelectedSwatchInfo" class="text-[11px] text-paper-muted bg-[#FFFDF9]/80 px-2.5 py-1.5 rounded-lg border border-[#E5D6B0]">
+                <strong class="text-brand-terracotta">${colors[0].name}:</strong> ${colors[0].tip}
+              </p>
+            </div>
           </div>
-          <div class="bg-[#FFFDF9] p-3 rounded-xl border border-[#D8CBB8]">
-            <strong class="text-brand-airmailBlue block mb-1">👗 Phối đồ đôi (OOTD):</strong>
-            <p>${p.outfit}</p>
+        </div>
+
+        <!-- PHẦN 3: BẢN ĐỒ CHỈ DẪN TƯƠNG TÁC & LỘ TRÌNH DI CHUYỂN (MAP & DIRECTIONS) -->
+        <div class="mt-5 bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-4 space-y-3 shadow-xs">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="font-serif font-extrabold text-sm sm:text-base text-paper-ink flex items-center gap-1.5">
+                <span>🗺️</span><span>Bản Đồ Chỉ Dẫn & Điểm Gửi Xe Quanh Quán</span>
+              </h4>
+              <p class="text-[11px] text-paper-muted">
+                📌 ${p.nearbyLandmark || ('Khu vực trung tâm Quận ' + p.district)}
+              </p>
+            </div>
+
+            <!-- Nút chuyển đổi giữa Bản đồ Lộ trình Scrapbook & Google Maps Thực Tế -->
+            <div class="flex items-center gap-1 bg-[#FAF4E8] p-1 rounded-xl border border-[#D8CBB8]">
+              <button
+                type="button"
+                onclick="switchGuideMapMode('scrapbook')"
+                class="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  activeMapMode === 'scrapbook' ? 'bg-brand-terracotta text-white' : 'text-paper-ink hover:bg-[#EFE5D4]'
+                }"
+              >
+                🎨 Sơ đồ điểm hẹn & Gửi xe
+              </button>
+              <button
+                type="button"
+                onclick="switchGuideMapMode('google')"
+                class="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  activeMapMode === 'google' ? 'bg-brand-terracotta text-white' : 'text-paper-ink hover:bg-[#EFE5D4]'
+                }"
+              >
+                🌍 Bản đồ Google Maps
+              </button>
+            </div>
+          </div>
+
+          ${
+            activeMapMode === 'scrapbook'
+              ? `
+              <!-- SƠ ĐỒ CHỈ DẪN SCRAPBOOK SỐNG ĐỘNG (CÓ ĐƯỜNG ĐI, ĐIỂM GỬI XE 🅿️, MỐC LÂN CẬN) -->
+              <div class="relative rounded-xl overflow-hidden border border-[#CBB292] bg-[#F3E9D7] p-3 sm:p-4">
+                <svg viewBox="0 0 680 185" class="w-full h-40 sm:h-44 block">
+                  <!-- Nền lưới bản đồ cổ điển -->
+                  <defs>
+                    <pattern id="mapGrid" width="34" height="34" patternUnits="userSpaceOnUse">
+                      <path d="M 34 0 L 0 0 0 34" fill="none" stroke="#E2D3BC" stroke-width="1"/>
+                    </pattern>
+                  </defs>
+                  <rect width="680" height="185" fill="url(#mapGrid)" />
+
+                  <!-- Vùng mặt nước Hồ Tây / Sông Hồng cách điệu -->
+                  <path d="M0,15 Q170,55 340,20 T680,35 L680,0 L0,0 Z" fill="#CFE1E8" opacity="0.7" />
+                  <text x="24" y="22" fill="#3E5C76" font-size="10" font-weight="bold">🌊 Hướng ven Hồ / Trục đường lớn</text>
+
+                  <!-- Các tuyến phố chính -->
+                  <path d="M20,145 Q220,125 430,130 T660,95" fill="none" stroke="#DFCBB0" stroke-width="18" stroke-linecap="round"/>
+                  <path d="M120,180 L190,35" fill="none" stroke="#E5D4BC" stroke-width="12" />
+                  <path d="M465,180 L505,25" fill="none" stroke="#E5D4BC" stroke-width="12" />
+
+                  <!-- Lộ trình nét đứt từ điểm xuất phát tới Bãi gửi xe -> Quán -->
+                  <path d="M85,140 Q250,115 375,118 T515,82" fill="none" stroke="#C84B31" stroke-width="3.5" stroke-dasharray="8 6">
+                    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.6s" repeatCount="indefinite" />
+                  </path>
+
+                  <!-- Điểm 1: Vị trí xuất phát / Trạm trước -->
+                  <g transform="translate(85, 140)">
+                    <circle r="11" fill="#3E5C76" stroke="#FFFDF9" stroke-width="2.5"/>
+                    <text x="0" y="4" text-anchor="middle" fill="#FFF" font-size="10">🛵</text>
+                    <rect x="-52" y="-32" width="108" height="18" rx="5" fill="#FFFDF9" stroke="#3E5C76" stroke-width="1"/>
+                    <text x="2" y="-20" text-anchor="middle" fill="#362721" font-size="9" font-weight="bold">Điểm xuất phát</text>
+                  </g>
+
+                  <!-- Điểm 2: Bãi gửi xe khuyên dùng (🅿️) -->
+                  <g transform="translate(375, 118)">
+                    <circle r="12" fill="#6E8361" stroke="#FFFDF9" stroke-width="2.5"/>
+                    <text x="0" y="4" text-anchor="middle" fill="#FFF" font-size="10" font-weight="bold">P</text>
+                    <rect x="-64" y="16" width="128" height="20" rx="6" fill="#FFFDF9" stroke="#6E8361" stroke-width="1.2"/>
+                    <text x="0" y="29" text-anchor="middle" fill="#2F4F2F" font-size="9.5" font-weight="bold">🅿️ Bãi gửi xe (Cách 30m)</text>
+                  </g>
+
+                  <!-- Điểm 3: Tọa độ Quán chính (Pin đỏ phát sáng) -->
+                  <g transform="translate(515, 82)">
+                    <circle r="22" fill="#C84B31" opacity="0.2">
+                      <animate attributeName="r" values="14;26;14" dur="1.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle r="14" fill="#C84B31" stroke="#FFFDF9" stroke-width="3"/>
+                    <text x="0" y="5" text-anchor="middle" fill="#FFF" font-size="12">📍</text>
+                    <rect x="-85" y="-38" width="170" height="22" rx="7" fill="#C84B31"/>
+                    <text x="0" y="-23" text-anchor="middle" fill="#FFFDF9" font-size="10" font-weight="bold">${p.title}</text>
+                  </g>
+                </svg>
+
+                <!-- Thanh chỉ dẫn nhanh bên dưới bản đồ -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-dashed border-[#CBB292] text-xs">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <span class="font-bold text-paper-ink">🧭 Tọa độ GPS: <code class="font-mono text-brand-terracotta">${p.lat || 21.058}, ${p.lng || 105.832}</code></span>
+                    <span class="text-paper-muted">• Đi bộ từ bãi gửi xe vào quán ~1 phút</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onclick="copyTextWithToast('${p.address || p.title}', '📋 Đã sao chép địa chỉ quán!')"
+                      class="bg-[#FFFDF9] hover:bg-[#EFE5D4] border border-[#CBB292] text-paper-ink font-bold text-[11px] px-2.5 py-1 rounded-lg cursor-pointer"
+                    >
+                      📋 Copy địa chỉ
+                    </button>
+                    <a
+                      href="https://www.google.com/maps/search/?api=1&query=${encodedQuery}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="bg-brand-airmailBlue hover:bg-slate-700 text-white font-bold text-[11px] px-3 py-1 rounded-lg inline-flex items-center gap-1"
+                    >
+                      <span>🚀</span><span>Mở Google Maps dẫn đường</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              `
+              : `
+              <!-- BẢN ĐỒ GOOGLE MAPS NHÚNG TRỰC TIẾP -->
+              <div class="space-y-2">
+                <div class="rounded-xl overflow-hidden border border-[#CBB292] h-52 bg-stone-200">
+                  <iframe
+                    title="Bản đồ ${p.title}"
+                    width="100%"
+                    height="100%"
+                    style="border:0"
+                    loading="lazy"
+                    allowfullscreen
+                    referrerpolicy="no-referrer-when-downgrade"
+                    src="https://maps.google.com/maps?q=${encodedQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                  ></iframe>
+                </div>
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-paper-muted">📍 ${p.address || p.title}</span>
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query=${encodedQuery}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-brand-terracotta font-extrabold hover:underline"
+                  >
+                    Mở ứng dụng Google Maps toàn màn hình ↗
+                  </a>
+                </div>
+              </div>
+              `
+          }
+        </div>
+
+        <!-- PHẦN 4: THANH HÀNH ĐỘNG DƯỚI CÙNG (LƯU SỔ TAY & THÊM VÀO LỊCH HẸN) -->
+        <div class="mt-5 pt-3.5 border-t border-[#DECBB3] flex flex-wrap items-center justify-between gap-2.5">
+          <div class="text-xs text-paper-muted">
+            💡 <span>Mẹo nhỏ: Thêm vào lịch để tự động tính thời gian di chuyển từ trạm trước nhé!</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5 ml-auto">
+            <button
+              type="button"
+              onclick="toggleSavePlaceBookmark('${p.id}')"
+              class="px-4 py-2.5 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                isBookmarked
+                  ? 'bg-[#FADCD2] border-brand-terracotta text-brand-terracottaDark'
+                  : 'bg-[#E6D7C3] hover:bg-[#DECBB3] border-[#CBB292] text-paper-ink'
+              }"
+            >
+              ${isBookmarked ? '❤️ Đã lưu vào sổ tay' : '♡ Lưu vào sổ tay'}
+            </button>
+            <button
+              type="button"
+              onclick="addPlaceToTimeline('${p.id}'); closeModal('guideModal');"
+              class="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md transition cursor-pointer"
+            >
+              + Thêm vào lịch hẹn Chủ Nhật
+            </button>
           </div>
         </div>
       `;
-      document.getElementById('guideModal').classList.remove('hidden');
     }
 
     function addPlaceToTimeline(placeId) {

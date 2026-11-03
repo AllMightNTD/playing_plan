@@ -12,16 +12,19 @@ export interface PlaceForRealPhotos {
   category: Place["category"];
 }
 
+/** Nguồn ảnh được phép thay bằng ảnh thật: ảnh stock và ảnh Bing cũ. Ảnh upload/wikimedia/instagram luôn giữ. */
+const REPLACEABLE_IMAGE_PLATFORMS = ["unsplash", "pexels", "bing"] as const;
+
 /**
- * Danh sách place cần tìm ảnh thật. Mặc định bỏ qua place đã có ảnh Bing;
- * `force` bật lại để chạy lại toàn bộ, `slug` khớp chính xác.
+ * Query place cần tìm ảnh thật (chưa chạy): chỉ place published (draft/hidden tốn quota Bing vô ích),
+ * luôn bỏ place đã có ảnh curated (wikimedia/upload/instagram). Mặc định bỏ qua place đã có ảnh Bing;
+ * `force` bật lại để chạy lại, `slug` khớp chính xác.
  */
-export async function listPlacesForRealPhotoSync(opts: {
-  limit?: number;
-  slug?: string;
-  force?: boolean;
-}): Promise<PlaceForRealPhotos[]> {
-  const conditions = [];
+export function buildRealPhotoSyncQuery(opts: { limit?: number; slug?: string; force?: boolean }) {
+  const conditions = [
+    eq(places.status, "published"),
+    sql`NOT EXISTS (SELECT 1 FROM ${placeMedia} WHERE ${placeMedia.placeId} = ${places.id} AND ${placeMedia.type} = 'image' AND ${placeMedia.platform} IN ('wikimedia', 'upload', 'instagram'))`,
+  ];
   if (opts.slug) conditions.push(eq(places.slug, opts.slug));
   if (!opts.force) {
     conditions.push(
@@ -37,17 +40,36 @@ export async function listPlacesForRealPhotoSync(opts: {
       category: places.category,
     })
     .from(places)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(places.createdAt)); // mới nhất trước để place lỗi cũ không chiếm hết quota mỗi ngày
   return opts.limit !== undefined && Number.isFinite(opts.limit) && opts.limit > 0 ? query.limit(opts.limit) : query;
 }
 
-/** Thay toàn bộ ảnh của place bằng ảnh mới trong một transaction và cập nhật ảnh bìa. */
+/** Danh sách place cần tìm ảnh thật (xem điều kiện ở buildRealPhotoSyncQuery). */
+export async function listPlacesForRealPhotoSync(opts: {
+  limit?: number;
+  slug?: string;
+  force?: boolean;
+}): Promise<PlaceForRealPhotos[]> {
+  return buildRealPhotoSyncQuery(opts);
+}
+
+/** Điều kiện xóa khi thay ảnh: chỉ ảnh stock/Bing của place, không đụng ảnh upload/có giấy phép. */
+export function replaceableImagesWhere(placeId: string) {
+  return and(
+    eq(placeMedia.placeId, placeId),
+    eq(placeMedia.type, "image"),
+    inArray(placeMedia.platform, [...REPLACEABLE_IMAGE_PLATFORMS]),
+  );
+}
+
+/** Thay ảnh stock/Bing của place bằng ảnh mới trong một transaction và cập nhật ảnh bìa. */
 export async function replacePlaceImages(placeId: string, rows: NewPlaceMedia[], now: Date): Promise<void> {
   if (rows.length === 0) return;
   await db.transaction(async (tx) => {
-    await tx.delete(placeMedia).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.type, "image")));
+    await tx.delete(placeMedia).where(replaceableImagesWhere(placeId));
     await tx.insert(placeMedia).values(rows);
+    // Place có ảnh curated đã bị loại ở listPlacesForRealPhotoSync nên đặt bìa = ảnh thật đầu tiên
     await tx.update(places).set({ coverUrl: rows[0].url, updatedAt: now }).where(eq(places.id, placeId));
   });
 }

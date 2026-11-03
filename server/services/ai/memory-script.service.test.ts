@@ -124,7 +124,7 @@ describe("Virtual Video AI Script Service (Phase 4)", () => {
       width: 1200,
       height: 900,
       relativePath: `rooms/${user.session.roomId}/memories/up_photo_1.webp`,
-      createdAt: new Date(),
+      createdAt: new Date(Date.now() - 5000),
       deletedAt: null,
     });
 

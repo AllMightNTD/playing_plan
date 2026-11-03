@@ -103,8 +103,10 @@ async function resolveRoomPhotos(roomId: string, memoryId: string): Promise<stri
   const uploadsRepo = getUserRepositories().uploads;
   const roomUploads = await uploadsRepo.listUploads(roomId);
 
-  // Lọc ảnh gán với memoryId này, hoặc lấy tất cả ảnh hợp lệ của phòng
-  const matched = roomUploads.filter((u) => !u.deletedAt && (u.memoryId === memoryId || !u.memoryId));
+  // Lọc ảnh gán với memoryId này, hoặc lấy tất cả ảnh hợp lệ của phòng theo trình tự thời gian buổi hẹn
+  const matched = roomUploads
+    .filter((u) => !u.deletedAt && (u.memoryId === memoryId || !u.memoryId))
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   if (matched.length > 0) {
     return matched.slice(0, 8).map((u) => `/api/v1/user/uploads/${u.id}`);
   }

@@ -62,6 +62,48 @@ function hostMatches(host: string, suffixes: string[]): boolean {
   return suffixes.some((s) => host === s || host.endsWith("." + s));
 }
 
+// Token kèm 2 dạng: `raw` giữ dấu (lowercase), `bare` đã bỏ dấu như normalizeVi
+interface AccentToken {
+  raw: string;
+  bare: string;
+}
+
+const COMBINING_MARKS = /[\u0300-\u036f]/g;
+
+/** Tách token giữ dấu và căn cặp với dạng bỏ dấu. */
+function accentTokens(text: string): AccentToken[] {
+  const out: AccentToken[] = [];
+  for (const raw of text.normalize("NFC").toLowerCase().split(/[^\p{L}\p{M}\p{N}]+/u)) {
+    if (!raw) continue;
+    const pieces = normalizeVi(raw).split(" ").filter(Boolean);
+    // Ký tự lạ làm token vỡ ra nhiều mảnh: coi từng mảnh là không dấu
+    if (pieces.length === 1) out.push({ raw, bare: pieces[0] });
+    else for (const p of pieces) out.push({ raw: p, bare: p });
+  }
+  return out;
+}
+
+function hasDiacritics(raw: string): boolean {
+  return /[\u0300-\u036fđ]/.test(raw.normalize("NFD"));
+}
+
+// Khóa so dấu: chữ gốc (giữ đ) + tập dấu đã sort, để "hoà" và "hòa" (bỏ dấu kiểu cũ/mới) là một
+function accentKey(raw: string): string {
+  const nfd = raw.normalize("NFD");
+  const marks = (nfd.match(COMBINING_MARKS) ?? []).sort().join("");
+  return `${nfd.replace(COMBINING_MARKS, "")}|${marks}`;
+}
+
+/**
+ * Token tên khớp token haystack khi bỏ dấu bằng nhau VÀ (một bên không dấu hoặc dấu giống nhau).
+ * Tránh "Cộng" khớp "Công"/"cổng", nhưng vẫn khớp title không dấu "Cong".
+ */
+function tokenMatches(name: AccentToken, hay: AccentToken): boolean {
+  if (name.bare !== hay.bare) return false;
+  if (!hasDiacritics(name.raw) || !hasDiacritics(hay.raw)) return true;
+  return accentKey(name.raw) === accentKey(hay.raw);
+}
+
 // Có cụm token liên tiếp (đã normalize) trong danh sách token không
 function hasPhrase(tokens: string[], phrase: string): boolean {
   const p = phrase.split(" ");
@@ -94,18 +136,25 @@ export function scoreImageCandidate(
   }
 
   let score = 0;
-  const nameTokens = normalizeVi(place.name).split(" ").filter(Boolean);
-  let distinctive = nameTokens.filter((t) => t.length >= 2 && !GENERIC_NAME_TOKENS.has(t));
+  const nameTokens = accentTokens(place.name);
+  let distinctive = nameTokens.filter((t) => t.bare.length >= 2 && !GENERIC_NAME_TOKENS.has(t.bare));
   if (distinctive.length === 0) distinctive = nameTokens; // fallback: tên toàn từ chung
   if (distinctive.length > 0) {
-    const tokenSet = new Set(tokens);
-    const coverage = distinctive.filter((t) => tokenSet.has(t)).length / distinctive.length;
+    // Độ phủ tên so theo dấu: title giữ dấu, path URL coi như không dấu
+    const pathBare = normalizeVi(`${pageUrl?.pathname ?? ""} ${imageUrl?.pathname ?? ""}`)
+      .split(" ")
+      .filter(Boolean);
+    const haystack = [...accentTokens(c.title), ...pathBare.map((bare) => ({ raw: bare, bare }))];
+    const covered = distinctive.filter((n) => haystack.some((h) => tokenMatches(n, h))).length;
+    const coverage = covered / distinctive.length;
     if (coverage >= 0.6) score += 2;
     else if (coverage >= 0.34) score += 1;
   }
 
   if (hasPhrase(tokens, "ha noi") || hasPhrase(tokens, "hanoi")) score += 1;
-  if (OTHER_CITIES.some((city) => hasPhrase(tokens, city))) score -= 3;
+  // Bỏ qua thành phố có sẵn trong tên (vd "Cafe Sài Gòn Xưa" ở Hà Nội)
+  const nameBare = nameTokens.map((t) => t.bare);
+  if (OTHER_CITIES.some((city) => !hasPhrase(nameBare, city) && hasPhrase(tokens, city))) score -= 3;
   if (pageUrl && hostMatches(pageUrl.hostname.toLowerCase(), TRUSTED_PAGE_HOSTS)) score += 1;
 
   return { score, rejectReason: null };

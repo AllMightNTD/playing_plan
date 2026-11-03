@@ -62,6 +62,27 @@ describe("image-candidate.filter", () => {
     expect(() => scoreImageCandidate(c({ pageUrl: "::bad", imageUrl: "nope" }), { name: "X" })).not.toThrow();
   });
 
+  it("không match chéo dấu: 'cổng'/'Công' không phải 'Cộng'", () => {
+    const place = { name: "Cộng Cà Phê" };
+    const cand = c({ title: "Công viên Thống Nhất Hà Nội cổng" });
+    expect(scoreImageCandidate(cand, place).score).toBeLessThan(2);
+    expect(rankImageCandidates([cand], place)).toEqual([]);
+  });
+
+  it("title có dấu khớp đúng dấu vẫn match", () => {
+    expect(scoreImageCandidate(c({ title: "Cộng Cà Phê Hà Nội" }), { name: "Cộng Cà Phê" }).score).toBe(3);
+  });
+
+  it("dấu thanh đặt kiểu cũ/mới (hoà/hòa) vẫn coi là cùng dấu", () => {
+    expect(scoreImageCandidate(c({ title: "Hoà Bình Hà Nội" }), { name: "Hòa Bình" }).score).toBe(3);
+  });
+
+  it("tên chứa thành phố khác thì không bị trừ điểm thành phố đó", () => {
+    const r = scoreImageCandidate(c({ title: "Cafe Sài Gòn Xưa Hà Nội" }), { name: "Cafe Sài Gòn Xưa" });
+    expect(r.score).toBeGreaterThanOrEqual(2);
+    expect(r.score).toBe(3);
+  });
+
   it("rank: lọc score<2, sort score giảm rồi rank tăng", () => {
     const out = rankImageCandidates(
       [

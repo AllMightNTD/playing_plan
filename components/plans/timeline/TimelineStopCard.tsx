@@ -157,6 +157,7 @@ export function TimelineStopCard({
                   sizes="40px"
                   className="object-cover"
                   unoptimized
+                  referrerPolicy="no-referrer"
                 />
               </button>
             )}

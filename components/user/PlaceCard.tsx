@@ -37,6 +37,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
               className="object-cover group-hover:scale-105 transition duration-500"
               onError={() => setImgError(true)}
               unoptimized
+              referrerPolicy="no-referrer"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-4xl bg-brand-peach/40">{place.emoji || "📍"}</div>

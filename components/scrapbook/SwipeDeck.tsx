@@ -424,6 +424,7 @@ export function SwipeDeck({
                     sizes="(max-width: 768px) 100vw, 448px"
                     className="object-cover"
                     priority
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div

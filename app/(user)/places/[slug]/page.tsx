@@ -178,6 +178,7 @@ export default async function PlaceDetailPage({
             priority
             sizes="(max-width: 1024px) 100vw, 1024px"
             className="object-cover"
+            referrerPolicy="no-referrer"
           />
         )}
         <div

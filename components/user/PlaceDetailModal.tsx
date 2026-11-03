@@ -143,7 +143,7 @@ export function PlaceDetailModal() {
             <div className="lg:col-span-7 space-y-2.5">
               <div className="relative h-52 sm:h-64 rounded-2xl overflow-hidden border-2 border-[#CBB292] bg-stone-900 shadow-md">
                 {photo ? (
-                  <Image src={photo.url} alt={photo.caption || place.name} fill sizes="(max-width: 1024px) 100vw, 520px" className="object-cover" unoptimized />
+                  <Image src={photo.url} alt={photo.caption || place.name} fill sizes="(max-width: 1024px) 100vw, 520px" className="object-cover" unoptimized referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-5xl bg-brand-peach/40">{place.emoji}</div>
                 )}
@@ -192,7 +192,7 @@ export function PlaceDetailModal() {
                       }`}
                       aria-label={`Xem góc ảnh ${idx + 1}`}
                     >
-                      <Image src={img.url} alt="" fill sizes="120px" className="object-cover" unoptimized />
+                      <Image src={img.url} alt="" fill sizes="120px" className="object-cover" unoptimized referrerPolicy="no-referrer" />
                     </button>
                   ))}
                 </div>

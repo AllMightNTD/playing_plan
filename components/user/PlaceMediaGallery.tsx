@@ -36,23 +36,34 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
         ]
       : [];
 
+  // Ảnh lỗi tải (link chết/hotlink bị chặn) sẽ bị ẩn khỏi gallery
+  const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
+  const visibleImages = effectiveImages.filter((i) => !failedIds.has(i.id));
+  const hasReal = visibleImages.some((i) => i.platform === "bing");
+
+  const markFailed = (id: string) =>
+    setFailedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+
   const [activeTab, setActiveTab] = useState<"images" | "videos">(
-    effectiveImages.length > 0 ? "images" : "videos"
+    visibleImages.length > 0 ? "images" : "videos"
   );
+  // Nếu hết ảnh hiển thị được thì tự chuyển sang tab video (nếu có)
+  const currentTab = visibleImages.length === 0 && videos.length > 0 ? "videos" : activeTab;
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
-  const activePhoto = selectedPhotoIndex !== null ? effectiveImages[selectedPhotoIndex] : null;
+  // Chỉ số có thể vượt giới hạn khi ảnh đang mở bị lỗi -> coi như không có ảnh
+  const activePhoto = selectedPhotoIndex !== null ? visibleImages[selectedPhotoIndex] ?? null : null;
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (selectedPhotoIndex === null) return;
-    setSelectedPhotoIndex((selectedPhotoIndex - 1 + effectiveImages.length) % effectiveImages.length);
+    setSelectedPhotoIndex((selectedPhotoIndex - 1 + visibleImages.length) % visibleImages.length);
   };
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (selectedPhotoIndex === null) return;
-    setSelectedPhotoIndex((selectedPhotoIndex + 1) % effectiveImages.length);
+    setSelectedPhotoIndex((selectedPhotoIndex + 1) % visibleImages.length);
   };
 
   const getAttributionUrl = (item: PlaceMediaItem) => {
@@ -66,7 +77,7 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
     return item.sourceUrl;
   };
 
-  if (effectiveImages.length === 0 && videos.length === 0) {
+  if (visibleImages.length === 0 && videos.length === 0) {
     return (
       <div className="p-6 rounded-2xl bg-white border border-peach-soft text-center text-brown-muted text-sm">
         <Camera className="w-8 h-8 mx-auto text-peach mb-2 opacity-60" />
@@ -80,18 +91,18 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
       {/* Header & Tabs */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          {effectiveImages.length > 0 && (
+          {visibleImages.length > 0 && (
             <button
               onClick={() => setActiveTab("images")}
               className={cn(
                 "px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5",
-                activeTab === "images"
+                currentTab === "images"
                   ? "bg-peach-deep text-white shadow-sm"
                   : "bg-white text-brown hover:bg-peach-soft/60 border border-peach-soft"
               )}
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Ảnh minh họa ({effectiveImages.length})</span>
+              <span>{hasReal ? `Ảnh thực tế (${visibleImages.length})` : `Ảnh minh họa (${visibleImages.length})`}</span>
             </button>
           )}
 
@@ -100,7 +111,7 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
               onClick={() => setActiveTab("videos")}
               className={cn(
                 "px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5",
-                activeTab === "videos"
+                currentTab === "videos"
                   ? "bg-peach-deep text-white shadow-sm"
                   : "bg-white text-brown hover:bg-peach-soft/60 border border-peach-soft"
               )}
@@ -113,14 +124,18 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
 
         <span className="text-[11px] text-brown-muted font-medium flex items-center gap-1 bg-cream px-2.5 py-1 rounded-full border border-peach-soft/60">
           <ShieldCheck className="w-3.5 h-3.5 text-sage-dark" />
-          <span>🎨 Ảnh minh họa phong cách • Nguồn mở Unsplash & Wikimedia</span>
+          <span>
+            {hasReal
+              ? "📸 Ảnh thực tế sưu tầm từ web • Bản quyền thuộc nguồn gốc"
+              : "🎨 Ảnh minh họa phong cách • Nguồn mở Unsplash & Wikimedia"}
+          </span>
         </span>
       </div>
 
       {/* Tab 1: Danh sách ảnh dạng lưới */}
-      {activeTab === "images" && (
+      {currentTab === "images" && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {effectiveImages.map((img, idx) => (
+          {visibleImages.map((img, idx) => (
             <div
               key={img.id || idx}
               onClick={() => setSelectedPhotoIndex(idx)}
@@ -133,6 +148,8 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
                 loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={() => markFailed(img.id)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-2.5">
                 <p className="text-white text-[11px] font-medium line-clamp-1">
@@ -146,10 +163,10 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
               </div>
               <div className="absolute top-2 right-2 flex items-center gap-1">
                 <span className="px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-white text-[9px] font-medium">
-                  Minh họa
+                  {img.platform === "bing" ? "Ảnh thực tế" : "Minh họa"}
                 </span>
                 <span className="px-1.5 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-white text-[10px] font-medium opacity-90">
-                  {idx + 1}/{effectiveImages.length}
+                  {idx + 1}/{visibleImages.length}
                 </span>
               </div>
             </div>
@@ -158,7 +175,7 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
       )}
 
       {/* Tab 2: Video embeds */}
-      {activeTab === "videos" && (
+      {currentTab === "videos" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {videos.map((vid, idx) => (
             <div
@@ -221,7 +238,7 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
           Ảnh/video phục vụ cẩm nang trải nghiệm cặp đôi.
         </span>
         <div className="flex items-center gap-2">
-          {effectiveImages[0]?.platform === "unsplash" && (
+          {visibleImages[0]?.platform === "unsplash" && (
             <a
               href="https://unsplash.com/?utm_source=datemate&utm_medium=referral"
               target="_blank"
@@ -232,7 +249,7 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
-          {effectiveImages.some((i) => i.platform === "wikimedia") && (
+          {visibleImages.some((i) => i.platform === "wikimedia") && (
             <a
               href="https://commons.wikimedia.org"
               target="_blank"
@@ -259,7 +276,7 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
             {/* Top Bar inside Lightbox */}
             <div className="w-full flex items-center justify-between text-white pb-3 px-1">
               <span className="text-xs font-medium">
-                {selectedPhotoIndex + 1} / {effectiveImages.length}
+                {selectedPhotoIndex + 1} / {visibleImages.length}
               </span>
               <button
                 onClick={() => setSelectedPhotoIndex(null)}
@@ -279,10 +296,15 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
                 priority
                 sizes="(max-width: 1024px) 100vw, 1024px"
                 className="object-contain"
+                referrerPolicy="no-referrer"
+                onError={() => {
+                  markFailed(activePhoto.id);
+                  setSelectedPhotoIndex(null);
+                }}
               />
 
               {/* Prev / Next controls */}
-              {effectiveImages.length > 1 && (
+              {visibleImages.length > 1 && (
                 <>
                   <button
                     onClick={handlePrev}
@@ -310,7 +332,7 @@ export function PlaceMediaGallery({ media, placeName, coverUrl }: PlaceMediaGall
                 </p>
                 {activePhoto.credit && (
                   <p className="text-white/70 text-[11px]">
-                    Tác giả: {activePhoto.credit}
+                    {activePhoto.platform === "bing" ? `Nguồn: ${activePhoto.credit}` : `Tác giả: ${activePhoto.credit}`}
                     {activePhoto.licenseNote ? ` • ${activePhoto.licenseNote}` : ""}
                   </p>
                 )}

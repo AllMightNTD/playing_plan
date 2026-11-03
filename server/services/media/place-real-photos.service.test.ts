@@ -63,6 +63,48 @@ describe("findRealPhotosForPlace", () => {
     expect(called).toHaveLength(2);
   });
 
+  it("đúng 2 ảnh ok -> found", async () => {
+    const search = vi.fn().mockResolvedValue(makeResults(6));
+    const verify = vi
+      .fn()
+      .mockResolvedValueOnce(okCheck)
+      .mockResolvedValueOnce(okCheck)
+      .mockResolvedValue({ ok: false, reason: "too_small" } satisfies ImageCheck);
+    const out = await findRealPhotosForPlace(place, { search, verify });
+    expect(out.photos).toHaveLength(2);
+    expect(out.status).toBe("found");
+  });
+
+  it("3 ảnh ok -> found", async () => {
+    const search = vi.fn().mockResolvedValue(makeResults(6));
+    const verify = vi
+      .fn()
+      .mockResolvedValueOnce(okCheck)
+      .mockResolvedValueOnce(okCheck)
+      .mockResolvedValueOnce(okCheck)
+      .mockResolvedValue({ ok: false, reason: "too_small" } satisfies ImageCheck);
+    const out = await findRealPhotosForPlace(place, { search, verify });
+    expect(out.photos).toHaveLength(3);
+    expect(out.status).toBe("found");
+  });
+
+  it("imageUrl trùng chỉ verify 1 lần", async () => {
+    const r = makeResults(1)[0];
+    const search = vi.fn().mockResolvedValue([r, { ...r, rank: 1 }]);
+    const verify = vi.fn().mockResolvedValue(okCheck);
+    await findRealPhotosForPlace(place, { search, verify });
+    expect(verify).toHaveBeenCalledTimes(1);
+  });
+
+  it("title không khớp tên -> rejected.low_score", async () => {
+    const results = [{ ...makeResults(1)[0], title: "xyz abc" }];
+    const search = vi.fn().mockResolvedValue(results);
+    const verify = vi.fn().mockResolvedValue(okCheck);
+    const out = await findRealPhotosForPlace(place, { search, verify });
+    expect(out.rejected.low_score).toBe(1);
+    expect(verify).not.toHaveBeenCalled();
+  });
+
   it("BingBlockedError từ search được ném tiếp", async () => {
     const search = vi.fn().mockRejectedValue(new BingBlockedError("captcha"));
     const verify = vi.fn();
@@ -91,5 +133,13 @@ describe("buildRealPhotoMediaRows", () => {
     expect(rows[1]).toMatchObject({ credit: "cdn.abc.vn", sourceUrl: "https://cdn.abc.vn/y.jpg", sortOrder: 1 });
     expect(rows[0].id).toMatch(/^med_[\w-]{16}$/);
     expect(rows[0].caption).toHaveLength(200);
+  });
+
+  it("credit chuẩn hóa host (hoa/thường, www)", () => {
+    const rows = buildRealPhotoMediaRows(
+      { id: "plc_1", name: "A" },
+      [{ imageUrl: "https://cdn.abc.vn/y.jpg", pageUrl: "https://WWW.Foody.vn/x", title: "a", width: 1000, height: 600 }],
+    );
+    expect(rows[0].credit).toBe("foody.vn");
   });
 });

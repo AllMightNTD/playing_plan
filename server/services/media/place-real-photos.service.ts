@@ -85,7 +85,7 @@ export async function findRealPhotosForPlace(
   }
 
   return {
-    status: photos.length >= TARGET_PHOTOS ? "found" : "needs_review",
+    status: photos.length >= MIN_PHOTOS ? "found" : "needs_review",
     photos,
     query,
     candidatesSeen: raw.length,

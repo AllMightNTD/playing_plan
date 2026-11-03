@@ -1,4 +1,6 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { getCuratedUnsplashGalleryForPlace } from "@/lib/media/unsplash-gallery-pool";
 import { db } from "@/server/db/client";
 import { placeMedia, places, type NewPlaceMedia, type Place } from "@/server/db/schema/places";
 
@@ -58,4 +60,70 @@ export async function placeHasRealPhotos(placeId: string): Promise<boolean> {
     .where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.type, "image"), eq(placeMedia.platform, "bing")))
     .limit(1);
   return rows.length > 0;
+}
+
+/** Toàn bộ ảnh thật (Bing) kèm danh mục của place, để recheck link còn sống hay không. */
+export async function listRealPhotoMedia(): Promise<
+  Array<{ id: string; placeId: string; url: string; sortOrder: number; category: Place["category"] }>
+> {
+  return db
+    .select({
+      id: placeMedia.id,
+      placeId: placeMedia.placeId,
+      url: placeMedia.url,
+      sortOrder: placeMedia.sortOrder,
+      category: places.category,
+    })
+    .from(placeMedia)
+    .innerJoin(places, eq(places.id, placeMedia.placeId))
+    .where(and(eq(placeMedia.type, "image"), eq(placeMedia.platform, "bing")));
+}
+
+/** Xóa ảnh chết của place và đặt lại ảnh bìa trong một transaction. */
+export async function removeRealPhotos(
+  placeId: string,
+  mediaIds: string[],
+  newCoverUrl: string,
+  now: Date,
+): Promise<void> {
+  if (mediaIds.length === 0) return;
+  await db.transaction(async (tx) => {
+    await tx.delete(placeMedia).where(and(eq(placeMedia.placeId, placeId), inArray(placeMedia.id, mediaIds)));
+    await tx.update(places).set({ coverUrl: newCoverUrl, updatedAt: now }).where(eq(places.id, placeId));
+  });
+}
+
+/** Place mất hết ảnh thật: xóa ảnh chết rồi chèn lại bộ 4 ảnh Unsplash để không có ảnh bìa chết. */
+export async function restoreStockGallery(
+  placeId: string,
+  category: Place["category"],
+  deadIds: string[],
+  now: Date,
+): Promise<void> {
+  const gallery = getCuratedUnsplashGalleryForPlace(category, placeId, 4);
+  if (gallery.length === 0) return;
+  await db.transaction(async (tx) => {
+    const [place] = await tx.select({ name: places.name }).from(places).where(eq(places.id, placeId)).limit(1);
+    if (!place) return;
+    if (deadIds.length > 0) {
+      await tx.delete(placeMedia).where(and(eq(placeMedia.placeId, placeId), inArray(placeMedia.id, deadIds)));
+    }
+    await tx.insert(placeMedia).values(
+      gallery.map((photo, sortOrder) => ({
+        id: `med_${nanoid(16)}`,
+        placeId,
+        type: "image" as const,
+        url: photo.url,
+        platform: "unsplash" as const,
+        embedId: null,
+        caption: `${place.name} - ${photo.caption}`.slice(0, 200),
+        credit: photo.credit,
+        sourceUrl: photo.url,
+        licenseNote: "Unsplash Free License",
+        license: "licensed" as const,
+        sortOrder,
+      })),
+    );
+    await tx.update(places).set({ coverUrl: gallery[0].url, updatedAt: now }).where(eq(places.id, placeId));
+  });
 }

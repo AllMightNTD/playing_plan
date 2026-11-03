@@ -1,0 +1,3 @@
+ALTER TABLE `pipeline_runs` MODIFY COLUMN `run_type` enum('osm_ingest','youtube_scrape','video_match','shadow_eval','auto_promote','maintenance','video_import','ai_video_hotspots','real_photos') NOT NULL;--> statement-breakpoint
+ALTER TABLE `place_media` MODIFY COLUMN `platform` enum('upload','tiktok','youtube','instagram','unsplash','pexels','wikimedia','bing') NOT NULL;--> statement-breakpoint
+ALTER TABLE `place_media` MODIFY COLUMN `license` enum('own','cc0','licensed','permission','embed_only','unverified') NOT NULL DEFAULT 'permission';

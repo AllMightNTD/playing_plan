@@ -35,14 +35,14 @@ export interface SeasonNote {
 export interface PlaceMediaItem {
   id: string;
   type: "image" | "video";
-  platform: "unsplash" | "wikimedia" | "youtube" | "tiktok" | "upload" | "pexels" | "instagram";
+  platform: "unsplash" | "wikimedia" | "youtube" | "tiktok" | "upload" | "pexels" | "instagram" | "bing";
   url: string;
   embedId?: string | null;
   caption?: string | null;
   credit?: string | null;
   sourceUrl?: string | null;
   licenseNote?: string | null;
-  license: "own" | "cc0" | "licensed" | "permission" | "embed_only";
+  license: "own" | "cc0" | "licensed" | "permission" | "embed_only" | "unverified";
   sortOrder: number;
 }
 

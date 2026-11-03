@@ -156,6 +156,7 @@ export const pipelineRuns = mysqlTable(
       "maintenance",
       "video_import",
       "ai_video_hotspots",
+      "real_photos",
     ]).notNull(),
     startedAt: datetime("started_at").notNull(),
     finishedAt: datetime("finished_at"),

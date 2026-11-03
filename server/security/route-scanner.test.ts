@@ -19,6 +19,7 @@ export const PUBLIC_ALLOWLIST = new Set([
   "places/[slug]",
   "places/[slug]/view",
   "places/[slug]/report",
+  "places/[slug]/map",
   "plans/invite/[inviteToken]/rsvp",
   "plans/share/[shareToken]",
   "search/suggest",

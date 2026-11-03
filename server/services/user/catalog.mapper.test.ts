@@ -59,6 +59,8 @@ describe("catalog.mapper", () => {
       batchId: null,
       publishState: "published",
       dateFit: "chill",
+      googleMapsUrl: null,
+      googlePlaceId: null,
       lastVerifiedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -117,6 +119,8 @@ describe("catalog.mapper", () => {
       batchId: null,
       publishState: "published",
       dateFit: "chill",
+      googleMapsUrl: null,
+      googlePlaceId: null,
       lastVerifiedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -142,5 +146,47 @@ describe("catalog.mapper", () => {
     const catalog = toCatalogPlace(place, null, mediaList);
     expect(catalog.coverUrl).toBe("https://thumb.wikimedia.org/img2.jpg");
     expect(catalog.media.length).toBe(1);
+  });
+
+  it("toCatalogPlace gán googleMapsUrl và directionsUrl chính xác", () => {
+    const place: Place = {
+      id: "p11",
+      slug: "thuy-cung-lotte",
+      name: "Thủy Cung Lotte World Aquarium",
+      searchName: "thuy cung lotte",
+      searchText: "thuy cung lotte",
+      city: "hanoi",
+      area: "Tây Hồ",
+      address: "272 Võ Chí Công, Phú Thượng, Tây Hồ, Hà Nội",
+      lat: "21.0745",
+      lng: "105.8118",
+      category: "fun",
+      priceLevel: 3,
+      estCostMin: 280000,
+      estCostMax: 350000,
+      moods: ["fun"],
+      tags: [],
+      indoor: true,
+      coverUrl: "https://images.unsplash.com/aquarium.jpg",
+      summary: "Thủy cung hiện đại",
+      openingHours: null,
+      status: "published",
+      viewCount: 0,
+      displayName: null,
+      tier: "A",
+      batchId: null,
+      publishState: "published",
+      dateFit: "romantic",
+      googleMapsUrl: "https://maps.app.goo.gl/verified123",
+      googlePlaceId: "ChIJLotteAquarium",
+      lastVerifiedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const catalog = toCatalogPlace(place, null, []);
+    expect(catalog.googleMapsUrl).toBe("https://maps.app.goo.gl/verified123");
+    expect(catalog.googlePlaceId).toBe("ChIJLotteAquarium");
+    expect(catalog.directionsUrl).toContain("destination_place_id=ChIJLotteAquarium");
   });
 });

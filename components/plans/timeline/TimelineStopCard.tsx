@@ -76,12 +76,15 @@ export function TimelineStopCard({
   });
 
   const canOpenDetail = Boolean(stop.placeSlug && onOpenPlaceDetail);
-  const mapsUrl =
-    stop.lat && stop.lng
-      ? `https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lng}`
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          `${stop.name} ${stop.address}`
-        )}`;
+  const destinationQuery =
+    stop.address && !stop.name.toLowerCase().includes(stop.address.toLowerCase())
+      ? `${stop.name}, ${stop.address}`
+      : stop.name;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    destinationQuery.toLowerCase().includes("hà nội")
+      ? destinationQuery
+      : `${destinationQuery}, Hà Nội`
+  )}`;
 
   const openDetailedEditor = () => {
     if (isEditingDetails) {

@@ -2,6 +2,7 @@ import { CATEGORY_LABELS, CATEGORY_VISUALS, MOOD_LABELS, WEEKDAY_LABELS, type Mo
 import { getBestTimes } from "@/lib/sun";
 import type { Place, PlaceGuide, PlaceMedia } from "@/server/db/schema";
 import type { HanoiPlace, OutfitGuide, PlaceMediaItem } from "@/lib/types/catalog";
+import { buildGoogleMapsSearchUrl, buildGoogleMapsDirectionsUrl } from "@/server/services/maps/google-maps.builder";
 
 const EMPTY_OUTFIT: OutfitGuide = { palette: [], tonSurTon: "", contrast: "", avoid: "", weatherTip: "" };
 const VND_PER_THOUSAND = 1000;
@@ -60,6 +61,18 @@ export function toCatalogPlace(
   const mappedMedia = mediaList.map(toPlaceMediaItem);
   const coverUrl = place.coverUrl || mappedMedia[0]?.url || undefined;
 
+  const mapsParams = {
+    name: place.name,
+    address: place.address,
+    area: place.area,
+    lat,
+    lng,
+    placeId: place.googlePlaceId,
+    googleMapsUrl: place.googleMapsUrl,
+  };
+  const googleMapsUrl = buildGoogleMapsSearchUrl(mapsParams);
+  const directionsUrl = buildGoogleMapsDirectionsUrl(mapsParams);
+
   return {
     id: place.id,
     slug: place.slug,
@@ -92,6 +105,9 @@ export function toCatalogPlace(
     outfit: guide?.outfit ?? EMPTY_OUTFIT,
     tips: guide?.tips ?? "",
     nearbyIds: [],
+    googleMapsUrl,
+    directionsUrl,
+    googlePlaceId: place.googlePlaceId ?? null,
     tier: place.tier,
     batchId: place.batchId,
     dateFit: place.dateFit,

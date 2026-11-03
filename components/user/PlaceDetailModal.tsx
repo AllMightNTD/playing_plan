@@ -83,7 +83,11 @@ export function PlaceDetailModal() {
       ? { minutes: fromCenter.travelMinutes, km: fromCenter.distanceKm * 1.35, from: CITY_CENTER.name }
       : null;
   const addressText = place.address || `${place.area}, Hà Nội`;
-  const mapQuery = encodeURIComponent(hasCoords ? `${place.lat},${place.lng}` : `${place.name} ${addressText}`);
+  const poiSearchText = `${place.name}, ${addressText}`;
+  const mapEmbedQuery = encodeURIComponent(poiSearchText);
+  const googleMapsNavUrl =
+    place.googleMapsUrl ||
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poiSearchText)}`;
   const outfit = place.outfit;
   const hasOutfit = Boolean(outfit && (outfit.tonSurTon || outfit.contrast || outfit.avoid || outfit.weatherTip || outfit.palette.length > 0));
   const showPhoto = (idx: number) => setActivePhotoIdx((idx + gallery.length) % gallery.length);
@@ -348,7 +352,7 @@ export function PlaceDetailModal() {
                   loading="lazy"
                   allowFullScreen
                   referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://maps.google.com/maps?q=${mapQuery}&z=16&output=embed`}
+                  src={`https://maps.google.com/maps?q=${mapEmbedQuery}&z=16&output=embed`}
                 />
               </div>
             )}
@@ -377,7 +381,7 @@ export function PlaceDetailModal() {
                   📋 Copy địa chỉ
                 </button>
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
+                  href={googleMapsNavUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-brand-airmailBlue hover:bg-slate-700 text-white font-bold text-[11px] px-3 py-1.5 min-h-[36px] rounded-lg inline-flex items-center gap-1"

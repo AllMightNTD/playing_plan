@@ -24,9 +24,11 @@ export function PlaceDetailActions({ place }: { place: HanoiPlace }) {
   };
 
   const handleOpenMap = () => {
-    const lat = place.lat ?? 21.0285;
-    const lng = place.lng ?? 105.8542;
-    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    const url =
+      place.googleMapsUrl ||
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        `${place.name}, ${place.address || place.area || "Hà Nội"}`
+      )}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

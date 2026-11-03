@@ -52,6 +52,8 @@ export const places = mysqlTable(
     batchId: varchar("batch_id", { length: 64 }),
     publishState: mysqlEnum("publish_state", ["draft", "shadow", "published", "downgraded"]).notNull().default("draft"),
     dateFit: mysqlEnum("date_fit", ["romantic", "chill", "casual", "fun"]).notNull().default("chill"),
+    googleMapsUrl: text("google_maps_url"),
+    googlePlaceId: varchar("google_place_id", { length: 100 }),
     lastVerifiedAt: datetime("last_verified_at"),
     createdAt: datetime("created_at").notNull(),
     updatedAt: datetime("updated_at").notNull(),

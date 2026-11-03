@@ -82,6 +82,9 @@ export interface HanoiPlace {
   outfit: OutfitGuide;
   tips: string;
   nearbyIds: string[];
+  googleMapsUrl?: string;
+  directionsUrl?: string;
+  googlePlaceId?: string | null;
   tier?: "A" | "B" | "C";
   batchId?: string | null;
   dateFit?: "romantic" | "chill" | "casual" | "fun";

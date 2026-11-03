@@ -1,5 +1,6 @@
 // Client tìm ảnh Bing Images (endpoint async) + parser HTML.
 // Không dùng API chính thức: parse thuộc tính m="{...}" của thẻ <a class="iusc">.
+import { normalizeVi } from "./image-candidate.filter";
 
 export interface BingImageResult {
   imageUrl: string; // m.murl
@@ -20,24 +21,13 @@ export class BingBlockedError extends Error {
 const USER_AGENT =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 
-// Tạm thời: bỏ dấu tiếng Việt, Task 3 sẽ thay bằng normalizeVi
-function stripVi(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 export function buildPlaceImageQuery(place: { name: string; area?: string | null }): string {
   const parts = [place.name.trim()];
   const area = place.area?.trim();
   if (area) parts.push(area);
   const joined = parts.join(" ");
   // Không lặp "Hà Nội" nếu tên/khu vực đã có
-  if (!stripVi(joined).includes("ha noi")) parts.push("Hà Nội");
+  if (!normalizeVi(joined).includes("ha noi")) parts.push("Hà Nội");
   return parts.join(" ");
 }
 

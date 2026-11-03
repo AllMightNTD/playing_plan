@@ -1,7 +1,11 @@
 import { loadCatalogVideos } from "@/server/services/videos/video-catalog.service";
 import { syncChapterHotspots } from "@/server/services/videos/chapter-hotspots.service";
 import { runAiVideoHotspots } from "@/server/services/videos/ai-hotspots.runner";
-import { runRealPhotoSync, type RealPhotoSyncSummary } from "@/server/services/media/real-photo-sync.runner";
+import {
+  resolveRealPhotosDailyLimit,
+  runRealPhotoSync,
+  type RealPhotoSyncSummary,
+} from "@/server/services/media/real-photo-sync.runner";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "@/server/db/client";
@@ -169,27 +173,6 @@ async function executeDailyPipeline(
     `=> Đã thăng hạng thành công ${promotedCount} địa điểm mới vào hệ thống.`,
   );
 
-  // 4b. Tìm ảnh thật (Bing) cho địa điểm chưa có; lỗi chỉ cảnh báo, không làm hỏng pipeline
-  console.log("\n--- [Giai đoạn 3b] Tìm ảnh thật cho địa điểm ---");
-  let realPhotos: RealPhotoSyncSummary | { error: string } | null = null;
-  // 0 = tắt bước này; NaN/âm = mặc định 20 (không bao giờ bỏ giới hạn)
-  const parsedLimit = Number.parseInt(process.env.REAL_PHOTOS_DAILY_LIMIT ?? "20", 10);
-  const realPhotosLimit = Number.isNaN(parsedLimit) || parsedLimit < 0 ? 20 : parsedLimit;
-  try {
-    if (realPhotosLimit === 0) {
-      console.log("=> Bước ảnh thật đã tắt (REAL_PHOTOS_DAILY_LIMIT=0).");
-    } else {
-      realPhotos = await runRealPhotoSync({ limit: realPhotosLimit });
-      console.log(
-        `=> Ảnh thật: thay ${realPhotos.replaced} địa điểm, ${realPhotos.needsReview.length} cần duyệt tay` +
-          `${realPhotos.blocked ? ", Bing chặn nên dừng sớm" : ""}`,
-      );
-    }
-  } catch (err) {
-    console.warn("=> Bỏ qua bước ảnh thật do lỗi:", err);
-    realPhotos = { error: err instanceof Error ? err.message : String(err) };
-  }
-
   // 5. GIAI ĐOẠN 4: SO KHỚP VÀ XUẤT BẢN VIDEO REVIEW NHANH (BATCHED)
   console.log(
     "\n--- [Giai đoạn 4] So khớp Video Review & Xuất bản (Batch Mode) ---",
@@ -279,6 +262,28 @@ async function executeDailyPipeline(
     batchSize: 50,
     executor: db,
   });
+
+  // 6b. Tìm ảnh thật (Bing) cho địa điểm chưa có — chạy sau video/AI để không giành thời gian của các bước chính.
+  // Mặc định TẮT: bật bằng env REAL_PHOTOS_DAILY_LIMIT=<số nguyên dương> (số place mỗi ngày).
+  // Rỗng/0/NaN/âm đều là tắt để cron không tự ghi ảnh chưa duyệt lên prod. Lỗi chỉ cảnh báo, không làm hỏng pipeline.
+  console.log("\n--- [Giai đoạn 5b] Tìm ảnh thật cho địa điểm ---");
+  let realPhotos: RealPhotoSyncSummary | { error: string } | null = null;
+  const realPhotosLimit = resolveRealPhotosDailyLimit(process.env.REAL_PHOTOS_DAILY_LIMIT);
+  try {
+    if (realPhotosLimit === 0) {
+      console.log("=> Bước ảnh thật tắt (REAL_PHOTOS_DAILY_LIMIT=0).");
+    } else {
+      realPhotos = await runRealPhotoSync({ limit: realPhotosLimit });
+      console.log(
+        `=> Ảnh thật: thay ${realPhotos.replaced} địa điểm, ${realPhotos.needsReview.length} cần duyệt tay` +
+          `${realPhotos.blocked ? ", Bing chặn nên dừng sớm" : ""}` +
+          `${realPhotos.aborted ? ", lỗi DB liên tiếp nên dừng sớm" : ""}`,
+      );
+    }
+  } catch (err) {
+    console.warn("=> Bỏ qua bước ảnh thật do lỗi:", err);
+    realPhotos = { error: err instanceof Error ? err.message : String(err) };
+  }
 
   // 7. GIAI ĐOẠN 6: REVALIDATE NEXT.JS CACHE
   console.log("\n--- [Giai đoạn 6] Revalidate Next.js Cache ---");

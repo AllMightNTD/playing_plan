@@ -55,7 +55,8 @@ export function parseBingImageHtml(html: string): BingImageResult[] {
       continue; // JSON hỏng thì bỏ qua
     }
     const imageUrl = str(meta.murl);
-    if (!imageUrl || !/^https?:\/\//i.test(imageUrl) || seen.has(imageUrl)) continue;
+    // Chỉ giữ https: ảnh http gây mixed content trên site HTTPS
+    if (!imageUrl || !/^https:\/\//i.test(imageUrl) || seen.has(imageUrl)) continue;
     seen.add(imageUrl);
     results.push({
       imageUrl,

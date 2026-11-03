@@ -7,11 +7,12 @@ export type ImageCheckFailReason =
   | "too_small"
   | "bad_aspect"
   | "decode_failed"
-  | "network";
+  | "network"
+  | "unsafe_url";
 
 export type ImageCheck =
   | { ok: true; width: number; height: number; bytes: number; contentType: string }
-  | { ok: false; reason: ImageCheckFailReason; httpStatus?: number };
+  | { ok: false; reason: ImageCheckFailReason; httpStatus?: number; contentType?: string };
 
 const MIN_WIDTH = 800;
 const MIN_HEIGHT = 500;
@@ -26,6 +27,26 @@ const USER_AGENT =
 const fail = (reason: ImageCheckFailReason, httpStatus?: number): ImageCheck =>
   httpStatus === undefined ? { ok: false, reason } : { ok: false, reason, httpStatus };
 
+/**
+ * URL không an toàn để hotlink/tải: không phải https (mixed content trên site HTTPS),
+ * hoặc trỏ vào máy nội bộ (localhost, *.local, IP literal) — chặn SSRF.
+ */
+export function isUnsafeImageUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return true;
+  }
+  if (parsed.protocol !== "https:") return true;
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return true;
+  // IPv6 có dạng [::1] trong hostname; IPv4 dạng 4 cụm số (URL đã chuẩn hóa 0x7f000001 → 127.0.0.1)
+  if (host.includes(":") || host.startsWith("[")) return true;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
+  return false;
+}
+
 // Tải 1 URL ảnh và kiểm tra có dùng được để hotlink không.
 // Không gửi Referer để khớp với FE (referrerPolicy="no-referrer").
 export async function verifyImageUrl(
@@ -34,6 +55,9 @@ export async function verifyImageUrl(
 ): Promise<ImageCheck> {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
+  // Chặn trước khi gọi mạng
+  if (isUnsafeImageUrl(url)) return fail("unsafe_url");
 
   let res: Response;
   try {
@@ -47,11 +71,17 @@ export async function verifyImageUrl(
     return fail("network");
   }
 
+  // URL cuối sau redirect cũng phải an toàn (fetch giả trong test có thể để url rỗng)
+  if (res.url && isUnsafeImageUrl(res.url)) return fail("unsafe_url");
+
   if (res.status < 200 || res.status >= 300) return fail("http_status", res.status);
 
   // Chỉ lấy media type, bỏ phần tham số sau dấu ";"
   const contentType = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-  if (!ALLOWED_TYPES.has(contentType)) return fail("content_type");
+  if (!ALLOWED_TYPES.has(contentType)) {
+    // Kèm media type để recheck phân biệt trang HTML chặn hotlink với loại ảnh lạ
+    return contentType ? { ok: false, reason: "content_type", contentType } : fail("content_type");
+  }
 
   const declared = Number(res.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_BYTES) return fail("too_large");

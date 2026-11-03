@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
 import { verifyImageUrl } from "./image-url.verifier";
 
@@ -83,6 +83,59 @@ describe("verifyImageUrl", () => {
       }) as unknown as typeof fetch,
     });
     expect(r).toEqual({ ok: false, reason: "network" });
+  });
+
+  it("http:// → unsafe_url, không gọi fetch", async () => {
+    let called = false;
+    const r = await verifyImageUrl("http://x.vn/a.jpg", {
+      fetchImpl: (async () => {
+        called = true;
+        return new Response("", { status: 200 });
+      }) as unknown as typeof fetch,
+    });
+    expect(r).toEqual({ ok: false, reason: "unsafe_url" });
+    expect(called).toBe(false);
+  });
+
+  it.each(["https://127.0.0.1/x.jpg", "https://localhost/x.jpg", "https://printer.local/x.jpg", "https://[::1]/x.jpg"])(
+    "host nội bộ/IP %s → unsafe_url",
+    async (url) => {
+      const fetchImpl = vi.fn();
+      const r = await verifyImageUrl(url, { fetchImpl: fetchImpl as unknown as typeof fetch });
+      expect(r).toEqual({ ok: false, reason: "unsafe_url" });
+      expect(fetchImpl).not.toHaveBeenCalled();
+    },
+  );
+
+  it("redirect sang http → unsafe_url", async () => {
+    const buf = await jpeg(1200, 800);
+    const r = await verifyImageUrl("https://x.vn/a.jpg", {
+      fetchImpl: (async () => {
+        const res = new Response(buf as unknown as BodyInit, { status: 200, headers: { "content-type": "image/jpeg" } });
+        Object.defineProperty(res, "url", { value: "http://x.vn/a.jpg" });
+        return res;
+      }) as unknown as typeof fetch,
+    });
+    expect(r).toEqual({ ok: false, reason: "unsafe_url" });
+  });
+
+  it("redirect sang IP nội bộ → unsafe_url", async () => {
+    const buf = await jpeg(1200, 800);
+    const r = await verifyImageUrl("https://x.vn/a.jpg", {
+      fetchImpl: (async () => {
+        const res = new Response(buf as unknown as BodyInit, { status: 200, headers: { "content-type": "image/jpeg" } });
+        Object.defineProperty(res, "url", { value: "https://10.0.0.5/a.jpg" });
+        return res;
+      }) as unknown as typeof fetch,
+    });
+    expect(r).toEqual({ ok: false, reason: "unsafe_url" });
+  });
+
+  it("content_type kèm media type bị từ chối", async () => {
+    const r = await verifyImageUrl("https://x/a.jpg", {
+      fetchImpl: fakeFetch("<html></html>", 200, { "content-type": "text/html; charset=utf-8" }),
+    });
+    expect(r).toEqual({ ok: false, reason: "content_type", contentType: "text/html" });
   });
 
   it("không gửi Referer", async () => {

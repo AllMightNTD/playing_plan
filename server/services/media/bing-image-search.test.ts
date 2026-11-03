@@ -29,6 +29,13 @@ describe("parseBingImageHtml", () => {
     expect(r.some((x) => x.imageUrl.includes("&h=600"))).toBe(true);
   });
   it("trả [] với HTML không có ảnh", () => expect(parseBingImageHtml("<html></html>")).toEqual([]));
+  it("bỏ murl http://, chỉ giữ https", () => {
+    const m = (murl: string) =>
+      `<a class="iusc" m="{&quot;murl&quot;:&quot;${murl}&quot;,&quot;t&quot;:&quot;x&quot;}"></a>`;
+    const r = parseBingImageHtml(`<html> ${m("http://a.vn/1.jpg")} ${m("https://a.vn/2.jpg")}</html>`);
+    expect(r.map((x) => x.imageUrl)).toEqual(["https://a.vn/2.jpg"]);
+    expect(r[0].rank).toBe(0);
+  });
 });
 
 describe("searchBingImages", () => {

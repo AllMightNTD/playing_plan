@@ -27,13 +27,14 @@ async function main() {
       `chèn ${summary.photosInserted} ảnh, cần duyệt tay ${summary.needsReview.length}${opts.dryRun ? " (dry-run)" : ""}`,
   );
   if (summary.blocked) console.warn("[real-photos] Bing chặn (captcha) — đã dừng sớm, hãy chạy lại sau.");
+  if (summary.aborted) console.warn("[real-photos] Ghi DB lỗi liên tiếp — đã dừng sớm, kiểm tra kết nối DB.");
 
   const reportPath = resolve(process.cwd(), "scripts/output/real-photos-report.json");
   mkdirSync(dirname(reportPath), { recursive: true });
   writeFileSync(reportPath, JSON.stringify(summary, null, 2), "utf-8");
   console.log(`[real-photos] Báo cáo: ${reportPath}`);
 
-  process.exit(summary.blocked ? 2 : 0);
+  process.exit(summary.blocked || summary.aborted ? 2 : 0);
 }
 
 main().catch((err) => {

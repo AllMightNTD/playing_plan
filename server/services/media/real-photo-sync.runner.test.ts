@@ -18,7 +18,11 @@ vi.mock("@/server/services/pipeline/pipeline-run.service", () => ({
 }));
 
 import { BingBlockedError, type BingImageResult } from "./bing-image-search";
-import { runRealPhotoSync, type RealPhotoSyncDeps } from "./real-photo-sync.runner";
+import {
+  resolveRealPhotosDailyLimit,
+  runRealPhotoSync,
+  type RealPhotoSyncDeps,
+} from "./real-photo-sync.runner";
 
 const place = (n: number, name = "Cộng Cà Phê") => ({
   id: `p${n}`,
@@ -38,6 +42,12 @@ const candidates = (n: number): BingImageResult[] =>
     width: 1200,
     height: 800,
   }));
+
+// Mỗi lần search trả bộ URL khác nhau để loại trừ URL đã dùng không ảnh hưởng
+function distinctSearch() {
+  let n = 0;
+  return vi.fn(async () => candidates(++n));
+}
 
 function makeDeps(over: Partial<RealPhotoSyncDeps> & { places?: ReturnType<typeof place>[] } = {}) {
   const { places = [place(1)], ...rest } = over;
@@ -148,5 +158,89 @@ describe("runRealPhotoSync", () => {
     revalidate.mockClear();
     await runRealPhotoSync({ dryRun: true }, makeDeps());
     expect(revalidate).not.toHaveBeenCalled();
+  });
+
+  it("dryRun: place found nằm trong summary.found kèm ảnh; tracked promotedCount 0, dryRun true", async () => {
+    const s = await runRealPhotoSync({ dryRun: true }, makeDeps());
+    expect(s.found).toHaveLength(1);
+    expect(s.found[0]).toMatchObject({ slug: "slug-1", query: "Cộng Cà Phê Hoàn Kiếm Hà Nội" });
+    expect(s.found[0].photos).toHaveLength(3);
+    expect(s.found[0].photos[0]).toEqual({
+      imageUrl: "https://img.example.com/1-1.jpg",
+      pageUrl: "https://site1.example.com/page",
+      title: "Cộng Cà Phê Hà Nội",
+    });
+    expect(tracked).toHaveBeenLastCalledWith(
+      "real_photos",
+      expect.objectContaining({ promotedCount: 0, summary: expect.objectContaining({ dryRun: true }) }),
+    );
+  });
+
+  it("needsReview kèm query và candidatesSeen", async () => {
+    const lowScore = candidates(1).map((x) => ({ ...x, title: "ảnh linh tinh" }));
+    const s = await runRealPhotoSync({}, makeDeps({ search: vi.fn(async () => lowScore) }));
+    expect(s.needsReview[0]).toMatchObject({
+      slug: "slug-1",
+      query: "Cộng Cà Phê Hoàn Kiếm Hà Nội",
+      candidatesSeen: 3,
+    });
+  });
+
+  it("không dùng lại URL ảnh đã gán cho place trước trong cùng run", async () => {
+    const pool = [...candidates(1), ...candidates(2)];
+    const deps = makeDeps({ places: [place(1), place(2)], search: vi.fn(async () => pool) });
+    await runRealPhotoSync({}, deps);
+    const calls = (deps.replaceImages as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls).toHaveLength(2);
+    const first = new Set(calls[0][1].map((r: { url: string }) => r.url));
+    const second: string[] = calls[1][1].map((r: { url: string }) => r.url);
+    expect(second.length).toBeGreaterThan(0);
+    expect(second.some((u) => first.has(u))).toBe(false);
+  });
+
+  it("3 lần replaceImages lỗi liên tiếp → dừng run, aborted db_errors, status paused", async () => {
+    const replaceImages = vi.fn(async () => {
+      throw new Error("db down");
+    });
+    const places = [1, 2, 3, 4, 5].map((n) => place(n));
+    const s = await runRealPhotoSync(
+      {},
+      makeDeps({ places, replaceImages, search: distinctSearch() }),
+    );
+    expect(replaceImages).toHaveBeenCalledTimes(3);
+    expect(s.aborted).toBe(true);
+    expect(s.abortReason).toBe("db_errors");
+    expect(s.processed).toBe(3);
+    expect(tracked).toHaveBeenLastCalledWith("real_photos", expect.objectContaining({ status: "paused" }));
+  });
+
+  it("lỗi DB xen kẽ thành công không làm dừng run", async () => {
+    const replaceImages = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("x"))
+      .mockRejectedValueOnce(new Error("x"))
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("x"))
+      .mockRejectedValueOnce(new Error("x"));
+    const places = [1, 2, 3, 4, 5].map((n) => place(n));
+    const s = await runRealPhotoSync({}, makeDeps({ places, replaceImages, search: distinctSearch() }));
+    expect(replaceImages).toHaveBeenCalledTimes(5);
+    expect(s.aborted).toBe(false);
+    expect(s.processed).toBe(5);
+  });
+});
+
+describe("resolveRealPhotosDailyLimit", () => {
+  it.each([
+    [undefined, 0],
+    ["", 0],
+    ["  ", 0],
+    ["abc", 0],
+    ["-5", 0],
+    ["0", 0],
+    ["15", 15],
+    [" 7 ", 7],
+  ])("%j → %i", (raw, expected) => {
+    expect(resolveRealPhotosDailyLimit(raw)).toBe(expected);
   });
 });

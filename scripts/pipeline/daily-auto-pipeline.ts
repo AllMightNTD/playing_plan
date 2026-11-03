@@ -1,6 +1,7 @@
 import { loadCatalogVideos } from "@/server/services/videos/video-catalog.service";
 import { syncChapterHotspots } from "@/server/services/videos/chapter-hotspots.service";
 import { runAiVideoHotspots } from "@/server/services/videos/ai-hotspots.runner";
+import { runRealPhotoSync, type RealPhotoSyncSummary } from "@/server/services/media/real-photo-sync.runner";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "@/server/db/client";
@@ -168,6 +169,22 @@ async function executeDailyPipeline(
     `=> Đã thăng hạng thành công ${promotedCount} địa điểm mới vào hệ thống.`,
   );
 
+  // 4b. Tìm ảnh thật (Bing) cho địa điểm chưa có; lỗi chỉ cảnh báo, không làm hỏng pipeline
+  console.log("\n--- [Giai đoạn 3b] Tìm ảnh thật cho địa điểm ---");
+  let realPhotos: RealPhotoSyncSummary | { error: string } | null = null;
+  try {
+    realPhotos = await runRealPhotoSync({
+      limit: Number(process.env.REAL_PHOTOS_DAILY_LIMIT ?? 20),
+    });
+    console.log(
+      `=> Ảnh thật: thay ${realPhotos.replaced} địa điểm, ${realPhotos.needsReview.length} cần duyệt tay` +
+        `${realPhotos.blocked ? ", Bing chặn nên dừng sớm" : ""}`,
+    );
+  } catch (err) {
+    console.warn("=> Bỏ qua bước ảnh thật do lỗi:", err);
+    realPhotos = { error: err instanceof Error ? err.message : String(err) };
+  }
+
   // 5. GIAI ĐOẠN 4: SO KHỚP VÀ XUẤT BẢN VIDEO REVIEW NHANH (BATCHED)
   console.log(
     "\n--- [Giai đoạn 4] So khớp Video Review & Xuất bản (Batch Mode) ---",
@@ -281,6 +298,7 @@ async function executeDailyPipeline(
     promotedCount,
     totalPublishedPlaces: totalPlaces[0]?.count || 0,
     aiHotspots,
+    realPhotos,
     costEstimatedUSD: 0.0,
     freeTierCompliance: "100% FREE GUARANTEED",
   };

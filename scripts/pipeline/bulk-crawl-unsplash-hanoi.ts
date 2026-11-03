@@ -12,7 +12,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../../server/db/client";
 import { places, placeMedia } from "../../server/db/schema";
-import { eq, and } from "drizzle-orm";
+import { placeHasRealPhotos } from "../../server/db/queries/admin/place-media.queries";
+import { eq, and, ne } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -272,6 +273,9 @@ async function syncAllPlacesWithUniquePhotos(pool: PooledPhoto[]) {
   let updatedCount = 0;
 
   for (const place of allPlaces) {
+    // Địa điểm đã có ảnh thật (Bing) thì không ghi đè bằng ảnh Unsplash
+    if (await placeHasRealPhotos(place.id)) continue;
+
     const cat = (place.category in photosByCategory ? place.category : "cafe") as string;
     const catPool = photosByCategory[cat] && photosByCategory[cat].length > 0 ? photosByCategory[cat] : photosByCategory.cafe;
 
@@ -328,7 +332,13 @@ async function syncAllPlacesWithUniquePhotos(pool: PooledPhoto[]) {
     // A. Xóa các ảnh cũ (giữ lại video YouTube nếu có)
     await db
       .delete(placeMedia)
-      .where(and(eq(placeMedia.placeId, place.id), eq(placeMedia.type, "image")));
+      .where(
+        and(
+          eq(placeMedia.placeId, place.id),
+          eq(placeMedia.type, "image"),
+          ne(placeMedia.platform, "bing"),
+        ),
+      );
 
     // B. Nạp 4 ảnh Unsplash mới độc bản
     for (const g of galleryPhotos) {

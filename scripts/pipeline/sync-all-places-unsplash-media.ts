@@ -1,4 +1,5 @@
 import { db } from "@/server/db/client";
+import { placeHasRealPhotos } from "@/server/db/queries/admin/place-media.queries";
 import { places, placeMedia, Place } from "@/server/db/schema/places";
 import { getCuratedUnsplashGalleryForPlace } from "@/lib/media/unsplash-gallery-pool";
 import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
@@ -26,6 +27,9 @@ async function syncAllPlacesMedia() {
   for (let i = 0; i < allPlaces.length; i++) {
     const place = allPlaces[i];
 
+    // Địa điểm đã có ảnh thật (Bing) thì không ghi đè bằng ảnh Unsplash
+    if (await placeHasRealPhotos(place.id)) continue;
+
     // Lấy 4 góc ảnh Unsplash xịn theo danh mục
     const gallery = getCuratedUnsplashGalleryForPlace(place.category, place.id, 4);
     const coverPhoto = gallery[0];
@@ -43,7 +47,7 @@ async function syncAllPlacesMedia() {
     await db
       .delete(placeMedia)
       .where(
-        sql`${placeMedia.placeId} = ${place.id} AND ${placeMedia.type} = 'image'`
+        sql`${placeMedia.placeId} = ${place.id} AND ${placeMedia.type} = 'image' AND ${placeMedia.platform} <> 'bing'`
       );
 
     // 3. Chèn 4 ảnh Unsplash mới vào placeMedia

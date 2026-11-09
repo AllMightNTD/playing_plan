@@ -32,8 +32,10 @@ yarn-error.log*
 .env.production
 !.env.example
 
-# Vercel
+# Vercel & Cloudflare
 .vercel
+/.open-next/
+/.wrangler/
 
 # TypeScript
 *.tsbuildinfo

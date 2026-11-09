@@ -3,15 +3,44 @@ import { drizzle } from "drizzle-orm/tidb-serverless";
 import * as schema from "./schema";
 import { AppError, ERRORS } from "@/server/http/errors";
 
-const connectionString = process.env.DATABASE_URL || "";
+function getConnectionString(): string {
+  return process.env.DATABASE_URL?.trim() ?? "";
+}
 
-// Tạo client HTTP serverless kết nối TiDB Cloud không giữ stateful connection
-const client = connect({ url: connectionString });
+function createDrizzleInstance(url: string) {
+  const client = connect({ url });
+  return drizzle(client, { schema });
+}
+
+export type Database = ReturnType<typeof createDrizzleInstance>;
+export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+export type DbExecutor = Database | Transaction;
+
+let cachedUrl: string | null = null;
+let cachedDb: Database | null = null;
+
+function resolveDb(): Database {
+  const url = getConnectionString();
+  if (!cachedDb || cachedUrl !== url) {
+    cachedUrl = url;
+    cachedDb = createDrizzleInstance(url);
+  }
+  return cachedDb;
+}
 
 /**
- * Chuẩn hóa số bản ghi bị ảnh hưởng cho các thao tác UPDATE/DELETE
- * giữa driver TiDB Cloud Serverless ({ rowsAffected }) và mysql2 ([{ affectedRows }]).
+ * Lazy proxy over TiDB Cloud Serverless Drizzle instance so Cloudflare Workers
+ * and Next.js static builds never freeze an empty DATABASE_URL at module load time.
  */
+export const db: Database = new Proxy({} as Database, {
+  get(_target, prop) {
+    const instance = resolveDb();
+    const value = Reflect.get(instance as object, prop, instance);
+    return typeof value === "function" ? value.bind(instance) : value;
+  },
+});
+
+/** Normalizes affected-row count across TiDB Serverless ({ rowsAffected }) and mysql2 ([{ affectedRows }]). */
 export function getAffectedRows(result: unknown): number {
   if (!result) return 0;
   if (typeof (result as { rowsAffected?: unknown }).rowsAffected === "number") {
@@ -26,16 +55,11 @@ export function getAffectedRows(result: unknown): number {
   return 0;
 }
 
-export const db = drizzle(client, { schema });
-export type Database = typeof db;
-export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-export type DbExecutor = Database | Transaction;
-
 export function isDatabaseConfigured(): boolean {
-  return connectionString.length > 0;
+  return getConnectionString().length > 0;
 }
 
-/** Guard trước mọi thao tác DB: thiếu cấu hình thì trả 503 rõ ràng thay vì lỗi driver khó hiểu. */
+/** Ensures DATABASE_URL is present at request time, throwing 503 instead of raw driver failures. */
 export function assertDatabaseConfigured(): void {
   if (!isDatabaseConfigured()) {
     throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);

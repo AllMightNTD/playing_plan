@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import imageCompression from "browser-image-compression";
 import { useApp } from "@/context/AppContext";
 import { VirtualVideoCanvas } from "@/components/scrapbook/VirtualVideoCanvas";
 import { MemoryCorkboard } from "@/components/memories/MemoryCorkboard";
@@ -107,9 +108,22 @@ export default function MemoriesPage() {
 
       let uploadSuccessCount = 0;
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        const rawFile = files[i];
+        const compressedBlob = await imageCompression(rawFile, {
+          maxSizeMB: 1.5,
+          maxWidthOrHeight: 2048,
+          initialQuality: 0.85,
+          fileType: "image/webp",
+          useWebWorker: true,
+        }).catch(() => rawFile);
+        const baseName = rawFile.name.replace(/\.[^.]+$/, "") || "photo";
+        const uploadFile =
+          compressedBlob.type === "image/webp"
+            ? new File([compressedBlob], `${baseName}.webp`, { type: "image/webp" })
+            : rawFile;
+
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", uploadFile);
 
         const res = await fetch("/api/v1/user/uploads", {
           method: "POST",
@@ -120,13 +134,13 @@ export default function MemoriesPage() {
           const json = await res.json();
           const uploadData = json.data as UploadedPhotoItem;
           uploadSuccessCount++;
-          addToast(`📸 Tải lên thành công: ${file.name} (${Math.round(uploadData.sizeBytes / 1024)} KB WebP)!`, "success");
+          addToast(`📸 Tải lên thành công: ${rawFile.name} (${Math.round(uploadData.sizeBytes / 1024)} KB WebP)!`, "success");
 
           queryClient.setQueryData<UploadedPhotoItem[]>(["user", "uploads"], (prev = []) => [uploadData, ...prev]);
         } else {
           const errJson = await res.json().catch(() => ({}));
           const errMsg = errJson?.error?.message || "Không thể tải ảnh lên";
-          addToast(`❌ Lỗi tải ảnh ${file.name}: ${errMsg}`, "error");
+          addToast(`❌ Lỗi tải ảnh ${rawFile.name}: ${errMsg}`, "error");
         }
       }
 

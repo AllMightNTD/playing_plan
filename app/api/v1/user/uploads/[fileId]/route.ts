@@ -19,8 +19,7 @@ export const GET = handleRoute(async (_req: NextRequest, context: RouteContext) 
       "Content-Type": fileData.mimeType,
       "Content-Length": fileData.sizeBytes.toString(),
       "X-Content-Type-Options": "nosniff",
-      "Cache-Control": "private, max-age=86400",
-      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": "private, max-age=31536000, immutable",
     },
   });
 });

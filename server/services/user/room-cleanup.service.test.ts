@@ -1,16 +1,24 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import fs from "fs";
-import path from "path";
+import sharp from "sharp";
 import { resetMemoryStore, getMemoryStore } from "@/server/db/demo/memory-store";
-import { ensureRoomSession, requestSoftDelete } from "@/server/services/user/room.service";
-import { purgeExpiredSoftDeletedRooms, SOFT_DELETE_RETENTION_MS } from "./room-cleanup.service";
-import { getStorageRootDir } from "./upload.service";
+import {
+  ensureRoomSession,
+  recordRoomConsent,
+  requestSoftDelete,
+} from "@/server/services/user/room.service";
+import { purgeExpiredSoftDeletedRooms } from "./room-cleanup.service";
+import { uploadRoomPhoto } from "./upload.service";
+import {
+  getPhotoStorageGateway,
+  resetInMemoryPhotoStorage,
+} from "@/server/storage/photo-storage.gateway";
 
 let ipCounter = 0;
 const nextIp = () => `10.10.0.${++ipCounter}`;
 
 beforeEach(() => {
   resetMemoryStore();
+  resetInMemoryPhotoStorage();
 });
 
 describe("Room Soft-Delete Cleanup Cron (Phase 5 / Decree 13/2023)", () => {
@@ -18,43 +26,45 @@ describe("Room Soft-Delete Cleanup Cron (Phase 5 / Decree 13/2023)", () => {
     const user = await ensureRoomSession(null, nextIp(), "User Active");
     await requestSoftDelete(user.session);
 
-    // Giả lập thời gian mới trôi qua 5 ngày (< 14 ngày)
     const fiveDaysLater = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
     const result = await purgeExpiredSoftDeletedRooms(fiveDaysLater);
 
     expect(result.purgedCount).toBe(0);
     expect(result.purgedRoomIds).toEqual([]);
 
-    // Phòng vẫn còn tồn tại trong hệ thống
     const room = getMemoryStore().rooms.get(user.session.roomId);
     expect(room).toBeDefined();
     expect(room?.pendingDeletedAt).not.toBeNull();
   });
 
-  it("should HARD DELETE rooms expired beyond 14 days and clean up storage files", async () => {
+  it("should HARD DELETE rooms expired beyond 14 days and purge all room photos from storage gateway", async () => {
     const user = await ensureRoomSession(null, nextIp(), "User Expired");
+    await recordRoomConsent(user.session, "2026.1");
+
+    const sampleWebp = await sharp({
+      create: { width: 40, height: 40, channels: 3, background: { r: 200, g: 80, b: 80 } },
+    })
+      .webp()
+      .toBuffer();
+
+    const uploaded = await uploadRoomPhoto(user.session, {
+      fileName: "memory.webp",
+      buffer: sampleWebp,
+    });
+    const storedRecord = getMemoryStore().uploads.get(uploaded.id);
+    expect(storedRecord).toBeDefined();
+    expect(await getPhotoStorageGateway().getPhoto(storedRecord!.relativePath)).not.toBeNull();
+
     await requestSoftDelete(user.session);
 
-    // Tạo thư mục và file giả lập trên đĩa lưu trữ ngoài web root
-    const rootDir = getStorageRootDir();
-    const roomDir = path.join(rootDir, "rooms", user.session.roomId);
-    fs.mkdirSync(roomDir, { recursive: true });
-    const dummyFile = path.join(roomDir, "photo.webp");
-    fs.writeFileSync(dummyFile, "dummy webp data");
-    expect(fs.existsSync(dummyFile)).toBe(true);
-
-    // Giả lập thời gian 15 ngày sau (quá hạn 14 ngày)
     const fifteenDaysLater = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
     const result = await purgeExpiredSoftDeletedRooms(fifteenDaysLater);
 
     expect(result.purgedCount).toBe(1);
     expect(result.purgedRoomIds).toContain(user.session.roomId);
+    expect(getMemoryStore().rooms.get(user.session.roomId)).toBeUndefined();
 
-    // Phòng đã bị xóa vĩnh viễn khỏi DB / Store
-    const room = getMemoryStore().rooms.get(user.session.roomId);
-    expect(room).toBeUndefined();
-
-    // Thư mục lưu trữ trên đĩa đã bị xóa sạch (Zero-Residual Footprint)
-    expect(fs.existsSync(roomDir)).toBe(false);
+    // Verify photo bytes are purged from storage (Zero-Residual Footprint)
+    expect(await getPhotoStorageGateway().getPhoto(storedRecord!.relativePath)).toBeNull();
   });
 });

@@ -147,6 +147,7 @@ export const ERRORS = {
     IMAGE_TOO_LARGE: { code: "UPLOAD_IMAGE_TOO_LARGE", status: 400, message: "Ảnh có độ phân giải quá lớn (vượt quá 16 megapixel), vui lòng nén trước." },
     QUOTA_EXCEEDED: { code: "UPLOAD_QUOTA_EXCEEDED", status: 413, message: "Phòng của bạn đã đạt giới hạn dung lượng 25MB hoặc tối đa 50 ảnh." },
     CONSENT_REQUIRED: { code: "UPLOAD_CONSENT_REQUIRED", status: 403, message: "Bạn cần đồng thuận chính sách bảo vệ dữ liệu cá nhân (Nghị định 13/2023) trước khi tải ảnh." },
+    STORAGE_UNAVAILABLE: { code: "UPLOAD_STORAGE_UNAVAILABLE", status: 502, message: "Kho lưu trữ ảnh đang bận hoặc chưa kết nối được, thử lại sau ít phút nhé." },
   },
   VIDEO: {
     NOT_FOUND: { code: "VIDEO_NOT_FOUND", status: 404, message: "Không tìm thấy video này." },

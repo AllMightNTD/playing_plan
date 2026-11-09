@@ -1,7 +1,8 @@
 import { AppError, ERRORS } from "@/server/http/errors";
 import { isDatabaseConfigured, db } from "@/server/db/client";
+import { runInBackground } from "@/server/http/background";
 import { auditRateLimits } from "@/server/db/schema/audit";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 export interface RateLimitRule {
   name: string;
@@ -86,12 +87,12 @@ export function recordRateLimitHit(rule: RateLimitRule, subject: string, now: nu
     }
   }
 
-  // Đồng bộ ngầm vào database audit_rate_limits nếu DB đang kết nối
   if (isDatabaseConfigured()) {
     const id = key.slice(0, 64);
     const nowDate = new Date(now);
     const blockedDate = blockedUntil ? new Date(blockedUntil) : null;
-    db.insert(auditRateLimits)
+    const auditWrite = db
+      .insert(auditRateLimits)
       .values({
         id,
         attemptCount: count,
@@ -105,10 +106,8 @@ export function recordRateLimitHit(rule: RateLimitRule, subject: string, now: nu
           blockedUntil: blockedDate ? sql`VALUES(blocked_until)` : sql`blocked_until`,
           updatedAt: nowDate,
         },
-      })
-      .catch(() => {
-        // Nuốt lỗi DB audit ngầm để không làm nghẽn request chính
       });
+    void runInBackground(auditWrite);
   }
 }
 

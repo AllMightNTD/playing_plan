@@ -1,20 +1,27 @@
-import fs from "fs";
-import path from "path";
 import { ZipArchive } from "archiver";
 import { getUserRepositories } from "@/server/db/repositories";
 import { AppError, ERRORS } from "@/server/http/errors";
-import { getStorageRootDir } from "@/server/services/user/upload.service";
+import {
+  getPhotoStorageGateway,
+  type PhotoStorageGateway,
+} from "@/server/storage/photo-storage.gateway";
 import type { MemberSession } from "@/server/db/repositories/types";
 
+function extensionFromMime(mimeType: string): string {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/jpeg") return "jpg";
+  if (mimeType === "image/gif") return "gif";
+  return "webp";
+}
+
 /**
- * Xuất toàn bộ dữ liệu phòng thành tệp .zip (Right to Data Portability / Nghị định 13)
- * Bao gồm:
- * - room_info.json: Thông tin phòng & thành viên
- * - plans.json: Lịch trình hẹn hò
- * - memories.json: Kỷ niệm & giấy nhớ
- * - photos/: Các tệp ảnh gốc/re-encoded đã tải lên
+ * Exports full room data as a streaming .zip archive (Right to Data Portability / Decree 13)
+ * fetching photo binaries from PhotoStorageGateway without local disk dependencies.
  */
-export async function createRoomArchiveStream(session: MemberSession): Promise<{
+export async function createRoomArchiveStream(
+  session: MemberSession,
+  gateway: PhotoStorageGateway = getPhotoStorageGateway()
+): Promise<{
   archive: ZipArchive;
   fileName: string;
 }> {
@@ -59,13 +66,11 @@ export async function createRoomArchiveStream(session: MemberSession): Promise<{
   archive.append(JSON.stringify(plans, null, 2), { name: "plans.json" });
   archive.append(JSON.stringify({ memories, notes }, null, 2), { name: "memories.json" });
 
-  const storageRoot = getStorageRootDir();
-
-  // Đính kèm các ảnh thật vào thư mục photos/
   for (const upload of uploads) {
-    const fullPath = path.join(storageRoot, "uploads", upload.relativePath);
-    if (fs.existsSync(fullPath)) {
-      archive.file(fullPath, { name: path.join("photos", `${upload.id}.webp`) });
+    const bytes = await gateway.getPhoto(upload.relativePath).catch(() => null);
+    if (bytes) {
+      const ext = extensionFromMime(upload.mimeType);
+      archive.append(Buffer.from(bytes), { name: `photos/${upload.id}.${ext}` });
     }
   }
 

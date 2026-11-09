@@ -1,27 +1,26 @@
-import { describe, expect, it } from "vitest";
-import { getAffectedRows } from "./client";
+import { afterEach, describe, expect, it } from "vitest";
+import { assertDatabaseConfigured, db, isDatabaseConfigured } from "./client";
 
-describe("getAffectedRows", () => {
-  it("should extract rowsAffected from TiDB Cloud Serverless response", () => {
-    expect(getAffectedRows({ rowsAffected: 1 })).toBe(1);
-    expect(getAffectedRows({ rowsAffected: 5 })).toBe(5);
-    expect(getAffectedRows({ rowsAffected: 0 })).toBe(0);
+describe("Lazy TiDB Serverless Client (Cloudflare workerd runtime env support)", () => {
+  const originalUrl = process.env.DATABASE_URL;
+
+  afterEach(() => {
+    if (originalUrl === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = originalUrl;
+    }
   });
 
-  it("should extract affectedRows from mysql2 response array", () => {
-    expect(getAffectedRows([{ affectedRows: 2 }])).toBe(2);
-    expect(getAffectedRows([{ affectedRows: 0 }])).toBe(0);
-  });
+  it("should evaluate DATABASE_URL dynamically at request time rather than freezing at module import", () => {
+    delete process.env.DATABASE_URL;
+    expect(isDatabaseConfigured()).toBe(false);
+    expect(() => assertDatabaseConfigured()).toThrowError("DB_NOT_CONFIGURED");
 
-  it("should extract direct affectedRows property", () => {
-    expect(getAffectedRows({ affectedRows: 3 })).toBe(3);
-  });
-
-  it("should return 0 for null, undefined, empty array or non-matching structures", () => {
-    expect(getAffectedRows(null)).toBe(0);
-    expect(getAffectedRows(undefined)).toBe(0);
-    expect(getAffectedRows([])).toBe(0);
-    expect(getAffectedRows({})).toBe(0);
-    expect(getAffectedRows("unknown")).toBe(0);
+    // Simulate Cloudflare Worker populating process.env per-isolate after module load
+    process.env.DATABASE_URL = "mysql://user:pass@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/datemate?ssl=true";
+    expect(isDatabaseConfigured()).toBe(true);
+    expect(() => assertDatabaseConfigured()).not.toThrow();
+    expect(typeof db.select).toBe("function");
   });
 });

@@ -317,6 +317,7 @@ async function executeDailyPipeline(
     process.cwd(),
     "scripts/output/pipeline_daily_report.json",
   );
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf-8");
 
   console.log(

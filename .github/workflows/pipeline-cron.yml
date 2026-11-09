@@ -2,43 +2,65 @@ name: Automated Ingestion & Enrichment Pipeline
 
 on:
   schedule:
-    # Chạy hằng ngày lúc 03:30 sáng (Giờ Việt Nam UTC+7, tức 20:30 UTC)
-    # Khung giờ vàng: Overpass server vắng nhất, Quota YouTube tươi mới, Web không có người dùng
+    # Runs daily at 03:30 AM Vietnam time (UTC+7 = 20:30 UTC)
     - cron: "30 20 * * *"
   workflow_dispatch:
     inputs:
       force:
-        description: "Chạy thủ công ngay lập tức"
+        description: "Run full daily pipeline manually right now"
         required: false
         default: "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: datemate-daily-pipeline
+  cancel-in-progress: false
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Codebase
         uses: actions/checkout@v4
 
-      - name: Setup Node.js & pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Setup Node environment
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "pnpm"
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Master Daily Pipeline (100% Free)
+      - name: Run Master Daily Pipeline (OSM + YouTube + AI Hotspots)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          REAL_PHOTOS_DAILY_LIMIT: ${{ vars.REAL_PHOTOS_DAILY_LIMIT || '0' }}
           NODE_TLS_REJECT_UNAUTHORIZED: "0"
-        run: |
-          pnpm pipeline:daily
+        run: pnpm pipeline:daily
+
+      - name: Enrich Google Maps Addresses & POI Links
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: pnpm places:enrich-map
+
+      - name: Upload Daily Pipeline Audit Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-daily-report
+          path: scripts/output/pipeline_daily_report.json
+          retention-days: 7
+          if-no-files-found: ignore

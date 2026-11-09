@@ -7,16 +7,16 @@
   "minify": true,
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "datemate"
-    }
+      "service": "datemate",
+    },
   ],
   "vars": {
-    "NEXT_PUBLIC_APP_URL": "https://datemate.workers.dev",
-    "SEARCH_MODE": "like"
-  }
+    "NEXT_PUBLIC_APP_URL": "https://datemate.dungtiennguyen140602.workers.dev",
+    "SEARCH_MODE": "like",
+  },
 }

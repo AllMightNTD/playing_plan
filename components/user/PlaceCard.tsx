@@ -8,10 +8,11 @@ import { useApp } from "@/context/AppContext";
 interface PlaceCardProps {
   place: HanoiPlace;
   index?: number;
+  weatherBadge?: string;
 }
 
 /** Thẻ polaroid địa điểm: ảnh bìa, giờ đẹp, khu vực, tóm tắt, giá & mood, mở cẩm nang hoặc thêm vào lịch. */
-export function PlaceCard({ place }: PlaceCardProps) {
+export function PlaceCard({ place, weatherBadge }: PlaceCardProps) {
   const { isPlaceSaved, toggleSavePlace, setActiveDetailSlug, quickAddPlaceToPlan, isPlaceInUpcomingPlan, distanceToPlace } = useApp();
   const distance = distanceToPlace(place);
   const [imgError, setImgError] = useState(false);
@@ -94,7 +95,12 @@ export function PlaceCard({ place }: PlaceCardProps) {
                 {tag}
               </span>
             ))}
-            {place.indoor && <span className="text-[11px] bg-[#E4EEF5] text-brand-airmailBlue px-2 py-0.5 rounded">☔ Trong nhà</span>}
+            {weatherBadge && (
+              <span className="text-[11px] font-bold bg-[#FAF0CA] text-brand-terracottaDark border border-brand-terracotta/30 px-2 py-0.5 rounded">
+                {weatherBadge}
+              </span>
+            )}
+            {place.indoor && !weatherBadge && <span className="text-[11px] bg-[#E4EEF5] text-brand-airmailBlue px-2 py-0.5 rounded">☔ Trong nhà</span>}
           </div>
         </div>
       </div>

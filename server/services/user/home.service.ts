@@ -59,11 +59,8 @@ function resolveStopIcon(title: string, category?: string): string {
  * Phục vụ toàn bộ dữ liệu công khai trên Trang chủ (Thời tiết, SunCalc, 3 thẻ gợi ý, tổng số nơi)
  */
 export async function getHomePublic(city = "hanoi"): Promise<HomePublicDto> {
-  const [weather, catalogPreview] = await Promise.all([
-    getWeatherForecast(HANOI_COORDS.lat, HANOI_COORDS.lng),
-    getHomeCatalogPreview(3),
-  ]);
-
+  const weather = await getWeatherForecast(HANOI_COORDS.lat, HANOI_COORDS.lng);
+  const catalogPreview = await getHomeCatalogPreview(3, weather);
   const sunTimes = getBestTimes(HANOI_COORDS.lat, HANOI_COORDS.lng, new Date());
 
   return {

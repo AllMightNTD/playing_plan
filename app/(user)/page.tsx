@@ -14,6 +14,7 @@ import { PlanTimeline } from "@/components/plans/PlanTimeline";
 import { PlanAirmailCard } from "@/components/plans/PlanAirmailCard";
 import { CompletePlanModal } from "@/components/plans/modals/CompletePlanModal";
 import { enrichPlanStops } from "@/lib/plan-enrichment";
+import { getWeatherRecommendation } from "@/lib/weather-recommendation";
 import {
   computePlanTimeline,
   computeItineraryStats,
@@ -58,12 +59,13 @@ export default function HomePage() {
     };
   }, []);
 
-  // Trời mưa thì ưu tiên quán trong nhà, trời đẹp ưu tiên ngoài trời
-  const isRainy = homePublic?.weather.icon === "rain" || homePublic?.weather.icon === "thunder";
-  const previewPlaces = useMemo(
-    () => [...places].sort((a, b) => Number(b.indoor === isRainy) - Number(a.indoor === isRainy)).slice(0, PREVIEW_PLACES),
-    [places, isRainy]
-  );
+  // Gợi ý địa điểm theo thời tiết Hà Nội thực tế (nhiệt độ, mưa, gió buốt)
+  const weatherRec = useMemo(() => {
+    const candidatePool = places.length > 0 ? places : (homePublic?.curatedPlaces ?? []);
+    return getWeatherRecommendation(candidatePool, homePublic?.weather, { limit: PREVIEW_PLACES });
+  }, [places, homePublic?.weather, homePublic?.curatedPlaces]);
+
+  const previewPlaces = weatherRec.places;
 
   const openShare = () => {
     if (!upcomingPlan) {
@@ -233,21 +235,33 @@ export default function HomePage() {
 
       <section id="section-explore" className="scroll-section">
         <div className="explore-header-row flex flex-wrap items-end justify-between gap-3 mb-6">
-          <div>
-            <span className="text-xs font-bold text-brand-terracotta uppercase tracking-wider">🧭 Gợi ý hôm nay</span>
+          <div className="max-w-2xl">
+            <span className="text-xs font-bold text-brand-terracotta uppercase tracking-wider">
+              {weatherRec.weatherTag}
+            </span>
             <h2 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink mt-0.5">
-              {isRainy ? "Trời mưa, trốn vào mấy góc trong nhà này nhé" : "Hợp với thời tiết Hà Nội hôm nay"}
+              {weatherRec.headline}
             </h2>
+            <p className="text-xs sm:text-sm text-paper-muted mt-1 leading-relaxed">
+              {weatherRec.subhead}
+            </p>
           </div>
-          <Link href="/explore" className="text-xs font-bold text-brand-terracotta hover:underline">
+          <Link href="/explore" className="text-xs font-bold text-brand-terracotta hover:underline shrink-0">
             Xem cả {places.length} quán →
           </Link>
         </div>
         <div className="polaroid-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7 pt-2">
-          {isLoadingPlaces ? (
+          {isLoadingPlaces && previewPlaces.length === 0 ? (
             <div className="col-span-full text-center text-sm text-paper-muted py-10">Đang lật sổ tìm tọa độ hẹn hò...</div>
           ) : (
-            previewPlaces.map((place, idx) => <PlaceCard key={place.id} place={place} index={idx} />)
+            previewPlaces.map((place, idx) => (
+              <PlaceCard
+                key={place.id}
+                place={place}
+                index={idx}
+                weatherBadge={weatherRec.evaluations.get(place.id)?.weatherBadge}
+              />
+            ))
           )}
         </div>
       </section>

@@ -14,6 +14,8 @@ import { toCatalogPlace } from "@/server/services/user/catalog.mapper";
 import { HANOI_PLACES } from "@/lib/mock-data";
 import { HIDDEN_SAFETY_PLACE } from "@/lib/constants/catalog";
 import { filterPlacesByHobby } from "@/lib/catalog/hobby-filter";
+import { getWeatherRecommendation } from "@/lib/weather-recommendation";
+import type { WeatherData } from "@/lib/weather";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { PlaceMedia } from "@/server/db/schema";
 import {
@@ -92,25 +94,34 @@ export async function getPublishedPlacesByIds(placeIds: string[]): Promise<Hanoi
 }
 
 /**
- * Home public preview: COUNT(*) + top-N curated places without loading the entire catalog.
+ * Home public preview: COUNT(*) + top-N curated places evaluated by current weather.
  */
 export async function getHomeCatalogPreview(
-  limit: number = 3
+  limit: number = 3,
+  weather?: WeatherData
 ): Promise<{ totalPlaces: number; curatedPlaces: HanoiPlace[] }> {
   if (!isDatabaseConfigured()) {
     assertDemoFallbackAllowed();
     const seed = getSeedPlaces();
+    const curated = weather
+      ? getWeatherRecommendation(seed, weather, { limit }).places
+      : seed.slice(0, limit);
     return {
       totalPlaces: seed.length,
-      curatedPlaces: seed.slice(0, limit),
+      curatedPlaces: curated,
     };
   }
 
+  const candidateLimit = weather ? Math.max(limit * 8, 24) : limit;
   const [totalPlaces, topRows] = await Promise.all([
     countPublishedPlaces(),
-    listPublishedPlacesLimited(limit),
+    listPublishedPlacesLimited(candidateLimit),
   ]);
-  const curatedPlaces = await hydrateCatalogPlaces(topRows);
+  const hydrated = await hydrateCatalogPlaces(topRows);
+  const curatedPlaces = weather
+    ? getWeatherRecommendation(hydrated, weather, { limit }).places
+    : hydrated.slice(0, limit);
+
   return { totalPlaces, curatedPlaces };
 }
 

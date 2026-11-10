@@ -3,8 +3,10 @@ import {
   findPlaceBySlug,
   getAllPublishedPlaces,
   getHomeCatalogPreview,
+  getPlaceSuggestions,
   getPublishedPlacesByIds,
   getUnswipedPublishedPlaces,
+  queryPlaces,
   requirePublishedPlace,
 } from "./places.service";
 import { isDatabaseConfigured } from "@/server/db/client";
@@ -164,4 +166,33 @@ describe("places.service - targeted TiDB query optimization & strict mode", () =
     expect(listUnswipedPublishedPlacesWithGuides).toHaveBeenCalledWith("room-1", "mem-1", 15);
     expect(listPublishedPlacesWithGuides).not.toHaveBeenCalled();
   });
+
+  it("queryPlaces: tìm kiếm Full Text Search trả về địa điểm khớp tên chính xác lên đầu tiên", async () => {
+    vi.mocked(isDatabaseConfigured).mockReturnValue(false);
+
+    const result = await queryPlaces({ q: "cau long bien" }, undefined, 10);
+    expect(result.items.length).toBeGreaterThan(0);
+    expect(result.items[0].slug).toBe("cau-long-bien");
+  });
+
+  it("queryPlaces: lọc chính xác theo Thể loại (category: food) và Gu (mood: romantic)", async () => {
+    vi.mocked(isDatabaseConfigured).mockReturnValue(false);
+
+    const result = await queryPlaces({ category: "food", mood: "romantic" }, undefined, 10);
+    expect(result.items.length).toBeGreaterThan(0);
+    for (const item of result.items) {
+      expect(item.category).toBe("food");
+      expect(item.moods).toContain("romantic");
+    }
+  });
+
+  it("getPlaceSuggestions: trả về gợi ý autocomplete chuẩn xác theo tiền tố", async () => {
+    vi.mocked(isDatabaseConfigured).mockReturnValue(false);
+
+    const suggestions = await getPlaceSuggestions("cau", 5);
+    expect(suggestions.length).toBeGreaterThan(0);
+    expect(suggestions.length).toBeLessThanOrEqual(5);
+    expect(suggestions.some((s) => s.slug === "cau-long-bien")).toBe(true);
+  });
 });
+

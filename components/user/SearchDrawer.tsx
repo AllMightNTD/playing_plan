@@ -44,7 +44,13 @@ export function SearchDrawer() {
 
   const goToExplore = () => {
     setIsSearchDrawerOpen(false);
-    router.push("/explore");
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.set("q", searchQuery.trim());
+    if (selectedCategory && selectedCategory !== "all") {
+      params.set("category", selectedCategory);
+    }
+    const qs = params.toString();
+    router.push(qs ? `/explore?${qs}` : "/explore");
   };
 
   return (

@@ -25,6 +25,32 @@ export const MOOD_LABELS: Record<MoodKey, string> = {
   food: "Ăn uống",
 };
 
+/** Tầng 1: Thể loại địa điểm chuẩn hóa cho giao diện Explore */
+export const EXPLORE_CATEGORIES = [
+  { key: "all", label: "Tất cả", emoji: "✨" },
+  { key: "cafe", label: "Cà phê & Trà", emoji: "☕" },
+  { key: "food", label: "Ăn uống", emoji: "🍜" },
+  { key: "photo", label: "Chụp ảnh đẹp", emoji: "📸" },
+  { key: "walk", label: "Dạo phố & Cảnh quan", emoji: "🚶" },
+  { key: "fun", label: "Vui chơi giải trí", emoji: "🎡" },
+  { key: "nature", label: "Thiên nhiên & Bờ hồ", emoji: "🌿" },
+  { key: "indoor", label: "Trong nhà mát mẻ", emoji: "🏛️" },
+] as const;
+
+export type ExploreCategoryKey = (typeof EXPLORE_CATEGORIES)[number]["key"];
+
+/** Tầng 2: Gu & Không khí hẹn hò (Vibe) cho giao diện Explore */
+export const EXPLORE_MOODS = [
+  { key: "romantic", label: "Lãng mạn", emoji: "💖" },
+  { key: "chill", label: "Chill yên bình", emoji: "🍃" },
+  { key: "vintage", label: "Cổ kính phố cổ", emoji: "📻" },
+  { key: "sunset", label: "Ngắm hoàng hôn", emoji: "🌅" },
+  { key: "cozy", label: "Ấm cúng gần gũi", emoji: "🕯️" },
+  { key: "view", label: "View ngắm phố/hồ", emoji: "🏙️" },
+] as const;
+
+export type ExploreMoodKey = (typeof EXPLORE_MOODS)[number]["key"];
+
 export const CATEGORY_LABELS: Record<PlaceCategory, string> = {
   photo: "Chụp ảnh",
   cafe: "Cà phê",

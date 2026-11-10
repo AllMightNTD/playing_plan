@@ -44,10 +44,12 @@ const csvSlugsSchema = z
   .pipe(z.array(slugSchema).max(MAX_EXCLUDE_SLUGS));
 
 export const placeListQuerySchema = z.object({
-  mood: z.enum(MOOD_KEYS).optional(),
-  category: z.enum(PLACE_CATEGORIES).optional(),
+  mood: z.string().trim().max(50).optional(),
+  moods: z.string().trim().max(100).optional(),
+  category: z.string().trim().max(50).optional(),
   price: budgetLevelSchema.optional(),
   area: z.string().trim().max(80).optional(),
+  district: z.string().trim().max(80).optional(),
   indoor: booleanQuerySchema.optional(),
   q: z.string().trim().max(100).optional(),
   cursor: z.string().regex(/^\d+$/).optional(),
@@ -58,6 +60,11 @@ export const randomPlaceQuerySchema = z.object({
   mood: z.enum(MOOD_KEYS).optional(),
   category: z.enum(PLACE_CATEGORIES).optional(),
   exclude: csvSlugsSchema.optional(),
+});
+
+export const placeSuggestionsQuerySchema = z.object({
+  q: z.string().trim().min(1).max(100),
+  limit: z.coerce.number().int().min(1).max(10).default(5),
 });
 
 export const videoCatalogQuerySchema = z.object({

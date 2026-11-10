@@ -1,12 +1,15 @@
 import type { MoodKey, PlaceCategory } from "@/lib/constants/catalog";
 import { normalizeVietnamese, scoreSearchMatch } from "@/lib/search";
 import type { HanoiPlace } from "@/lib/types/catalog";
+import { resolveDistrictKey } from "@/lib/districts";
 
 export interface PlaceFilters {
-  mood?: MoodKey;
-  category?: PlaceCategory;
+  mood?: MoodKey | string;
+  moods?: (MoodKey | string)[];
+  category?: PlaceCategory | string;
   price?: number;
   area?: string;
+  district?: string;
   indoor?: boolean;
   q?: string;
 }
@@ -44,11 +47,21 @@ function toSearchableText(place: HanoiPlace): string {
 }
 
 function matchesFilters(place: HanoiPlace, filters: PlaceFilters): boolean {
-  if (filters.mood && !place.moods.includes(filters.mood)) return false;
-  if (filters.category && place.category !== filters.category) return false;
+  if (filters.mood && filters.mood !== "all" && !place.moods.includes(filters.mood)) return false;
+  if (filters.moods && filters.moods.length > 0) {
+    const activeMoods = filters.moods.filter((m) => m && m !== "all");
+    if (activeMoods.length > 0 && !activeMoods.some((m) => place.moods.includes(m))) {
+      return false;
+    }
+  }
+  if (filters.category && filters.category !== "all" && place.category !== filters.category) return false;
   if (filters.price !== undefined && place.priceLevel > filters.price) return false;
   if (filters.indoor !== undefined && place.indoor !== filters.indoor) return false;
-  if (filters.area && !normalizeVietnamese(place.area).includes(normalizeVietnamese(filters.area))) return false;
+  if (filters.district && filters.district !== "all") {
+    if (resolveDistrictKey(place.area) !== filters.district) return false;
+  } else if (filters.area && filters.area !== "all" && !normalizeVietnamese(place.area).includes(normalizeVietnamese(filters.area))) {
+    return false;
+  }
   return true;
 }
 
@@ -84,6 +97,8 @@ export interface PlaceSuggestion {
   slug: string;
   name: string;
   area: string;
+  category?: string;
+  categoryLabel?: string;
 }
 
 const PREFIX_OF_NAME_RANK = 2;
@@ -99,7 +114,8 @@ function rankSuggestion(nameNorm: string, query: string): number {
  * F22 autocomplete: khớp tiền tố tên (bỏ dấu); đầu tên xếp trước, đầu một từ bất kỳ xếp sau.
  */
 export function suggestPlaces(
-  places: Pick<HanoiPlace, "slug" | "name" | "area">[],
+  places: (Pick<HanoiPlace, "slug" | "name" | "area"> &
+    Partial<Pick<HanoiPlace, "category" | "categoryLabel">>)[],
   query: string,
   limit: number
 ): PlaceSuggestion[] {
@@ -111,7 +127,13 @@ export function suggestPlaces(
     .filter(({ rank }) => rank > 0)
     .sort((a, b) => b.rank - a.rank || a.place.name.localeCompare(b.place.name, "vi"))
     .slice(0, limit)
-    .map(({ place }) => ({ slug: place.slug, name: place.name, area: place.area }));
+    .map(({ place }) => ({
+      slug: place.slug,
+      name: place.name,
+      area: place.area,
+      category: place.category,
+      categoryLabel: place.categoryLabel,
+    }));
 }
 
 /**

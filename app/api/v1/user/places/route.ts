@@ -8,9 +8,11 @@ export const GET = handleRoute(async (req: NextRequest) => {
   const page = await queryPlaces(
     {
       mood: query.mood,
+      moods: query.moods ? query.moods.split(",").map((m) => m.trim()).filter(Boolean) : undefined,
       category: query.category,
       price: query.price,
       area: query.area,
+      district: query.district,
       indoor: query.indoor,
       q: query.q,
     },

@@ -1,0 +1,27 @@
+{
+  "name": "DateMate - Hẹn Hò & Lên Lịch Đôi",
+  "short_name": "DateMate",
+  "description": "Web app lên lịch đi chơi, quẹt thẻ hợp gu và khám phá địa điểm hẹn hò lãng mạn cho cặp đôi tại Hà Nội.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF7F3",
+  "theme_color": "#FFF7F3",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

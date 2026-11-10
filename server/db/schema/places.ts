@@ -60,6 +60,7 @@ export const places = mysqlTable(
   },
   (table) => [
     index("idx_places_city_status").on(table.city, table.status),
+    index("idx_places_city_status_area").on(table.city, table.status, table.area),
     index("idx_places_category").on(table.category),
     index("idx_places_price_level").on(table.priceLevel),
     index("idx_places_search_name").on(table.searchName),
@@ -130,6 +131,7 @@ export const savedPlaces = mysqlTable(
   },
   (table) => [
     primaryKey({ columns: [table.memberId, table.placeId] }),
+    index("idx_saved_places_place_id").on(table.placeId),
   ]
 );
 

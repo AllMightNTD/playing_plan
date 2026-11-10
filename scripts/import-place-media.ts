@@ -1,6 +1,6 @@
 /**
  * Import ứng viên media (scripts/output/place-media-candidates.json) vào TiDB.
- *  1. Seed 10 địa điểm từ lib/mock-data.ts vào `places` + `place_guides` ở trạng thái DRAFT nếu chưa có
+ *  1. Seed các địa điểm mẫu vào `places` + `place_guides` ở trạng thái DRAFT nếu chưa có
  *     (app vẫn dùng catalog seed trong code cho tới khi admin xuất bản; không ghi đè bản ghi admin đã sửa).
  *  2. Ghi `place_media`: tối đa 4 ảnh Unsplash + 2 ảnh Wikimedia mỗi nơi; bỏ qua mọi ảnh `internalOnly`.
  *  3. Đặt ảnh đầu tiên làm `cover_url` cho nơi chưa có ảnh bìa.
@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { connect } from "@tidbcloud/serverless";
-import { HANOI_PLACES } from "../lib/mock-data.ts";
+import { SAMPLE_PLACES as HANOI_PLACES } from "../server/test-fixtures/sample-places.ts";
 import { buildPlaceSearchFields } from "../lib/search.ts";
 import type { HanoiPlace } from "../lib/types/catalog.ts";
 

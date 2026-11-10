@@ -24,6 +24,7 @@ export const roomUploads = mysqlTable(
   },
   (table) => [
     index("idx_room_uploads_room").on(table.roomId, table.deletedAt),
+    index("idx_room_uploads_memory").on(table.memoryId),
   ]
 );
 

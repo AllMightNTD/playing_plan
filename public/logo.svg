@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFDF9" />
+      <stop offset="100%" stop-color="#FCEEE6" />
+    </linearGradient>
+    <linearGradient id="heartGradLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0533C" />
+      <stop offset="100%" stop-color="#B33924" />
+    </linearGradient>
+    <linearGradient id="heartGradRight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F88C74" />
+      <stop offset="100%" stop-color="#E0533C" />
+    </linearGradient>
+    <linearGradient id="sparkleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE885" />
+      <stop offset="100%" stop-color="#F6B84A" />
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#802619" flood-opacity="0.18" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded card -->
+  <rect width="128" height="128" rx="32" fill="url(#bgGrad)" stroke="#F2DACB" stroke-width="2" />
+
+  <!-- Interlocking Double Heart Symbol -->
+  <g filter="url(#softShadow)" transform="translate(4, 2)">
+    <!-- Left Heart -->
+    <path d="M42 36 C30 36 22 46 22 58 C22 75 42 90 54 98 C56 99.5 58 100 60 100 C58 96 52 86 48 78 C44 70 42 62 43 56 C44 48 50 44 56 46 C60 47.5 63 51 64 54 C65 51 68 47.5 72 46 C69 40 60 36 42 36 Z" 
+          fill="url(#heartGradLeft)" opacity="0.95" />
+    
+    <!-- Right Heart (Interlocking Overlap) -->
+    <path d="M78 36 C66 36 57 42 54 50 C57 49 61 50 64 54 C67 59 66 68 62 76 C58 84 52 92 50 96 C52 97.5 54 99 56 100 C68 92 98 75 98 58 C98 46 90 36 78 36 Z" 
+          fill="url(#heartGradRight)" />
+
+    <!-- Overlap intersection highlight -->
+    <path d="M57 51 C61 53 64 58 63 65 C60 72 55 80 51 86 C54 80 58 72 60 66 C61 61 59 56 56 52 Z" 
+          fill="#FFB5A3" opacity="0.6" />
+  </g>
+
+  <!-- Golden Sparkles -->
+  <g fill="url(#sparkleGrad)">
+    <!-- Sparkle 1 (Top Right) -->
+    <path d="M96 24 Q96 32 104 32 Q96 32 96 40 Q96 32 88 32 Q96 32 96 24 Z" />
+    <!-- Sparkle 2 (Bottom Left) -->
+    <path d="M26 84 Q26 89 31 89 Q26 89 26 94 Q26 89 21 89 Q26 89 26 84 Z" opacity="0.85" />
+    <!-- Sparkle 3 (Small Top Center) -->
+    <circle cx="60" cy="24" r="2.5" />
+  </g>
+</svg>

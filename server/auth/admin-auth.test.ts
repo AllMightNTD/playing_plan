@@ -1,16 +1,41 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, afterEach, describe, expect, it } from "vitest";
 import {
   ADMIN_SESSION_MAX_AGE_SECONDS,
   DEFAULT_ADMIN_EMAIL,
   isAllowedAdminEmail,
+  getExpectedAdminPassword,
   signAdminToken,
   verifyAdminToken,
 } from "./admin-auth";
 
 describe("admin-auth", () => {
+  const origAuthSecret = process.env.AUTH_SECRET;
+  const origAdminPassword = process.env.ADMIN_PASSWORD;
+
+  beforeEach(() => {
+    process.env.AUTH_SECRET = "test-auth-secret-key-for-unit-tests-1234";
+    process.env.ADMIN_PASSWORD = "test-admin-password-secret-5678";
+  });
+
+  afterEach(() => {
+    process.env.AUTH_SECRET = origAuthSecret;
+    process.env.ADMIN_PASSWORD = origAdminPassword;
+  });
+
   it("should enforce 7-day session token duration", () => {
     expect(ADMIN_SESSION_MAX_AGE_SECONDS).toBe(7 * 24 * 60 * 60);
     expect(ADMIN_SESSION_MAX_AGE_SECONDS).toBe(604800);
+  });
+
+  describe("getExpectedAdminPassword", () => {
+    it("should return ADMIN_PASSWORD from env", () => {
+      expect(getExpectedAdminPassword()).toBe("test-admin-password-secret-5678");
+    });
+
+    it("should throw error if ADMIN_PASSWORD is not set", () => {
+      delete process.env.ADMIN_PASSWORD;
+      expect(() => getExpectedAdminPassword()).toThrow("ADMIN_PASSWORD environment variable is required");
+    });
   });
   describe("isAllowedAdminEmail", () => {
     it("should allow DEFAULT_ADMIN_EMAIL", () => {
@@ -26,6 +51,19 @@ describe("admin-auth", () => {
 
     it("should reject unauthorized email", () => {
       expect(isAllowedAdminEmail("stranger@gmail.com")).toBe(false);
+    });
+
+    it("should honor explicit ADMIN_EMAILS_ALLOWLIST when configured", () => {
+      const orig = process.env.ADMIN_EMAILS_ALLOWLIST;
+      try {
+        process.env.ADMIN_EMAILS_ALLOWLIST = "lead@datemate.vn,tech@datemate.vn";
+        expect(isAllowedAdminEmail("lead@datemate.vn")).toBe(true);
+        expect(isAllowedAdminEmail("tech@datemate.vn")).toBe(true);
+        expect(isAllowedAdminEmail("other@datemate.vn")).toBe(false);
+        expect(isAllowedAdminEmail(DEFAULT_ADMIN_EMAIL)).toBe(false);
+      } finally {
+        process.env.ADMIN_EMAILS_ALLOWLIST = orig;
+      }
     });
   });
 
@@ -52,6 +90,12 @@ describe("admin-auth", () => {
       expect(verifyAdminToken("not-a-token")).toBeNull();
       expect(verifyAdminToken(null)).toBeNull();
       expect(verifyAdminToken(undefined)).toBeNull();
+    });
+
+    it("should fail signing and verification when AUTH_SECRET is not configured", () => {
+      delete process.env.AUTH_SECRET;
+      expect(() => signAdminToken("admin@datemate.vn")).toThrow("AUTH_SECRET is not configured");
+      expect(verifyAdminToken("sample.token")).toBeNull();
     });
   });
 });

@@ -16,9 +16,9 @@ import { filterAiSummary } from "@/server/services/admin/governance.policy";
 export const revalidate = 3600; // ISR 1 giờ
 
 export async function generateStaticParams() {
-  // Build không có DB thì bỏ qua prerender, trang sẽ render theo yêu cầu (ISR)
+  // Prerender top 40 places at build time; remainder render on-demand via ISR (revalidate: 3600)
   const places = await getAllPublishedPlaces().catch(() => []);
-  return places.map((p) => ({ slug: p.slug }));
+  return places.slice(0, 40).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({

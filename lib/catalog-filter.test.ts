@@ -7,7 +7,7 @@ import {
   pickRandomPlace,
   suggestPlaces,
 } from "./catalog-filter";
-import { HANOI_PLACES } from "./mock-data";
+import { SAMPLE_PLACES } from "@/server/test-fixtures/sample-places";
 
 describe("Catalog Filter & Search Utilities", () => {
   it("nhận diện chính xác từ khóa phố đường tàu bị cấm (Mục 14.2)", () => {
@@ -23,7 +23,7 @@ describe("Catalog Filter & Search Utilities", () => {
   });
 
   it("lọc địa điểm theo category và từ khóa không dấu", () => {
-    const results = filterPlaces(HANOI_PLACES, {
+    const results = filterPlaces(SAMPLE_PLACES, {
       category: "photo",
       q: "long bien",
     });
@@ -65,6 +65,6 @@ describe("Catalog Filter & Search Utilities", () => {
   });
 
   it("suggestPlaces giới hạn số gợi ý", () => {
-    expect(suggestPlaces(HANOI_PLACES, "c", 2)).toHaveLength(2);
+    expect(suggestPlaces(SAMPLE_PLACES, "c", 2)).toHaveLength(2);
   });
 });

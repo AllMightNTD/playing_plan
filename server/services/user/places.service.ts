@@ -11,7 +11,6 @@ import {
   type PlaceWithGuide,
 } from "@/server/db/queries/user/places.queries";
 import { toCatalogPlace } from "@/server/services/user/catalog.mapper";
-import { HANOI_PLACES } from "@/lib/mock-data";
 import { HIDDEN_SAFETY_PLACE } from "@/lib/constants/catalog";
 import { filterPlacesByHobby } from "@/lib/catalog/hobby-filter";
 import { getWeatherRecommendation } from "@/lib/weather-recommendation";
@@ -27,21 +26,14 @@ import {
   type PlaceSuggestion,
 } from "@/lib/catalog-filter";
 import { AppError, ERRORS } from "@/server/http/errors";
-
-function getSeedPlaces(): HanoiPlace[] {
-  return HANOI_PLACES.filter(
-    (place) => place.status === "published" && place.slug !== HIDDEN_SAFETY_PLACE.slug
-  );
-}
+import { SAMPLE_PLACES } from "@/server/test-fixtures/sample-places";
 
 function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
-function assertDemoFallbackAllowed(): void {
-  if (isProduction()) {
-    throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
-  }
+function getLocalFallbackPlaces(): HanoiPlace[] {
+  return SAMPLE_PLACES.filter((p) => p.status === "published");
 }
 
 async function hydrateCatalogPlaces(rows: PlaceWithGuide[]): Promise<HanoiPlace[]> {
@@ -68,8 +60,10 @@ async function hydrateCatalogPlaces(rows: PlaceWithGuide[]): Promise<HanoiPlace[
  */
 export async function getAllPublishedPlaces(): Promise<HanoiPlace[]> {
   if (!isDatabaseConfigured()) {
-    assertDemoFallbackAllowed();
-    return getSeedPlaces();
+    if (isProduction()) {
+      throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
+    }
+    return getLocalFallbackPlaces();
   }
 
   const rows = await listPublishedPlacesWithGuides();
@@ -84,9 +78,11 @@ export async function getPublishedPlacesByIds(placeIds: string[]): Promise<Hanoi
   if (uniqueIds.length === 0) return [];
 
   if (!isDatabaseConfigured()) {
-    assertDemoFallbackAllowed();
-    const idSet = new Set(uniqueIds);
-    return getSeedPlaces().filter((p) => idSet.has(p.id));
+    if (isProduction()) {
+      throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
+    }
+    const set = new Set(uniqueIds);
+    return getLocalFallbackPlaces().filter((p) => set.has(p.id));
   }
 
   const rows = await listPublishedPlacesByIds(uniqueIds);
@@ -101,15 +97,14 @@ export async function getHomeCatalogPreview(
   weather?: WeatherData
 ): Promise<{ totalPlaces: number; curatedPlaces: HanoiPlace[] }> {
   if (!isDatabaseConfigured()) {
-    assertDemoFallbackAllowed();
-    const seed = getSeedPlaces();
+    if (isProduction()) {
+      throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
+    }
+    const places = getLocalFallbackPlaces();
     const curated = weather
-      ? getWeatherRecommendation(seed, weather, { limit }).places
-      : seed.slice(0, limit);
-    return {
-      totalPlaces: seed.length,
-      curatedPlaces: curated,
-    };
+      ? getWeatherRecommendation(places, weather, { limit }).places
+      : places.slice(0, limit);
+    return { totalPlaces: places.length, curatedPlaces: curated };
   }
 
   const candidateLimit = weather ? Math.max(limit * 8, 24) : limit;
@@ -137,13 +132,18 @@ export async function getUnswipedPublishedPlaces(
   const hasHobbyFilter = Boolean(hobby && hobby.trim() && hobby !== "all");
 
   if (!isDatabaseConfigured()) {
-    assertDemoFallbackAllowed();
-    const filtered = filterPlacesByHobby(getSeedPlaces(), hobby);
-    if (!session) return filtered.slice(0, limit);
-    const swiped = new Set(
+    if (isProduction()) {
+      throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
+    }
+    const all = getLocalFallbackPlaces();
+    const withHobby = hasHobbyFilter ? filterPlacesByHobby(all, hobby) : all;
+    if (!session) {
+      return withHobby.slice(0, limit);
+    }
+    const swipedIds = new Set(
       await getUserRepositories().swipes.listSwipedPlaceIds(session.roomId, session.memberId)
     );
-    return filtered.filter((place) => !swiped.has(place.id)).slice(0, limit);
+    return withHobby.filter((p) => !swipedIds.has(p.id)).slice(0, limit);
   }
 
   if (!session) {
@@ -170,8 +170,10 @@ export async function findPlaceBySlug(slug: string): Promise<HanoiPlace | null> 
   if (!slug || slug === HIDDEN_SAFETY_PLACE.slug) return null;
 
   if (!isDatabaseConfigured()) {
-    assertDemoFallbackAllowed();
-    return getSeedPlaces().find((place) => place.slug === slug) ?? null;
+    if (isProduction()) {
+      throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
+    }
+    return getLocalFallbackPlaces().find((p) => p.slug === slug) ?? null;
   }
 
   const row = await findPublishedPlaceWithGuide(slug);
@@ -191,12 +193,14 @@ export async function requirePublishedPlace(placeIdOrSlug: string): Promise<Hano
   }
 
   if (!isDatabaseConfigured()) {
-    assertDemoFallbackAllowed();
-    const place = getSeedPlaces().find(
-      (candidate) => candidate.id === placeIdOrSlug || candidate.slug === placeIdOrSlug
+    if (isProduction()) {
+      throw new AppError(ERRORS.COMMON.DB_NOT_CONFIGURED);
+    }
+    const fallback = getLocalFallbackPlaces().find(
+      (p) => p.id === placeIdOrSlug || p.slug === placeIdOrSlug
     );
-    if (!place) throw new AppError(ERRORS.PLACE.NOT_FOUND);
-    return place;
+    if (!fallback) throw new AppError(ERRORS.PLACE.NOT_FOUND);
+    return fallback;
   }
 
   const row = await findPublishedPlaceWithGuide(placeIdOrSlug);

@@ -34,6 +34,7 @@ export const datePlans = mysqlTable(
   },
   (table) => [
     index("idx_date_plans_room_date").on(table.roomId, table.planDate),
+    index("idx_date_plans_room_status_date").on(table.roomId, table.status, table.planDate),
   ]
 );
 
@@ -57,6 +58,7 @@ export const planStops = mysqlTable(
   (table) => [
     index("idx_plan_stops_room_id").on(table.roomId),
     index("idx_plan_stops_plan_sort").on(table.planId, table.sortOrder),
+    index("idx_plan_stops_place_id").on(table.placeId),
   ]
 );
 

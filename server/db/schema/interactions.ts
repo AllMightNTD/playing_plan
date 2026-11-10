@@ -59,6 +59,7 @@ export const memories = mysqlTable(
   },
   (table) => [
     index("idx_memories_room_id").on(table.roomId),
+    index("idx_memories_plan_id").on(table.planId),
   ]
 );
 
@@ -108,6 +109,7 @@ export const reminders = mysqlTable(
   },
   (table) => [
     index("idx_reminders_remind_sent").on(table.remindAt, table.sentAt),
+    index("idx_reminders_plan_id").on(table.planId),
   ]
 );
 

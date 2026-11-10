@@ -69,7 +69,7 @@ describe("places.service - targeted TiDB query optimization & strict mode", () =
     vi.clearAllMocks();
   });
 
-  it("khi DB đã cấu hình nhưng trả về 0 bản ghi, phải trả về mảng rỗng [] thay vì fallback sang mock-data", async () => {
+  it("khi DB đã cấu hình nhưng trả về 0 bản ghi, phải trả về mảng rỗng [] thay vì fallback ngầm", async () => {
     vi.mocked(isDatabaseConfigured).mockReturnValue(true);
     vi.mocked(listPublishedPlacesWithGuides).mockResolvedValue([]);
 

@@ -1,12 +1,62 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://datemate.vn";
+
 export const metadata: Metadata = {
-  title: "DateMate - Web app lên lịch đi chơi cho cặp đôi",
-  description: "Khám phá địa điểm hẹn hò, giờ chụp ảnh đẹp, gợi ý trang phục và lên lịch đi chơi tại Hà Nội.",
-  manifest: "/manifest.json",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "DateMate 💖 - Web App Lên Lịch Hẹn Hò & Quẹt Thẻ Cho Cặp Đôi",
+    template: "%s | DateMate",
+  },
+  description:
+    "Khám phá quán đẹp Hà Nội, quẹt thẻ tìm điểm hẹn chung, tính giờ vàng hoàng hôn SunCalc và lập kế hoạch hẹn hò lãng mạn cho cặp đôi.",
+  applicationName: "DateMate",
+  authors: [{ name: "DateMate Team", url: siteUrl }],
+  creator: "DateMate",
+  publisher: "DateMate",
+  manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    apple: "/logo.svg",
+  },
+  openGraph: {
+    type: "website",
+    locale: "vi_VN",
+    url: siteUrl,
+    title: "DateMate 💖 - Lên Lịch Đi Chơi & Hẹn Hò Cho Cặp Đôi",
+    description:
+      "Quẹt thẻ tìm quán chung, tính giờ vàng hoàng hôn SunCalc, và lưu giữ kỷ niệm hẹn hò ngọt ngào.",
+    siteName: "DateMate",
+    images: [
+      {
+        url: "/logo.svg",
+        width: 512,
+        height: 512,
+        alt: "DateMate Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DateMate 💖 - Lên Lịch Đi Chơi Cho Cặp Đôi",
+    description:
+      "Khám phá quán đẹp Hà Nội, quẹt thẻ tìm điểm hẹn chung và tính giờ vàng hoàng hôn.",
+    images: ["/logo.svg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 

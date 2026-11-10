@@ -8,7 +8,6 @@ import { AppError, ERRORS } from "@/server/http/errors";
 
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days (604,800s)
 export const DEFAULT_ADMIN_EMAIL = "admin@datemate.vn";
-export const DEFAULT_ADMIN_DEV_PASSWORD = "datemate@admin2026";
 
 const PROD_ADMIN_COOKIE = "__Host-dm_admin";
 const DEV_ADMIN_COOKIE = "dm_admin";
@@ -31,26 +30,34 @@ export function getAdminCookieName(): string {
 }
 
 function getAuthSecret(): string {
-  return process.env.AUTH_SECRET || "datemate-default-admin-secret-key-2026";
+  return process.env.AUTH_SECRET || "";
 }
 
 export function signAdminToken(email: string): string {
+  const secret = getAuthSecret();
+  if (!secret) {
+    throw new Error("AUTH_SECRET is not configured");
+  }
   const payload: AdminTokenPayload = {
     email: email.toLowerCase().trim(),
     exp: Math.floor(Date.now() / 1000) + ADMIN_SESSION_MAX_AGE_SECONDS,
   };
   const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const signature = crypto.createHmac("sha256", getAuthSecret()).update(data).digest("base64url");
+  const signature = crypto.createHmac("sha256", secret).update(data).digest("base64url");
   return `${data}.${signature}`;
 }
 
 export function verifyAdminToken(token?: string | null): AdminIdentity | null {
   if (!token || !token.includes(".")) return null;
+  const secret = getAuthSecret();
+  if (!secret) return null;
   const [data, signature] = token.split(".");
   if (!data || !signature) return null;
 
-  const expectedSig = crypto.createHmac("sha256", getAuthSecret()).update(data).digest("base64url");
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+  const expectedSig = crypto.createHmac("sha256", secret).update(data).digest("base64url");
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSig);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
     return null;
   }
 
@@ -98,13 +105,17 @@ export function isAllowedAdminEmail(email?: string | null): boolean {
     .filter(Boolean);
 
   if (allowlist.length === 0) {
-    return normalized === DEFAULT_ADMIN_EMAIL;
+    return !isProduction() && normalized === DEFAULT_ADMIN_EMAIL;
   }
-  return allowlist.includes(normalized) || normalized === DEFAULT_ADMIN_EMAIL;
+  return allowlist.includes(normalized);
 }
 
 export function getExpectedAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_DEV_PASSWORD;
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) {
+    throw new Error("ADMIN_PASSWORD environment variable is required");
+  }
+  return password;
 }
 
 export async function findAdminSession(): Promise<AdminIdentity | null> {

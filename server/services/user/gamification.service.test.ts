@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { resetMemoryStore } from "@/server/db/demo/memory-store";
 import { ensureRoomSession } from "@/server/services/user/room.service";
 import {
@@ -10,7 +10,17 @@ import {
   listSecretNotes,
 } from "./gamification.service";
 import { getUserRepositories } from "@/server/db/repositories";
-import { HANOI_PLACES } from "@/lib/mock-data";
+import { SAMPLE_PLACES } from "@/server/test-fixtures/sample-places";
+import { AppError, ERRORS } from "@/server/http/errors";
+
+vi.mock("@/server/services/user/places.service", () => ({
+  getAllPublishedPlaces: vi.fn(async () => SAMPLE_PLACES),
+  requirePublishedPlace: vi.fn(async (idOrSlug: string) => {
+    const found = SAMPLE_PLACES.find((p) => p.id === idOrSlug || p.slug === idOrSlug);
+    if (!found) throw new AppError(ERRORS.PLACE.NOT_FOUND);
+    return found;
+  }),
+}));
 
 let ipCounter = 0;
 const nextIp = () => `10.9.0.${++ipCounter}`;
@@ -20,8 +30,7 @@ beforeEach(() => {
 });
 
 describe("Gamification Service (Phase 5)", () => {
-  // Không có DB nên catalog là bộ seed: p8 = cà phê Hoàn Kiếm, p3 = Tây Hồ, p6 = Ba Đình
-  const SEED_IDS = new Set(HANOI_PLACES.map((p) => p.id));
+  const SEED_IDS = new Set(SAMPLE_PLACES.map((p) => p.id));
 
   describe("Blind Date Ticket (Vé Mù Hẹn Hò & Server-side Masking)", () => {
     it("should initialize blind date ticket and mask destinations of future steps", async () => {
@@ -47,17 +56,17 @@ describe("Gamification Service (Phase 5)", () => {
     });
 
     it("builds 3 distinct real steps and respects the price tier when the catalog allows", () => {
-      const budget = buildBlindDateSteps(HANOI_PLACES, "budget");
+      const budget = buildBlindDateSteps(SAMPLE_PLACES, "budget");
       expect(budget.map((s) => s.step)).toEqual([1, 2, 3]);
       expect(new Set(budget.map((s) => s.placeId)).size).toBe(3);
       for (const step of budget) {
-        const place = HANOI_PLACES.find((p) => p.id === step.placeId);
+        const place = SAMPLE_PLACES.find((p) => p.id === step.placeId);
         expect(place?.priceLevel).toBe(1);
         expect(step.hint).not.toContain(place!.name);
       }
 
       // Seed chỉ có 2 địa điểm giá 2-3 nên luxury nới ra toàn catalog thay vì bịa địa điểm
-      const luxury = buildBlindDateSteps(HANOI_PLACES, "luxury");
+      const luxury = buildBlindDateSteps(SAMPLE_PLACES, "luxury");
       expect(luxury.every((s) => SEED_IDS.has(s.placeId))).toBe(true);
     });
 
@@ -79,7 +88,7 @@ describe("Gamification Service (Phase 5)", () => {
 
       const initialTicket = await getBlindDateTicket(user.session);
       const step1PlaceId = initialTicket.steps[0].placeId;
-      const otherPlace = HANOI_PLACES.find((p) => !initialTicket.steps.some((s) => s.placeId === p.id))!;
+      const otherPlace = SAMPLE_PLACES.find((p) => !initialTicket.steps.some((s) => s.placeId === p.id))!;
 
       // Check-in sai chỗ không mở chặng
       const wrong = await checkInPlace(user.session, { placeId: otherPlace.id, method: "manual_confirm" });
@@ -131,7 +140,7 @@ describe("Gamification Service (Phase 5)", () => {
       });
 
       expect(createdNote.isUnlocked).toBe(false);
-      expect(createdNote.placeName).toBe(HANOI_PLACES.find((p) => p.id === "p8")!.name);
+      expect(createdNote.placeName).toBe(SAMPLE_PLACES.find((p) => p.id === "p8")!.name);
       expect(createdNote.district).toBe("hoan_kiem");
 
       // 2. Danh sách thư hiển thị bị server mask

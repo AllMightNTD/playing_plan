@@ -17,7 +17,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { HANOI_PLACES } from "../lib/mock-data.ts";
+import { SAMPLE_PLACES as HANOI_PLACES } from "../server/test-fixtures/sample-places.ts";
 import type { HanoiPlace } from "../lib/types/catalog.ts";
 
 type Platform = "upload" | "tiktok" | "youtube" | "unsplash" | "pexels" | "wikimedia";

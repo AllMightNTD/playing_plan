@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getVideoHotspots } from "./video-hotspots.service";
 import { isDatabaseConfigured } from "@/server/db/client";
 import { listHotspotsByVideo } from "@/server/db/queries/videos/video-hotspots.queries";
-import { HANOI_PLACES } from "@/lib/mock-data";
+import { SAMPLE_PLACES as HANOI_PLACES } from "@/server/test-fixtures/sample-places";
 
 vi.mock("@/server/db/client", () => ({ isDatabaseConfigured: vi.fn() }));
 vi.mock("@/server/db/queries/videos/video-hotspots.queries", () => ({ listHotspotsByVideo: vi.fn() }));

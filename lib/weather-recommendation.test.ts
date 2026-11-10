@@ -7,7 +7,7 @@ import {
   isWaterSportActivity,
   pickDiverseWeatherPlaces,
 } from "./weather-recommendation";
-import { HANOI_PLACES } from "./mock-data";
+import { SAMPLE_PLACES as HANOI_PLACES } from "@/server/test-fixtures/sample-places";
 import type { WeatherData } from "./weather";
 
 const MOCK_COLD_17C_WEATHER: WeatherData = {

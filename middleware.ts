@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const ADMIN_COOKIES = ["__Host-dm_admin", "dm_admin"];
-const DEFAULT_AUTH_SECRET = "datemate-default-admin-secret-key-2026";
 
 function getAuthSecret(): string {
-  return process.env.AUTH_SECRET || DEFAULT_AUTH_SECRET;
+  return process.env.AUTH_SECRET || "";
 }
 
 function base64UrlToUint8Array(base64Url: string): Uint8Array {
@@ -32,7 +31,7 @@ function bufferToBase64Url(buffer: ArrayBuffer): string {
 }
 
 async function verifyTokenInEdge(token: string, secret: string): Promise<boolean> {
-  if (!token || !token.includes(".")) return false;
+  if (!secret || !token || !token.includes(".")) return false;
   const [data, signature] = token.split(".");
   if (!data || !signature) return false;
 

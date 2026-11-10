@@ -40,6 +40,8 @@ export const rooms = mysqlTable(
   (table) => [
     index("idx_rooms_invite_hash").on(table.inviteHash),
     index("idx_rooms_invite_code_hash").on(table.inviteCodeHash),
+    index("idx_rooms_status_last_active").on(table.status, table.lastActiveAt),
+    index("idx_rooms_pending_deleted").on(table.pendingDeletedAt),
   ]
 );
 

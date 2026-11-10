@@ -25,7 +25,12 @@ export const OTHER_DISTRICT_KEY = "khac";
 /** Suy ra quận từ trường `area` tự do của địa điểm (vd: "Quận Tây Hồ, Hà Nội", "Hoàn Kiếm - Long Biên"). */
 export function resolveDistrictKey(area: string | null | undefined): string {
   const normalizedArea = normalizeVietnamese(area ?? "");
-  const match = HANOI_7_DISTRICTS.find((d) => normalizedArea.includes(normalizeVietnamese(d.name)));
+  const match = HANOI_7_DISTRICTS.find(
+    (d) =>
+      normalizedArea.includes(normalizeVietnamese(d.name)) ||
+      normalizedArea === d.key ||
+      normalizedArea.includes(d.key)
+  );
   return match?.key ?? OTHER_DISTRICT_KEY;
 }
 

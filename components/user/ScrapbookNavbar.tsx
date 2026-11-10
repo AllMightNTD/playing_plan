@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { NoticesBell } from "./NoticesBell";
@@ -50,12 +51,19 @@ export function ScrapbookNavbar() {
       <div className="max-w-[1160px] mx-auto px-3 sm:px-6">
         <div className="flex items-center justify-between gap-2 py-3">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-brand-terracotta flex items-center justify-center text-white shadow-xs border-2 border-[#FAF4E8]">
-              <span className="text-lg">💞</span>
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-xs border-2 border-[#FAF4E8] group-hover:scale-105 transition-transform bg-[#FFFDF9] flex items-center justify-center">
+              <Image
+                src="/logo.svg"
+                alt="DateMate Logo"
+                width={36}
+                height={36}
+                className="w-full h-full object-cover"
+                priority
+              />
             </div>
             <div>
-              <span className="font-serif font-extrabold text-lg sm:text-xl text-paper-ink tracking-tight block leading-none">
+              <span className="font-serif font-extrabold text-lg sm:text-xl text-paper-ink tracking-tight block leading-none group-hover:text-brand-terracotta transition-colors">
                 DateMate
               </span>
               <span className="text-[11px] text-paper-muted font-medium hidden sm:block mt-0.5">Cẩm nang hẹn hò Hà Nội</span>

@@ -137,6 +137,7 @@ export const placeVideos = mysqlTable(
     primaryKey({ columns: [table.placeId, table.videoId] }),
     index("idx_place_videos_status").on(table.status),
     index("idx_place_videos_last_checked").on(table.lastCheckedAt),
+    index("idx_place_videos_video_id").on(table.videoId),
   ]
 );
 

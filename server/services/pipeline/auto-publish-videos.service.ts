@@ -122,9 +122,12 @@ export async function autoPublishMatchedVideos(
     existingMediaRows.map((m: { placeId: string; embedId: string | null }) => `${m.placeId}:${m.embedId}`)
   );
 
+  const placeMap = new Map(allPlaces.map((p) => [p.id, p]));
+  const videoMap = new Map(rawVideos.map((v) => [v.videoId, v]));
+
   for (const m of qualifyingMatches) {
-    const place = allPlaces.find((p) => p.id === m.placeId);
-    const video = rawVideos.find((v) => v.videoId === m.videoId);
+    const place = placeMap.get(m.placeId);
+    const video = videoMap.get(m.videoId);
     if (!place || !video) continue;
 
     const key = `${place.id}:${video.videoId}`;

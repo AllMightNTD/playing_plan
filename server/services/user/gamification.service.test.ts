@@ -6,7 +6,6 @@ import {
   createBlindDateTicket,
   getBlindDateTicket,
   checkInPlace,
-  getScratchMap,
   createSecretNote,
   listSecretNotes,
 } from "./gamification.service";
@@ -102,27 +101,16 @@ describe("Gamification Service (Phase 5)", () => {
       expect(updatedTicket.steps[2].placeName).toBe("🔒 Server Locked");
     });
 
-    it("derives district from the catalog and scratches the map per district", async () => {
+    it("derives district from the catalog and records checkin per district", async () => {
       const user = await ensureRoomSession(null, nextIp(), "Traveler");
-
-      const initialMap = await getScratchMap(user.session);
-      expect(initialMap.scratchedCount).toBe(0);
-      expect(initialMap.unlockedPercentage).toBe(0);
 
       // p3 ở Tây Hồ
       const res = await checkInPlace(user.session, { placeId: "p3", method: "manual_confirm" });
       expect(res.checkin.district).toBe("tay_ho");
 
-      const mapAfter1 = await getScratchMap(user.session);
-      expect(mapAfter1.scratchedCount).toBe(1);
-      expect(mapAfter1.unlockedPercentage).toBe(Math.round((1 / 7) * 100)); // 14%
-
       // p8 ở Hoàn Kiếm
-      await checkInPlace(user.session, { placeId: "p8", method: "gps_auto" });
-
-      const mapAfter2 = await getScratchMap(user.session);
-      expect(mapAfter2.scratchedCount).toBe(2);
-      expect(mapAfter2.unlockedPercentage).toBe(Math.round((2 / 7) * 100)); // 29%
+      const res2 = await checkInPlace(user.session, { placeId: "p8", method: "gps_auto" });
+      expect(res2.checkin.district).toBe("hoan_kiem");
     });
 
     it("rejects check-in at a place that is not in the published catalog", async () => {
@@ -185,14 +173,10 @@ describe("Gamification Service (Phase 5)", () => {
       const notesB = await listSecretNotes(userB.session);
       expect(notesB.length).toBe(0);
 
-      // Room A check-in không làm thay đổi bản đồ cào của Room B
+      // Room A check-in không làm ảnh hưởng Room B
       await checkInPlace(userA.session, { placeId: "p3", method: "gps_auto" });
-
-      const mapA = await getScratchMap(userA.session);
-      const mapB = await getScratchMap(userB.session);
-
-      expect(mapA.scratchedCount).toBe(1);
-      expect(mapB.scratchedCount).toBe(0);
+      const notesAfterB = await listSecretNotes(userB.session);
+      expect(notesAfterB.length).toBe(0);
     });
   });
 });

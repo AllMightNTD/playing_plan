@@ -104,13 +104,13 @@ describe("components/plans/PlanTimeline", () => {
 
     // Header assertions
     expect(html).toContain("Buổi hẹn cuối tuần phố cổ");
-    expect(html).toContain("📍 Lịch hẹn sắp tới");
+    expect(html).toContain("Lịch hẹn sắp tới");
     expect(html).toContain("Bắt đầu 15:00");
 
     // Top buttons assertions
     expect(html).toContain("🌅 Tự xếp giờ khớp Hoàng hôn");
     expect(html).toContain("🌧️ Đổi sang quán Trong nhà (Phòng mưa)");
-    expect(html).toContain("Mẹo: Giữ biểu tượng");
+    expect(html).toContain("Kéo thả để đổi thứ tự hoặc di chuột vào thẻ để chỉnh mốc giờ");
     expect(html).toContain("Thêm chặng mới");
 
     // Stops assertions
@@ -191,7 +191,7 @@ describe("components/plans/PlanTimeline", () => {
     expect(html).toContain("☕");
     expect(html).toContain("📸");
     expect(html).toContain("✨ Tối ưu thứ tự");
-    expect(html).toContain("Hoàn thành buổi hẹn");
+    expect(html).toContain("Hoàn thành");
     expect(html).toContain("Xem quán");
   });
 
@@ -210,7 +210,7 @@ describe("components/plans/PlanTimeline", () => {
       />
     );
 
-    expect(html).toContain("✅ Đã hoàn thành");
-    expect(html).not.toContain("Hoàn thành buổi hẹn");
+    expect(html).toContain("Đã hoàn thành");
+    expect(html).not.toContain("check-circle-2");
   });
 });

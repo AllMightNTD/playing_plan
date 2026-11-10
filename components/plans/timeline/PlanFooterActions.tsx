@@ -24,45 +24,46 @@ export function PlanFooterActions({
 }: PlanFooterActionsProps) {
   return (
     <>
-      <div className="mt-4 pl-10 sm:pl-11">
+      <div className="mt-6">
         <button
           type="button"
           onClick={onOpenAddStop}
-          className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#d5c5b0] hover:border-[#c84b31] bg-[#faf6f0] hover:bg-[#fff5f2] text-xs font-bold text-[#6e5645] hover:text-[#c84b31] transition flex items-center justify-center gap-1.5 cursor-pointer"
+          className="w-full py-3.5 rounded-2xl border-2 border-dashed border-rose-200 hover:border-rose-500 hover:bg-rose-50/50 text-xs font-bold text-rose-600 transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
         >
           <Plus className="w-4 h-4" />
-          {`Thêm địa điểm mới vào mốc tiếp theo (${nextSlotEndStr})`}
+          <span>{`Thêm địa điểm mới vào mốc tiếp theo (${nextSlotEndStr})`}</span>
         </button>
       </div>
 
-      <div className="mt-6 pt-4 border-t border-[#eee5d7] flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-7 pt-5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           onClick={onOpenChecklist}
-          className="inline-flex items-center gap-2 bg-[#f3ede2] hover:bg-[#e8dfd1] border border-[#d6c7b2] px-3.5 py-2 rounded-full text-xs font-bold text-[#3d2d24] transition cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200/70 text-xs font-semibold text-stone-700 transition flex items-center gap-2 cursor-pointer"
         >
           <span>☑️ Đồ cần chuẩn bị:</span>
-          <span className="text-[#c84b31]">
+          <span className="text-rose-600 font-bold">
             {`${completedChecklistCount}/${totalChecklistCount} xong`}
           </span>
         </button>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           {onNotifyPartner && (
             <button
               type="button"
               onClick={onNotifyPartner}
-              className="inline-flex items-center gap-1.5 bg-[#fdf3dc] hover:bg-[#f7e4b9] text-[#785118] border border-[#e3c383] text-xs font-bold px-4 py-2.5 rounded-full transition cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-amber-100/80 hover:bg-amber-200/70 text-amber-900 text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-2xs"
             >
-              <Send className="w-3.5 h-3.5" /> Gửi lịch cho Người thương
+              <Send className="w-3.5 h-3.5" />
+              <span>Gửi lịch cho Người thương</span>
             </button>
           )}
           <button
             type="button"
             onClick={onExportIcs}
-            className="inline-flex items-center gap-1.5 bg-[#c84b31] hover:bg-[#ad3b23] text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xs transition cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-xs shadow-rose-200 transition flex items-center gap-2 cursor-pointer"
           >
-            📅 Lưu vào Lịch ĐT (.ics)
+            <span>📅 Lưu vào Lịch ĐT (.ics)</span>
           </button>
         </div>
       </div>

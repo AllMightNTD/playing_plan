@@ -391,20 +391,22 @@ body {
    AIRMAIL POSTCARD & VINTAGE TIMELINE
    ========================================================== */
 .airmail-card {
-  background: repeating-linear-gradient(
+  background: #FFFDF9;
+  position: relative;
+  border-radius: 1.5rem;
+  padding: 6px;
+  background-image: repeating-linear-gradient(
     -45deg,
-    #c84b31 0px,
-    #c84b31 12px,
-    #fdfbf7 12px,
-    #fdfbf7 20px,
-    #35698a 20px,
-    #35698a 32px,
-    #fdfbf7 32px,
-    #fdfbf7 40px
+    #F48B94 0px,
+    #F48B94 12px,
+    #FFFDF9 12px,
+    #FFFDF9 20px,
+    #84B6D6 20px,
+    #84B6D6 32px,
+    #FFFDF9 32px,
+    #FFFDF9 40px
   );
-  padding: 9px;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px -10px rgba(65, 42, 28, 0.14);
+  box-shadow: 0 20px 40px -15px rgba(225, 91, 100, 0.12);
 }
 
 .vintage-shadow {

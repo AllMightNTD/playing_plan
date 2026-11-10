@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi Tiết Điểm Hẹn - Refactored Modal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+          },
+          colors: {
+            cream: '#FFFDF9',
+            blush: '#FFF0F3',
+            rosePrimary: '#E15B64',
+            roseDark: '#C84650',
+            warmBorder: '#F2E4DC',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #E6DDD6;
+      background-image: radial-gradient(#C8B8AC 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+  </style>
+</head>
+<body class="text-stone-800 antialiased min-h-screen flex items-center justify-center p-4 md:p-6">
+
+  <!-- MODAL CONTAINER -->
+  <div class="w-full max-w-4xl bg-cream rounded-[2rem] border border-warmBorder shadow-[0_25px_60px_-15px_rgba(90,60,50,0.2)] overflow-hidden flex flex-col max-h-[92vh]">
+    
+    <!-- 1. HEADER MODAL -->
+    <div class="px-6 pt-6 pb-4 border-b border-stone-100 flex items-start justify-between gap-4 bg-gradient-to-b from-rose-50/40 to-transparent shrink-0">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <span class="w-9 h-9 rounded-2xl bg-rose-100/80 text-rosePrimary flex items-center justify-center text-lg shadow-sm">
+            📸
+          </span>
+          <h2 class="font-serif text-2xl md:text-[26px] font-bold text-stone-800 tracking-tight">
+            Phố Phan Đình Phùng & Cửa Bắc
+          </h2>
+        </div>
+
+        <!-- Badges -->
+        <div class="flex flex-wrap items-center gap-2 mt-3">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+            📍 Ba Đình
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/60">
+            💰 50k - 100k
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rosePrimary border border-rose-200/70">
+            ✨ Hợp đi lúc 16:18 - 17:18 nha
+          </span>
+        </div>
+      </div>
+
+      <!-- Nút Đóng -->
+      <button class="w-10 h-10 rounded-full bg-stone-100 hover:bg-rose-100 text-stone-500 hover:text-rosePrimary flex items-center justify-center transition shrink-0">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- 2. SCROLLABLE BODY -->
+    <div class="p-6 overflow-y-auto space-y-6">
+      
+      <!-- KHỐI TRÊN: GALLERY ẢNH (TRÁI) & THÔNG TIN ĐỊA ĐIỂM (PHẢI) -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        
+        <!-- Cột Trái: Carousel Ảnh (7 cột) -->
+        <div class="md:col-span-7 space-y-3">
+          <div class="relative rounded-2xl overflow-hidden aspect-[16/10] bg-stone-900 group shadow-sm border border-stone-200/60">
+            <img id="mainImage" src="https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&w=900&q=80" alt="Phố Phan Đình Phùng" class="w-full h-full object-cover transition duration-500" />
+            
+            <!-- Badge Góc 1/4 -->
+            <div id="photoBadge" class="absolute top-3.5 left-3.5 px-3 py-1 rounded-full bg-rosePrimary/95 backdrop-blur-sm text-white text-xs font-bold shadow-sm flex items-center gap-1.5">
+              📸 Góc 1/4
+            </div>
+
+            <!-- Nút điều hướng Trái/Phải -->
+            <button onclick="prevSlide()" class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center opacity-80 group-hover:opacity-100 transition">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <button onclick="nextSlide()" class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center opacity-80 group-hover:opacity-100 transition">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Chú thích ảnh dưới đáy -->
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-4 pt-10 text-white">
+              <p id="photoCaption" class="text-xs md:text-sm font-semibold leading-snug">
+                Phố Phan Đình Phùng & Cửa Bắc - Không gian và mặt tiền ngập tràn ánh sáng
+              </p>
+              <p class="text-[11px] text-stone-300 mt-0.5">Ảnh: Genny Dimitrakopoulou / Unsplash</p>
+            </div>
+          </div>
+
+          <!-- 4 Thumbnails -->
+          <div class="grid grid-cols-4 gap-2.5" id="thumbnailList">
+            <button onclick="selectSlide(0)" class="thumb-btn rounded-xl overflow-hidden h-14 border-2 border-rosePrimary ring-2 ring-rose-200 transition">
+              <img src="https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&w=300&q=80" class="w-full h-full object-cover" />
+            </button>
+            <button onclick="selectSlide(1)" class="thumb-btn rounded-xl overflow-hidden h-14 border-2 border-transparent opacity-70 hover:opacity-100 transition">
+              <img src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=300&q=80" class="w-full h-full object-cover" />
+            </button>
+            <button onclick="selectSlide(2)" class="thumb-btn rounded-xl overflow-hidden h-14 border-2 border-transparent opacity-70 hover:opacity-100 transition">
+              <img src="https://images.unsplash.com/photo-1544967082-d9d25d867d66?auto=format&fit=crop&w=300&q=80" class="w-full h-full object-cover" />
+            </button>
+            <button onclick="selectSlide(3)" class="thumb-btn rounded-xl overflow-hidden h-14 border-2 border-transparent opacity-70 hover:opacity-100 transition">
+              <img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=300&q=80" class="w-full h-full object-cover" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Cột Phải: Mô tả & Thẻ Thông tin (5 cột) -->
+        <div class="md:col-span-5 flex flex-col justify-between space-y-4">
+          <p class="text-sm text-stone-600 leading-relaxed font-medium bg-stone-50/80 p-3.5 rounded-2xl border border-stone-200/60 italic">
+            "Con đường rợp bóng sấu cổ thụ lãng mạn bậc nhất Hà Nội cùng di tích thành Cửa Bắc cổ kính."
+          </p>
+
+          <!-- Card Địa chỉ / Di chuyển / Mẹo -->
+          <div class="bg-white rounded-2xl p-4 border border-warmBorder shadow-sm space-y-3.5 text-xs">
+            <div class="flex items-start gap-3">
+              <span class="w-7 h-7 rounded-xl bg-rose-50 text-rosePrimary flex items-center justify-center shrink-0 mt-0.5">🏠</span>
+              <div>
+                <span class="text-stone-400 font-semibold block text-[11px] uppercase tracking-wider">Địa chỉ</span>
+                <span class="font-bold text-stone-800 text-xs leading-snug">Phan Đình Phùng, Quán Thánh, Ba Đình, Hà Nội</span>
+              </div>
+            </div>
+
+            <div class="h-px bg-stone-100"></div>
+
+            <div class="flex items-start gap-3">
+              <span class="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">🛵</span>
+              <div>
+                <span class="text-stone-400 font-semibold block text-[11px] uppercase tracking-wider">Di chuyển</span>
+                <span class="text-stone-700 leading-snug">~16 phút từ vị trí của bạn <strong class="text-emerald-700">(2.3 km, đã tính gửi xe)</strong></span>
+              </div>
+            </div>
+
+            <div class="h-px bg-stone-100"></div>
+
+            <div class="flex items-start gap-3">
+              <span class="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">💡</span>
+              <div>
+                <span class="text-stone-400 font-semibold block text-[11px] uppercase tracking-wider">Mẹo nhỏ cho hai bạn</span>
+                <span class="text-stone-700 leading-snug">Gửi xe tại khu vực Cửa Bắc rồi nắm tay đi bộ dọc vỉa hè.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tags chủ đề -->
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <span class="text-[11px] text-stone-400 font-semibold mr-1">Vibe:</span>
+            <span class="px-3 py-1 rounded-full bg-stone-100 hover:bg-rose-50 hover:text-rosePrimary text-stone-600 text-xs font-semibold transition cursor-default">#Chụp ảnh</span>
+            <span class="px-3 py-1 rounded-full bg-stone-100 hover:bg-rose-50 hover:text-rosePrimary text-stone-600 text-xs font-semibold transition cursor-default">#Chill</span>
+            <span class="px-3 py-1 rounded-full bg-stone-100 hover:bg-rose-50 hover:text-rosePrimary text-stone-600 text-xs font-semibold transition cursor-default">#Lãng mạn</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- KHỐI DƯỚI: 2 CỘT BENTO CÂN ĐỐI CHIỀU CAO -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+        
+        <!-- Cột Trái: Góc chụp thần thánh & Thời điểm đẹp -->
+        <div class="bg-white rounded-2xl p-5 border border-warmBorder shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3.5">
+              <h3 class="text-sm font-extrabold text-roseDark flex items-center gap-2">
+                <span class="w-7 h-7 rounded-xl bg-rose-50 flex items-center justify-center">📸</span>
+                Góc chụp "thần thánh" tại điểm hẹn
+              </h3>
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rosePrimary">Must-try</span>
+            </div>
+
+            <!-- Hộp gợi ý góc chụp chính -->
+            <div class="bg-cream rounded-xl p-4 border border-warmBorder/80 space-y-2">
+              <div class="font-bold text-stone-800 text-xs md:text-sm">
+                Vỉa hè rộng trước cổng trường Phan Đình Phùng
+              </div>
+              <div class="flex items-center gap-2 text-xs text-stone-600">
+                <span class="text-rosePrimary">📍</span>
+                <span>Số 30 Phan Đình Phùng (Góc nhiều cây sấu cổ thụ nhất)</span>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-amber-800 bg-amber-50/80 px-3 py-1.5 rounded-lg border border-amber-200/50">
+                <span>☀️</span>
+                <span>Đón tia nắng xiên qua tán cây lúc <strong>8h sáng</strong> hoặc <strong>16h30 chiều</strong>.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gợi ý tư thế & đạo cụ (Bổ sung để cân bằng chiều cao hoàn hảo với cột phải) -->
+          <div class="mt-4 pt-3.5 border-t border-stone-100">
+            <div class="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1.5">
+              <span>💑</span> Cách tạo dáng tự nhiên cho hai bạn:
+            </div>
+            <p class="text-xs text-stone-600 bg-blush/50 border border-rose-100 rounded-xl p-3 leading-relaxed">
+              <strong class="text-roseDark">Ôm bó hoa tươi đi bộ trên thảm lá vàng:</strong> Hai người vừa đi vừa trò chuyện tự nhiên, máy ảnh đặt ngang tầm mắt chụp chế độ liên tục.
+            </p>
+          </div>
+        </div>
+
+        <!-- Cột Phải: Gợi ý phối đồ đôi (OOTD) & Lưu ý -->
+        <div class="bg-gradient-to-br from-amber-50/70 via-cream to-rose-50/40 rounded-2xl p-5 border border-amber-200/70 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3.5">
+              <h3 class="text-sm font-extrabold text-amber-900 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-xl bg-amber-100/80 flex items-center justify-center">👗</span>
+                Gợi ý phối đồ đôi (OOTD)
+              </h3>
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100/80 text-amber-800">Tone Hợp Cảnh</span>
+            </div>
+
+            <!-- Bảng màu gợi ý trực quan -->
+            <div class="bg-white rounded-xl p-3.5 border border-amber-100 mb-3">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-stone-800">Áo dài truyền thống, váy tiểu thư hoặc sơ mi kem</span>
+                <div class="flex -space-x-1.5">
+                  <span class="w-4 h-4 rounded-full bg-[#FAF6F0] border border-stone-300" title="Trắng kem"></span>
+                  <span class="w-4 h-4 rounded-full bg-[#E6D2B5] border border-stone-300" title="Be ấm"></span>
+                  <span class="w-4 h-4 rounded-full bg-[#B68D6A] border border-stone-300" title="Nâu vintage"></span>
+                </div>
+              </div>
+              <p class="text-xs text-stone-600 flex items-start gap-1.5">
+                <span>🎨</span>
+                <span>Tone trắng tinh khôi hoặc kem/be sẽ cực kỳ nổi bật trên nền lá xanh và tường vàng cổ kính.</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Checklist Lưu ý thời tiết & an toàn -->
+          <div class="space-y-2 text-xs">
+            <div class="flex items-start gap-2.5 bg-white/90 px-3.5 py-2.5 rounded-xl border border-rose-100 text-stone-700">
+              <span class="text-rosePrimary mt-0.5">🚫</span>
+              <span><strong class="text-roseDark">Lưu ý nhỏ:</strong> Tránh đứng xuống lòng đường chụp ảnh gây cản trở giao thông giờ cao điểm.</span>
+            </div>
+
+            <div class="flex items-start gap-2.5 bg-white/90 px-3.5 py-2.5 rounded-xl border border-amber-100 text-stone-700">
+              <span class="text-amber-500 mt-0.5">🌤️</span>
+              <span><strong class="text-amber-900">Thời tiết lý tưởng:</strong> Buổi sáng hoặc chiều thu nắng trong trẻo, nhiệt độ ~24°C cực dễ chịu.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 3. FOOTER ACTION BAR -->
+    <div class="px-6 py-4 bg-white border-t border-stone-100 flex flex-wrap items-center justify-between gap-4 shrink-0">
+      <a href="#" class="text-xs md:text-sm font-bold text-rosePrimary hover:text-roseDark flex items-center gap-1.5 group">
+        <span>📖 Mở cẩm nang chi tiết</span>
+        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+      </a>
+
+      <div class="flex items-center gap-3">
+        <button class="px-4 py-2.5 rounded-xl border border-stone-200 hover:border-rose-200 hover:bg-rose-50/50 text-xs font-bold text-stone-700 hover:text-rosePrimary transition flex items-center gap-2">
+          <i data-lucide="heart" class="w-4 h-4 text-rosePrimary"></i> Lưu vào sổ tay
+        </button>
+        <button class="px-5 py-2.5 rounded-xl bg-rosePrimary hover:bg-roseDark text-white text-xs font-bold shadow-md shadow-rose-200 transition flex items-center gap-2">
+          <i data-lucide="plus" class="w-4 h-4"></i> Thêm vào lịch hẹn
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const slides = [
+      {
+        url: "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&w=900&q=80",
+        caption: "Phố Phan Đình Phùng & Cửa Bắc - Không gian và mặt tiền ngập tràn ánh sáng"
+      },
+      {
+        url: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=900&q=80",
+        caption: "Những tia nắng thu xiên qua vòm lá sấu cổ thụ lãng mạn"
+      },
+      {
+        url: "https://images.unsplash.com/photo-1544967082-d9d25d867d66?auto=format&fit=crop&w=900&q=80",
+        caption: "Góc tường vàng cổ kính dọc lối đi bộ gần thành Cửa Bắc"
+      },
+      {
+        url: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=900&q=80",
+        caption: "Không gian nghệ thuật yên bình phù hợp cho buổi hẹn chiều thu"
+      }
+    ];
+
+    let currentIndex = 0;
+
+    function selectSlide(index) {
+      currentIndex = index;
+      document.getElementById('mainImage').src = slides[index].url;
+      document.getElementById('photoCaption').textContent = slides[index].caption;
+      document.getElementById('photoBadge').innerHTML = `📸 Góc ${index + 1}/${slides.length}`;
+
+      const thumbs = document.querySelectorAll('.thumb-btn');
+      thumbs.forEach((btn, i) => {
+        if (i === index) {
+          btn.className = "thumb-btn rounded-xl overflow-hidden h-14 border-2 border-rosePrimary ring-2 ring-rose-200 transition";
+        } else {
+          btn.className = "thumb-btn rounded-xl overflow-hidden h-14 border-2 border-transparent opacity-70 hover:opacity-100 transition";
+        }
+      });
+    }
+
+    function nextSlide() {
+      selectSlide((currentIndex + 1) % slides.length);
+    }
+
+    function prevSlide() {
+      selectSlide((currentIndex - 1 + slides.length) % slides.length);
+    }
+  </script>
+</body>
+</html>

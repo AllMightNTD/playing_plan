@@ -250,14 +250,13 @@ export default function PlansPage() {
 
   if (plans.length === 0) {
     return (
-      <div className="max-w-xl mx-auto bg-[#FFFDF9] rounded-3xl p-6 sm:p-8 border border-[#E6D7C3] shadow-xs space-y-5 relative animate-in fade-in duration-300">
-        <div className="washi-tape washi-terracotta -top-3.5 left-10" />
+      <div className="max-w-xl mx-auto bg-[#FFFDF9] rounded-3xl p-6 sm:p-8 border border-[#F2E4DC] shadow-xs space-y-5 relative animate-in fade-in duration-300">
         <div className="text-center space-y-1.5">
           <div className="text-4xl">🗓️</div>
-          <h3 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+          <h3 className="font-serif font-extrabold text-xl sm:text-2xl text-stone-800">
             Chưa có buổi hẹn nào
           </h3>
-          <p className="text-xs sm:text-sm text-paper-muted">
+          <p className="text-xs sm:text-sm text-stone-500">
             Tạo kế hoạch rồi thêm điểm dừng từ trang Khám phá hoặc các địa điểm hai bạn đã Match.
           </p>
         </div>
@@ -269,7 +268,7 @@ export default function PlansPage() {
             maxLength={150}
             required
             placeholder="Tên buổi hẹn (vd: Ngắm hoàng hôn Hồ Tây)"
-            className="w-full px-3 py-2.5 rounded-xl bg-[#FAF4E8] border border-[#E6D7C3] text-sm focus:outline-none focus:border-brand-terracotta text-paper-ink"
+            className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#F2E4DC] text-sm focus:outline-none focus:border-rose-400 text-stone-800"
           />
           <div className="grid grid-cols-2 gap-3">
             <input
@@ -277,14 +276,14 @@ export default function PlansPage() {
               value={draftDate}
               onChange={(e) => setDraftDate(e.target.value)}
               required
-              className="px-3 py-2.5 rounded-xl bg-[#FAF4E8] border border-[#E6D7C3] text-sm focus:outline-none focus:border-brand-terracotta text-paper-ink"
+              className="px-3 py-2.5 rounded-xl bg-white border border-[#F2E4DC] text-sm focus:outline-none focus:border-rose-400 text-stone-800"
             />
             <input
               type="time"
               value={draftTime}
               onChange={(e) => setDraftTime(e.target.value)}
               required
-              className="px-3 py-2.5 rounded-xl bg-[#FAF4E8] border border-[#E6D7C3] text-sm focus:outline-none focus:border-brand-terracotta text-paper-ink"
+              className="px-3 py-2.5 rounded-xl bg-white border border-[#F2E4DC] text-sm focus:outline-none focus:border-rose-400 text-stone-800"
             />
           </div>
           <input
@@ -292,16 +291,16 @@ export default function PlansPage() {
             value={draftBudget}
             onChange={(e) => setDraftBudget(e.target.value)}
             placeholder="Ngân sách dự kiến (VND, không bắt buộc)"
-            className="w-full px-3 py-2.5 rounded-xl bg-[#FAF4E8] border border-[#E6D7C3] text-sm focus:outline-none focus:border-brand-terracotta text-paper-ink"
+            className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#F2E4DC] text-sm focus:outline-none focus:border-rose-400 text-stone-800"
           />
-          <label className="flex items-center gap-2 text-xs text-paper-ink bg-[#fdf3dc] border border-[#e3c383] rounded-xl px-3 py-2.5 cursor-pointer">
+          <label className="flex items-center gap-2 text-xs text-stone-700 bg-amber-50/70 border border-amber-200/80 rounded-xl px-3 py-2.5 cursor-pointer">
             <input
               type="checkbox"
               checked={draftSecret}
               onChange={(e) => setDraftSecret(e.target.checked)}
-              className="accent-[#c84b31]"
+              className="accent-rose-500"
             />
-            <Gift className="w-3.5 h-3.5 text-[#c84b31] shrink-0" />
+            <Gift className="w-3.5 h-3.5 text-rose-500 shrink-0" />
             <span className="font-semibold">
               Bật chế độ Buổi hẹn bất ngờ (giấu điểm dừng đến sát giờ)
             </span>
@@ -309,22 +308,22 @@ export default function PlansPage() {
           <button
             type="submit"
             disabled={isCreating || !draftTitle.trim()}
-            className="w-full py-3 rounded-2xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-sm shadow-xs transition disabled:opacity-50 cursor-pointer"
+            className="w-full py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm shadow-xs shadow-rose-200 transition disabled:opacity-50 cursor-pointer"
           >
             {isCreating ? "Đang tạo..." : "📅 Tạo kế hoạch"}
           </button>
         </form>
 
-        <div className="flex justify-center gap-4 text-xs font-bold">
+        <div className="flex justify-center gap-4 text-xs font-bold pt-1">
           <Link
             href="/explore"
-            className="text-brand-terracotta hover:underline flex items-center gap-1"
+            className="text-rose-600 hover:underline flex items-center gap-1"
           >
             <Compass className="w-3.5 h-3.5" /> Khám phá địa điểm
           </Link>
           <Link
             href="/match"
-            className="text-brand-terracotta hover:underline flex items-center gap-1"
+            className="text-rose-600 hover:underline flex items-center gap-1"
           >
             <Flame className="w-3.5 h-3.5" /> Quẹt thẻ cùng người ấy
           </Link>
@@ -338,7 +337,7 @@ export default function PlansPage() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5">
+    <div className="max-w-6xl mx-auto space-y-6">
       <PlanSwitcherBar
         plans={plans}
         selectedPlanId={selectedPlanId}
@@ -349,14 +348,14 @@ export default function PlansPage() {
       />
 
       {visiblePlansInTab.length === 0 ? (
-        <div className="bg-[#FFFDF9] rounded-3xl p-8 text-center border border-[#E6D7C3] space-y-3">
+        <div className="bg-[#FFFDF9] rounded-3xl p-8 text-center border border-[#F2E4DC] shadow-xs space-y-3">
           <div className="text-3xl">{filterTab === "upcoming" ? "🗓️" : "📸"}</div>
-          <h3 className="font-serif font-extrabold text-lg text-paper-ink">
+          <h3 className="font-serif font-extrabold text-lg text-stone-800">
             {filterTab === "upcoming"
               ? "Không còn buổi hẹn sắp tới nào"
               : "Chưa có buổi hẹn nào hoàn thành"}
           </h3>
-          <p className="text-xs text-paper-muted max-w-md mx-auto">
+          <p className="text-xs text-stone-500 max-w-md mx-auto">
             {filterTab === "upcoming"
               ? "Lên lịch buổi hẹn mới ngay để hai đứa cùng háo hức chờ cuối tuần nhé!"
               : "Khi đi chơi về, bấm nút “Hoàn thành buổi hẹn” để chấm tim và lưu thẳng vào Kho Kỷ Niệm."}
@@ -365,21 +364,21 @@ export default function PlansPage() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#c84b31] hover:bg-[#ad3b23] text-white text-xs font-extrabold transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-xs shadow-rose-200 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Tạo buổi hẹn mới
             </button>
           ) : (
             <Link
               href="/memories"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#e8f4ec] text-[#2b6e44] border border-[#bce0c8] text-xs font-bold"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold"
             >
               💖 Mở Kho Kỷ Niệm
             </Link>
           )}
         </div>
       ) : !plan ? (
-        <div className="p-12 text-center text-sm text-[#7d6856] animate-pulse">
+        <div className="p-12 text-center text-sm text-stone-500 animate-pulse">
           Đang tải lịch trình chi tiết...
         </div>
       ) : (

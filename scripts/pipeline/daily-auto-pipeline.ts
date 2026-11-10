@@ -1,6 +1,9 @@
 import { loadCatalogVideos } from "@/server/services/videos/video-catalog.service";
 import { syncChapterHotspots } from "@/server/services/videos/chapter-hotspots.service";
-import { runAiVideoHotspots } from "@/server/services/videos/ai-hotspots.runner";
+import {
+  runAiVideoHotspots,
+  type AiHotspotRunSummary,
+} from "@/server/services/videos/ai-hotspots.runner";
 import {
   resolveRealPhotosDailyLimit,
   runRealPhotoSync,
@@ -205,34 +208,37 @@ async function executeDailyPipeline(
       `=> Tìm thấy ${matches.length} cặp liên kết giữa Video và Tọa độ hẹn hò.`,
     );
 
+    const vidsMap = new Map(vidsForMatch.map((v) => [v.videoId, v]));
     const CHUNK_SIZE = 50;
     for (let mIdx = 0; mIdx < matches.length; mIdx += CHUNK_SIZE) {
       const chunk = matches.slice(mIdx, mIdx + CHUNK_SIZE);
-      for (const m of chunk) {
-        const vid = vidsForMatch.find((v) => v.videoId === m.videoId);
-        const nextVideoStatus =
+      const batchValues = chunk.map((m) => {
+        const vid = vidsMap.get(m.videoId);
+        const nextVideoStatus: "auto_linked" | "pending_review" =
           !pause.isPaused && m.score >= 65 ? "auto_linked" : "pending_review";
-        await db
-          .insert(placeVideos)
-          .values({
-            placeId: m.placeId,
-            videoId: m.videoId,
-            channelId: vid?.channelId,
-            channelTitle: vid?.channelTitle,
-            hasPaidPlacement: false,
-            confidenceScore: m.score.toFixed(2),
-            status: nextVideoStatus,
-            publishedAt: vid?.publishedAt ? new Date(vid.publishedAt) : now,
+        return {
+          placeId: m.placeId,
+          videoId: m.videoId,
+          channelId: vid?.channelId,
+          channelTitle: vid?.channelTitle,
+          hasPaidPlacement: false,
+          confidenceScore: m.score.toFixed(2),
+          status: nextVideoStatus,
+          publishedAt: vid?.publishedAt ? new Date(vid.publishedAt) : now,
+          lastCheckedAt: now,
+        };
+      });
+
+      await db
+        .insert(placeVideos)
+        .values(batchValues)
+        .onDuplicateKeyUpdate({
+          set: {
+            confidenceScore: sql`VALUES(confidence_score)`,
+            status: sql`CASE WHEN ${placeVideos.status} IN ('verified', 'rejected') THEN ${placeVideos.status} ELSE VALUES(status) END`,
             lastCheckedAt: now,
-          })
-          .onDuplicateKeyUpdate({
-            set: {
-              confidenceScore: m.score.toFixed(2),
-              status: sql`CASE WHEN ${placeVideos.status} IN ('verified', 'rejected') THEN ${placeVideos.status} ELSE ${nextVideoStatus} END`,
-              lastCheckedAt: now,
-            },
-          });
-      }
+          },
+        });
     }
 
     const chapterHotspots = await syncChapterHotspots(rawVideos, allPublishedPlaces, !pause.isPaused);
@@ -249,11 +255,28 @@ async function executeDailyPipeline(
 
   // 5b. AI xem video tìm mốc địa điểm (trong ngân sách giây video/24h của Gemini)
   console.log("\n--- [Giai đoạn 4b] AI phân tích video tìm mốc địa điểm ---");
-  const aiHotspots = await runAiVideoHotspots();
-  console.log(
-    `=> AI: ${aiHotspots.analyzedVideos} video, ${aiHotspots.verifiedHotspots} mốc tự duyệt, ` +
-      `${aiHotspots.pendingHotspots} mốc chờ, dừng vì: ${aiHotspots.stoppedReason}`,
-  );
+  let aiHotspots: AiHotspotRunSummary | { error: string } = {
+    analyzedVideos: 0,
+    failedVideos: 0,
+    verifiedHotspots: 0,
+    pendingHotspots: 0,
+    budgetUsedSec: 0,
+    budgetRemainingSec: 0,
+    stoppedReason: "done",
+    publishPaused: pause.isPaused,
+  };
+  try {
+    const res = await runAiVideoHotspots();
+    aiHotspots = res;
+    console.log(
+      `=> AI: ${res.analyzedVideos} video, ${res.verifiedHotspots} mốc tự duyệt, ` +
+        `${res.pendingHotspots} mốc chờ, dừng vì: ${res.stoppedReason}`,
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn("=> Bỏ qua bước AI Hotspots do lỗi:", message);
+    aiHotspots = { error: message };
+  }
 
   // 6. GIAI ĐOẠN 5: BẢO TRÌ VIDEO 30 NGÀY
   console.log("\n--- [Giai đoạn 5] Bảo trì định kỳ Video ---");

@@ -10,7 +10,7 @@ import type {
 } from "@/server/db/repositories/types";
 import { createRoomNotice } from "@/server/services/user/room-notice.service";
 import { getAllPublishedPlaces, requirePublishedPlace } from "@/server/services/user/places.service";
-import { HANOI_7_DISTRICTS, resolveDistrictKey } from "@/lib/districts";
+import { resolveDistrictKey } from "@/lib/districts";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { PlaceCategory } from "@/lib/constants/catalog";
 
@@ -47,20 +47,6 @@ export interface SecretNoteDto {
   unlockedAt: Date | null;
 }
 
-export interface DistrictScratchTileDto {
-  key: string;
-  name: string;
-  count: number;
-  scratched: boolean;
-}
-
-export interface ScratchMapDto {
-  districts: DistrictScratchTileDto[];
-  scratchedCount: number;
-  totalDistricts: number;
-  unlockedPercentage: number;
-}
-
 export interface CheckInInput {
   placeId: string;
   method: "gps_auto" | "manual_confirm";
@@ -76,7 +62,6 @@ export interface CheckInResultDto {
   checkin: PlaceCheckinRecord;
   advancedBlindStep: boolean;
   unlockedSecretNotesCount: number;
-  scratchMap: ScratchMapDto;
 }
 
 type BudgetTier = BlindDateTicketRecord["budgetTier"];
@@ -207,40 +192,7 @@ export async function createBlindDateTicket(
   return toBlindDateTicketDto(ticket);
 }
 
-/** Tính toán Bản đồ cào 7 quận trực tiếp từ place_checkins (chống race condition) */
-export async function getScratchMap(session: MemberSession): Promise<ScratchMapDto> {
-  const repo = getUserRepositories().gamification;
-  const checkins = await repo.listCheckins(session.roomId);
-
-  const checkinCountsByDistrict = new Map<string, number>();
-  for (const c of checkins) {
-    const key = c.district.toLowerCase().trim();
-    checkinCountsByDistrict.set(key, (checkinCountsByDistrict.get(key) || 0) + 1);
-  }
-
-  const districts: DistrictScratchTileDto[] = HANOI_7_DISTRICTS.map((d) => {
-    const count = checkinCountsByDistrict.get(d.key) || 0;
-    return {
-      key: d.key,
-      name: d.name,
-      count,
-      scratched: count > 0,
-    };
-  });
-
-  const scratchedCount = districts.filter((d) => d.scratched).length;
-  const totalDistricts = districts.length;
-  const unlockedPercentage = Math.round((scratchedCount / totalDistricts) * 100);
-
-  return {
-    districts,
-    scratchedCount,
-    totalDistricts,
-    unlockedPercentage,
-  };
-}
-
-/** Thực hiện Check-in tại quán (mở khóa Vé Mù, mở Thư Tình và cào Bản Đồ) */
+/** Thực hiện Check-in tại quán (mở khóa Vé Mù và mở Thư Tình) */
 export async function checkInPlace(
   session: MemberSession,
   input: CheckInInput
@@ -308,14 +260,10 @@ export async function checkInPlace(
     }
   }
 
-  // 4. Lấy lại bản đồ cào cập nhật mới nhất
-  const scratchMap = await getScratchMap(session);
-
   return {
     checkin,
     advancedBlindStep,
     unlockedSecretNotesCount: unlockedNotes.length,
-    scratchMap,
   };
 }
 

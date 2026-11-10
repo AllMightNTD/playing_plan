@@ -124,4 +124,16 @@ describe("runAiVideoHotspots", () => {
     expect(summary.stoppedReason).toBe("no_api_key");
     expect(detectPlaceMentions).not.toHaveBeenCalled();
   });
+
+  it("dừng an toàn khi chạm wall-clock deadline thực thi", async () => {
+    process.env.AI_HOTSPOT_MAX_RUNTIME_SEC = "1";
+    // Set now in the past so Date.now() >= deadlineMs
+    const pastTime = new Date(Date.now() - 5000);
+    vi.mocked(listVideosPendingAi).mockResolvedValue([video("v1", 60), video("v2", 60)]);
+
+    const summary = await runAiVideoHotspots({ now: pastTime });
+
+    expect(summary.stoppedReason).toBe("budget");
+    expect(detectPlaceMentions).not.toHaveBeenCalled();
+  });
 });

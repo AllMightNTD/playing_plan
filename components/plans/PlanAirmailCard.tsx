@@ -142,264 +142,195 @@ export function PlanAirmailCard({
 
   return (
     <div className={`airmail-card ${className}`.trim()}>
-      <div className="bg-[#fdfbf7] rounded-[13px] p-4 sm:p-5 flex flex-col justify-between space-y-4">
+      <div className="bg-[#FFFDF9] rounded-[1.25rem] p-5 sm:p-6 flex flex-col justify-between space-y-5">
         {/* Weather & Golden Hour Forecast */}
         <div>
-          <div className="flex items-start justify-between gap-2">
+          {/* Header Thời tiết */}
+          <div className="flex items-start justify-between gap-3 mb-4">
             <div>
-              <p className="text-[11px] font-extrabold tracking-wider text-[#7d6856] uppercase">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
                 {`DỰ BÁO HẸN HÒ HÀ NỘI • ${formatVietnameseDate(planDate)}`}
-              </p>
-              <div className="mt-1 flex items-baseline gap-2 flex-wrap">
-                <span className="text-3xl font-black text-[#231915]">
-                  {`${weatherTemp}°C`}
-                </span>
-                <span className="text-xs font-semibold text-[#5c4738]">
+              </span>
+              <div className="flex items-baseline gap-3 mt-1">
+                <span className="text-4xl font-extrabold text-stone-800">{`${weatherTemp}°C`}</span>
+                <span className="text-xs font-medium text-stone-500">
                   {`${weatherDesc} • Khả năng mưa `}
-                  <strong className="text-[#c84b31]">{`${rainProb}%`}</strong>
+                  <strong className="text-[#E15B64] font-bold">{`${rainProb}%`}</strong>
                 </span>
               </div>
             </div>
 
-            <div className="bg-[#fdf6e4] border border-dashed border-[#d9be8b] rounded-xl px-3 py-2 text-center shrink-0">
-              <div className="text-xl leading-none">{weatherStamp}</div>
-              <span className="text-[10px] font-extrabold text-[#785118] block mt-1">
+            {/* Tem Bưu Thiếp */}
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 border-2 border-dashed border-amber-300 flex flex-col items-center justify-center text-center shadow-xs shrink-0">
+              <span className="text-xl leading-none">{weatherStamp}</span>
+              <span className="text-[10px] font-extrabold text-amber-800 tracking-tighter mt-1">
                 HÀ NỘI
               </span>
             </div>
           </div>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {/* Tags Khuyên dùng & OOTD */}
+          <div className="flex flex-wrap gap-2 mb-4">
             {isRainExpected ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#eaf2f8] text-[#1c5585] border border-[#b5d3eb]">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200/60">
                 🌧️ Khuyên ưu tiên điểm trong nhà
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#fdf3dc] text-[#785118] border border-[#e3c383]">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/60">
                 ☀️ Nắng đẹp • Săn hoàng hôn cực nét
               </span>
             )}
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#fcf0ea] text-[#8c3d23] border border-[#edd1c2]">
-              👗 OOTD: Tone be / pastel
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/60">
+              👗 OOTD: Tone be / pastel ấm
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mt-3.5">
-            <div className="bg-[#fff9f5] border border-[#e8a48f] rounded-xl p-3">
-              <p className="text-[11px] font-bold text-[#b84a27] flex items-center gap-1">
+          {/* Giờ vàng & Giờ xanh */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50/70 border border-amber-200/70">
+              <div className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
                 🌅 Giờ vàng chụp ảnh
-              </p>
-              <p className="text-base font-black text-[#231915] mt-0.5">
+              </div>
+              <div className="text-lg font-extrabold text-stone-800 my-0.5">
                 {`${goldenStart} - ${goldenEnd}`}
-              </p>
-              <p className="text-[11px] text-[#7d6856] mt-0.5">Nắng chiều ấm áp nhất</p>
+              </div>
+              <div className="text-[11px] text-amber-800/80">Nắng chiều ấm áp nhất</div>
             </div>
 
-            <div className="bg-[#f4f8fc] border border-[#9ec1de] rounded-xl p-3">
-              <p className="text-[11px] font-bold text-[#2b5b84] flex items-center gap-1">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-sky-50 to-indigo-50/70 border border-sky-200/70">
+              <div className="text-xs font-bold text-sky-900 flex items-center gap-1.5">
                 🌌 Giờ xanh lên đèn
-              </p>
-              <p className="text-base font-black text-[#1d2d3d] mt-0.5">
+              </div>
+              <div className="text-lg font-extrabold text-stone-800 my-0.5">
                 {`${blueStart} - ${blueEnd}`}
-              </p>
-              <p className="text-[11px] text-[#5c738a] mt-0.5">Bầu trời xanh thẫm lãng mạn</p>
+              </div>
+              <div className="text-[11px] text-sky-800/80">Bầu trời xanh thẫm lãng mạn</div>
             </div>
           </div>
 
-          <div className="mt-3 bg-[#fdf3d7] border border-[#e6cc8a] rounded-xl p-3 text-xs text-[#4f3d22] leading-relaxed">
-            💡 <strong>Gợi ý cho hai bạn:</strong> {weatherTip}
+          {/* Box Gợi ý */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/70 text-xs text-stone-700 leading-relaxed">
+            💡 <strong className="text-stone-900">Gợi ý cho hai bạn:</strong> {weatherTip}
           </div>
         </div>
 
-        {/* Zero-PII Room Pairing & General Note Accordions */}
-        <div className="border-t border-[#eee5d7] pt-3.5 space-y-2">
-          <div className="bg-[#f8f4ec] border border-[#dfd3c0] rounded-xl overflow-hidden transition-all">
-            <button
-              type="button"
-              onClick={() => setIsPartnerExpanded(!isPartnerExpanded)}
-              className="w-full px-3 py-2.5 flex items-center justify-between text-left hover:bg-[#f3ece0] transition cursor-pointer"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <Heart className="w-3.5 h-3.5 text-[#c84b31] fill-[#c84b31] shrink-0" />
-                <span className="text-xs font-extrabold text-[#4a3423] truncate">
-                  {isPaired
-                    ? `${partnerName} • ${formatPartnerSeenStatus(roomConnection?.partnerLastSeenAt)}`
-                    : "Đang lên lịch một mình • Ghép phòng để cùng sửa"}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+        {/* Trạng thái cặp đôi & Ghi chú chung */}
+        <div className="space-y-2.5 pt-1">
+          {/* Trạng thái phòng đôi */}
+          <div
+            onClick={onOpenRoomModal}
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#F2E4DC] flex items-center justify-between cursor-pointer hover:border-rose-200 transition"
+          >
+            <div className="flex items-center gap-2 text-xs font-semibold text-stone-700 truncate">
+              <span className="w-6 h-6 rounded-full bg-rose-100 text-[#E15B64] flex items-center justify-center shrink-0">
+                {isPaired ? "❤️" : "✨"}
+              </span>
+              <span className="truncate">
                 {isPaired ? (
-                  <span className="text-[10px] font-bold text-[#2b6e44] bg-[#e8f4ec] px-2 py-0.5 rounded-full">
+                  <>
+                    {partnerName} •{" "}
+                    <span className="text-stone-400 font-normal">
+                      {formatPartnerSeenStatus(roomConnection?.partnerLastSeenAt)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Chưa ghép đôi •{" "}
+                    <span className="text-stone-500 font-medium">
+                      Ghép phòng đôi bằng QR / Mã 8 ký tự
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {isPaired ? (
+                <>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700">
                     Đã ghép phòng đôi
                   </span>
-                ) : (
-                  <span className="text-[10px] font-bold text-[#785118] bg-[#fdf3dc] px-2 py-0.5 rounded-full">
-                    Chưa ghép đôi
+                  <span className="text-[10px] text-stone-400 font-medium hidden sm:inline">
+                    (Zero-PII)
                   </span>
-                )}
-                <ChevronDown
-                  className={`w-3.5 h-3.5 text-[#7d6856] transition-transform duration-200 ${
-                    isPartnerExpanded ? "rotate-180" : ""
-                  }`}
-                />
-              </div>
-            </button>
-
-            <div
-              className={
-                isPartnerExpanded
-                  ? "p-3 border-t border-[#dfd3c0] bg-white space-y-2.5 block"
-                  : "hidden"
-              }
-            >
-              {isPaired ? (
-                <div className="bg-[#f8f3eb] border border-[#e3d7c5] rounded-xl p-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold text-[#2d221c]">
-                      💞 {partnerName}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2b6e44] bg-[#e8f4ec] px-2 py-0.5 rounded-full">
-                      <ShieldCheck className="w-3 h-3" /> Zero-PII ẩn danh
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#6e5645] leading-relaxed">
-                    Mọi thay đổi mốc giờ và ghi chú được đồng bộ trực tiếp trong phòng đôi mà không thu thập SĐT hay Email cá nhân.
-                  </p>
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                    {onOpenRoomModal && (
-                      <button
-                        type="button"
-                        onClick={onOpenRoomModal}
-                        className="text-[11px] font-bold text-[#6e5645] hover:text-[#2d221c] underline cursor-pointer"
-                      >
-                        Quản lý phòng đôi
-                      </button>
-                    )}
-                    {shareAction && (
-                      <button
-                        type="button"
-                        onClick={shareAction}
-                        className="text-[11px] font-bold bg-[#c84b31]/10 hover:bg-[#c84b31]/20 text-[#c84b31] px-2.5 py-1 rounded-md transition flex items-center gap-1 cursor-pointer ml-auto"
-                      >
-                        <Send className="w-3 h-3" />
-                        Gửi thiệp mời / Story ➔
-                      </button>
-                    )}
-                  </div>
-                </div>
+                </>
               ) : (
-                <div className="bg-[#fdf8ee] border border-[#e6cc8a] rounded-xl p-3 space-y-2">
-                  <p className="text-xs font-bold text-[#3d2d24]">
-                    Ghép phòng đôi bằng QR / Mã 8 ký tự (Zero-PII)
-                  </p>
-                  <p className="text-[11px] text-[#6e5645] leading-relaxed">
-                    Không cần đăng ký SĐT hay Email. Mời người thương vào phòng để cả hai cùng kéo thả lịch trình và nhận thông báo ngay!
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    {onOpenRoomModal && (
-                      <button
-                        type="button"
-                        onClick={onOpenRoomModal}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#c84b31] hover:bg-[#ad3b23] text-white px-3 py-1.5 rounded-lg transition cursor-pointer"
-                      >
-                        <QrCode className="w-3.5 h-3.5" /> Mở mã ghép đôi
-                      </button>
-                    )}
-                    {shareAction && (
-                      <button
-                        type="button"
-                        onClick={shareAction}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[#785118] bg-[#fdf3dc] hover:bg-[#fae6bb] border border-[#e3c383] px-3 py-1.5 rounded-lg transition cursor-pointer"
-                      >
-                        <Send className="w-3 h-3" /> Gửi link thiệp hẹn
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800">
+                  Chưa ghép đôi
+                </span>
               )}
             </div>
           </div>
 
-          <div className="bg-[#f8f4ec] border border-[#dfd3c0] rounded-xl overflow-hidden transition-all">
+          {/* Ghi chú chung */}
+          <div className="rounded-2xl bg-white border border-[#F2E4DC] overflow-hidden transition">
             <button
               type="button"
               onClick={() => setIsNoteExpanded(!isNoteExpanded)}
-              className="w-full px-3 py-2.5 flex items-center justify-between text-left hover:bg-[#f3ece0] transition cursor-pointer"
+              className="w-full px-3.5 py-2.5 flex items-center justify-between text-xs text-stone-700 hover:bg-stone-50/50 transition cursor-pointer"
             >
-              <div className="flex items-center gap-2 truncate">
-                <span className="text-xs">📝</span>
-                <span className="text-xs font-extrabold text-[#4a3423] truncate">
-                  Ghi chú chung:{" "}
-                  <span className="font-normal text-[#6e5645] italic truncate">
-                    {noteText || "Chưa thêm ghi chú..."}
-                  </span>
-                </span>
+              <div className="truncate text-stone-600 mr-2">
+                📝 <strong className="text-stone-800">Ghi chú chung:</strong>{" "}
+                <span className="italic">{noteText || "Bấm để thêm ghi chú cho buổi hẹn..."}</span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {isSavingNote && (
-                  <span className="text-[10px] text-[#785118] font-semibold flex items-center gap-1">
-                    <Check className="w-3 h-3 text-[#2b6e44]" /> Đang lưu...
+                  <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Đang lưu...
                   </span>
                 )}
                 <ChevronDown
-                  className={`w-3.5 h-3.5 text-[#7d6856] transition-transform duration-200 ${
+                  className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${
                     isNoteExpanded ? "rotate-180" : ""
                   }`}
                 />
               </div>
             </button>
-
-            <div
-              className={
-                isNoteExpanded
-                  ? "p-3 border-t border-[#dfd3c0] bg-white space-y-2 block"
-                  : "hidden"
-              }
-            >
-              <textarea
-                id="plan-general-note"
-                rows={2}
-                value={noteText}
-                onChange={handleNoteChange}
-                placeholder="Ghi chú dresscode, quà tặng bí mật, lời nhắn..."
-                className="w-full px-3 py-2 text-xs rounded-xl border border-[#dfd2c0] bg-[#faf6f0] focus:bg-white focus:outline-none focus:border-[#c84b31] text-[#2d221c] leading-relaxed"
-              />
-            </div>
+            {isNoteExpanded && (
+              <div className="p-3 border-t border-stone-100 bg-[#FFFDF9]">
+                <textarea
+                  id="plan-general-note"
+                  rows={2}
+                  value={noteText}
+                  onChange={handleNoteChange}
+                  placeholder="Ghi chú dresscode, quà tặng bí mật, lời nhắn..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-[#F2E4DC] bg-white focus:outline-none focus:border-[#E15B64] text-stone-800 leading-relaxed"
+                />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Saved Timeline Summary */}
-        <div className="border-t border-[#eee5d7] pt-3.5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-[#5c4738] flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-[#c84b31]" />
-              Lịch trình lưu theo mốc thời gian
+        {/* Tóm tắt Lịch trình theo mốc thời gian */}
+        <div>
+          <div className="flex items-center justify-between text-xs font-bold text-stone-700 mb-2.5">
+            <span className="flex items-center gap-1.5 text-[#E15B64]">
+              <Clock className="w-3.5 h-3.5" /> LỊCH TRÌNH LƯU THEO MỐC THỜI GIAN
             </span>
-            <span className="text-[11px] font-bold text-[#785118]">
+            <span className="text-stone-400 font-semibold">
               {`${itineraryStats.totalKm} km • ${itineraryStats.totalDurationStr}`}
             </span>
           </div>
 
-          <div className="bg-[#f8f3eb] border border-[#e3d7c5] rounded-xl p-2.5 space-y-1.5 max-h-40 overflow-y-auto">
+          <div className="space-y-2 bg-stone-50/80 p-3 rounded-2xl border border-stone-200/60 max-h-56 overflow-y-auto">
             {computedTimeline.length === 0 ? (
-              <p className="text-xs text-center text-[#8c7765] py-2">
+              <p className="text-xs text-center text-stone-400 py-3">
                 Chưa có chặng dừng nào trong kế hoạch.
               </p>
             ) : (
               computedTimeline.map((s, i) => (
                 <div
                   key={s.id}
-                  className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-white border border-[#ede3d4]"
+                  className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-stone-100 text-xs shadow-2xs"
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="font-mono font-bold text-[#c84b31] text-[11px]">
+                    <span className="font-bold text-[#E15B64] shrink-0 font-mono text-[11px]">
                       {`${s.startTimeStr}-${s.endTimeStr}`}
                     </span>
-                    <span className="truncate font-semibold text-[#2d221c]">
-                      {s.icon || "📍"} {s.name}
+                    <span className="font-semibold text-stone-800 truncate">
+                      {s.icon || "☕"} {s.name}
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#7d6856] shrink-0 ml-2">
+                  <span className="text-[11px] text-stone-400 font-medium shrink-0 ml-2">
                     {i === 0 ? "Bắt đầu" : `+${s.travelMins}p xe`}
                   </span>
                 </div>
@@ -408,33 +339,30 @@ export function PlanAirmailCard({
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="pt-3 border-t border-[#eee5d7] flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[11px] text-[#8c7765]">
-            <span>Cập nhật tự động theo Hà Nội</span> •{" "}
-            <span className="font-semibold text-[#5c4738]">Open-Meteo (CC-BY 4.0)</span>
-          </div>
-
+        {/* Footer Bưu thiếp */}
+        <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
+          <span className="text-[11px] text-stone-400">
+            Cập nhật tự động theo Hà Nội •{" "}
+            <span className="font-semibold text-stone-500">Open-Meteo (CC-BY 4.0)</span>
+          </span>
           <div className="flex items-center gap-2">
             {shareAction && (
               <button
                 type="button"
                 onClick={shareAction}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#785118] bg-[#fdf3dc] hover:bg-[#fae6bb] border border-[#e3c383] px-3 py-1.5 rounded-xl transition cursor-pointer shadow-2xs"
+                className="px-3.5 py-1.5 rounded-xl bg-amber-100/80 hover:bg-amber-200/70 text-amber-900 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
                 title="Tạo thiệp mời & gửi lịch cho người thương"
               >
-                <Send className="w-3 h-3" />
-                <span>Gửi thiệp</span>
+                <span>💌</span> Gửi thiệp
               </button>
             )}
             <a
               href={`/api/v1/user/plans/${planId}/export.ics`}
               download
-              className="inline-flex items-center gap-1 text-xs font-bold text-white bg-[#c84b31] hover:bg-[#ad3b23] px-3 py-1.5 rounded-xl transition shadow-2xs cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-[#E15B64] hover:bg-[#C84650] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
               title="Lưu vào Lịch ĐT (.ics)"
             >
-              <span>📅</span>
-              <span>Lưu .ics</span>
+              <span>📅</span> Lưu .ics
             </a>
           </div>
         </div>

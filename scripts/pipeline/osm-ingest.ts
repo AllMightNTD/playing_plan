@@ -199,10 +199,11 @@ export async function runOsmIngestion(options: OsmIngestOptions = {}) {
       }
 
       const mirrors = [
+        "https://overpass.openstreetmap.fr/api/interpreter",
         "https://overpass-api.de/api/interpreter",
+        "https://lz4.overpass-api.de/api/interpreter",
+        "https://z.overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-        "https://overpass.private.coffee/api/interpreter",
       ];
 
       const elementMap = new Map<number, (typeof elements)[0]>();
@@ -214,12 +215,17 @@ export async function runOsmIngestion(options: OsmIngestOptions = {}) {
 
         for (const mirror of mirrors) {
           try {
-            const url = `${mirror}?data=${encodeURIComponent(query)}`;
-            const res = await fetch(url, {
+            const res = await fetch(mirror, {
+              method: "POST",
               headers: {
-                "User-Agent": "DateMate-Ingestion/2.0 (hanoi-dating-catalog)",
+                "Content-Type":
+                  "application/x-www-form-urlencoded; charset=UTF-8",
+                "User-Agent":
+                  "DateMate-Ingestion/2.0 (hanoi-dating-catalog; contact: dungtiennguyen140602@gmail.com)",
+                Accept: "application/json",
               },
-              signal: AbortSignal.timeout(6000),
+              body: `data=${encodeURIComponent(query)}`,
+              signal: AbortSignal.timeout(25000),
             });
             if (res.ok) {
               const data = (await res.json()) as { elements?: typeof elements };
@@ -232,11 +238,13 @@ export async function runOsmIngestion(options: OsmIngestOptions = {}) {
               console.warn(
                 `[OSM Ingest] Mirror ${mirror} trả về ${res.status} ${res.statusText}. Thử mirror tiếp theo...`,
               );
+              await new Promise((r) => setTimeout(r, 1000));
             }
           } catch (err: unknown) {
             console.warn(
               `[OSM Ingest] Mirror ${mirror} lỗi / timeout: ${err instanceof Error ? err.message : err}`,
             );
+            await new Promise((r) => setTimeout(r, 1000));
           }
         }
 

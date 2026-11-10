@@ -101,6 +101,13 @@ export function TimelineStopCard({
     setIsEditingDetails(true);
   };
 
+  const nodeBgClass =
+    index === 0
+      ? "bg-rose-500 text-white"
+      : index === 1
+      ? "bg-amber-500 text-white"
+      : "bg-rose-400 text-white";
+
   return (
     <div
       draggable={!isEditingDetails && !isEditingNote}
@@ -108,36 +115,37 @@ export function TimelineStopCard({
       onDragOver={(e) => onDragOver(e, index)}
       onDrop={(e) => onDrop(e, index)}
       onDragEnd={onDragEnd}
-      className={`relative pl-10 sm:pl-11 transition-all duration-150 ${
+      className={`relative transition-all duration-150 group ${
         isBeingDragged ? "opacity-45 scale-[0.98]" : "opacity-100"
       } ${isDragOver ? "translate-y-1" : ""}`}
     >
       {/* Left timeline index node */}
       <div
-        className={`absolute left-2 sm:left-2.5 top-4 w-5 h-5 rounded-full border-2 flex items-center justify-center z-10 text-[10px] font-bold shadow-xs ${
-          stop.isLocked
-            ? "bg-[#c84b31] border-[#fdfbf7] text-white"
-            : "bg-[#fdf3dc] border-[#c84b31] text-[#c84b31]"
-        }`}
+        className={`absolute -left-6 top-5 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ring-4 ring-[#FFFDF9] shadow-2xs z-10 ${nodeBgClass}`}
         title={`Mốc ${index + 1}: ${stopItem.startTimeStr}`}
       >
         {index + 1}
       </div>
 
       <div
-        className={`bg-[#f9f5ed] hover:bg-[#f7f1e6] border rounded-xl p-3 sm:p-3.5 transition shadow-xs ${
-          isDragOver
-            ? "border-2 border-dashed border-[#c84b31] bg-[#fff5f2]"
-            : stop.isLocked
-            ? "border-[#dfc8a8]"
-            : "border-[#e4d9c8]"
+        className={`bg-white rounded-2xl p-4 border border-[#F2E4DC] shadow-2xs hover:shadow-md hover:border-rose-200 transition-all ${
+          isDragOver ? "border-2 border-dashed border-rose-400 bg-rose-50/20" : ""
         }`}
       >
-        {/* Row 1: Time badge + Place title + Status chips */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-          <div className="flex items-start gap-2 min-w-0">
+        {/* Transit pill above destination content for index > 0 */}
+        {index > 0 && previousStopName && (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-[11px] font-medium mb-3">
+            <span>🛵 Di chuyển từ <strong>{previousStopName}</strong>:</span>
+            <span className="text-rose-600 font-bold">+{stopItem.travelMins} phút</span>
+            <span>({stopItem.distKm} km, đã tính 8p gửi xe) • Dừng chân {stop.duration} phút</span>
+          </div>
+        )}
+
+        {/* Row 1: Image + Info + Action Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0">
             <div
-              className="cursor-grab active:cursor-grabbing text-[#a6927d] hover:text-[#5c4738] p-0.5 -ml-1 mt-0.5 shrink-0"
+              className="cursor-grab active:cursor-grabbing text-stone-300 hover:text-stone-500 p-0.5 -ml-1 mt-1 shrink-0"
               title="Kéo thả để sắp xếp lại mốc giờ"
             >
               <GripVertical className="w-4 h-4" />
@@ -147,14 +155,14 @@ export function TimelineStopCard({
               <button
                 type="button"
                 onClick={() => stop.placeSlug && onOpenPlaceDetail?.(stop.placeSlug)}
-                className="relative w-10 h-10 rounded-lg overflow-hidden border border-[#dcd0be] shrink-0 bg-[#efe6d8] cursor-pointer"
+                className="relative w-16 h-16 rounded-2xl overflow-hidden border border-stone-100 shrink-0 bg-stone-100 cursor-pointer shadow-2xs"
                 title={stop.name}
               >
                 <Image
                   src={stop.coverUrl}
                   alt={stop.name}
                   fill
-                  sizes="40px"
+                  sizes="64px"
                   className="object-cover"
                   unoptimized
                   referrerPolicy="no-referrer"
@@ -164,28 +172,28 @@ export function TimelineStopCard({
 
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="bg-[#c84b31] text-white text-xs font-extrabold px-2 py-0.5 rounded-md tracking-tight shadow-xs">
+                <span className="px-2.5 py-0.5 rounded-lg bg-rose-500 text-white text-xs font-bold tracking-wide shadow-2xs">
                   {`${stopItem.startTimeStr} - ${stopItem.endTimeStr}`}
                 </span>
 
                 {stop.isLocked && (
-                  <span className="inline-flex items-center gap-1 bg-[#fdf3dc] text-[#785118] border border-[#e3c383] text-[11px] font-bold px-2 py-0.5 rounded-md">
+                  <span className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-700 border border-stone-200 text-[11px] font-semibold">
                     📌 Cố định giờ
                   </span>
                 )}
 
                 {stopItem.overlapsGoldenHour && (
-                  <span className="inline-flex items-center gap-1 bg-[#fff0db] text-[#b85d19] border border-[#f5cca0] text-[11px] font-semibold px-2 py-0.5 rounded-md">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/60 text-[11px] font-semibold">
                     🌅 Đón Hoàng hôn
                   </span>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
                 <h3
                   onClick={() => stop.placeSlug && onOpenPlaceDetail?.(stop.placeSlug)}
-                  className={`text-sm sm:text-base font-extrabold text-[#231915] flex items-center gap-1.5 ${
-                    canOpenDetail ? "cursor-pointer hover:text-[#c84b31]" : ""
+                  className={`text-base font-bold text-stone-800 flex items-center gap-1.5 ${
+                    canOpenDetail ? "cursor-pointer hover:text-rose-600" : ""
                   }`}
                 >
                   <span>{stop.icon}</span>
@@ -196,24 +204,43 @@ export function TimelineStopCard({
                   <button
                     type="button"
                     onClick={() => stop.placeSlug && onOpenPlaceDetail?.(stop.placeSlug)}
-                    className="inline-flex items-center gap-0.5 text-[11px] font-bold text-[#c84b31] bg-[#fff5f2] hover:bg-[#ffe8e2] border border-[#f5c6bc] px-2 py-0.5 rounded-full transition cursor-pointer"
+                    className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md hover:bg-rose-100 transition inline-flex items-center gap-0.5 cursor-pointer"
                   >
                     <span>Xem quán</span>
                     <ExternalLink className="w-2.5 h-2.5" />
                   </button>
                 )}
               </div>
+
+              <p className="text-xs text-stone-500 mt-0.5">
+                {index === 0
+                  ? `📍 Điểm hẹn mở đầu hành trình (${stop.duration} phút tại quán)`
+                  : `📍 Điểm hẹn thứ ${index + 1} (${stop.duration} phút tại quán)`}
+              </p>
+
+              {stop.planBNote && (
+                <p className="text-stone-500 italic flex items-center gap-1.5 text-xs">
+                  <span>🏷️</span> {stop.planBNote}
+                </p>
+              )}
+
+              {stopItem.timeConflictWarning && (
+                <p className="text-rose-600 font-semibold flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-lg text-xs mt-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  {stopItem.timeConflictWarning}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Compact mobile-safe action toolbar */}
-          <div className="flex flex-wrap items-center gap-1 sm:ml-auto pt-0.5 sm:pt-0">
-            <div className="flex items-center border border-[#dcd0be] rounded-md bg-white overflow-hidden mr-0.5">
+          {/* Action toolbar */}
+          <div className="flex items-center gap-1 opacity-85 group-hover:opacity-100 transition bg-stone-50 p-1 rounded-xl border border-stone-200/60 shadow-2xs self-start sm:ml-auto shrink-0">
+            <div className="flex items-center border border-stone-200/80 rounded-lg bg-white overflow-hidden mr-0.5">
               <button
                 type="button"
                 onClick={() => onReorder(index, index - 1)}
                 disabled={index === 0}
-                className="p-1 text-[#6e5645] hover:bg-[#f3ede2] disabled:opacity-30 cursor-pointer"
+                className="p-1 text-stone-500 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
                 title="Đẩy lên chặng trước"
               >
                 <ArrowUp className="w-3 h-3" />
@@ -222,7 +249,7 @@ export function TimelineStopCard({
                 type="button"
                 onClick={() => onReorder(index, index + 1)}
                 disabled={index === totalStops - 1}
-                className="p-1 text-[#6e5645] hover:bg-[#f3ede2] disabled:opacity-30 border-l border-[#dcd0be] cursor-pointer"
+                className="p-1 text-stone-500 hover:bg-stone-100 disabled:opacity-30 border-l border-stone-200/80 cursor-pointer"
                 title="Đẩy xuống chặng sau"
               >
                 <ArrowDown className="w-3 h-3" />
@@ -232,7 +259,7 @@ export function TimelineStopCard({
             <button
               type="button"
               onClick={() => onRippleShift(stop.id, -15)}
-              className="bg-white hover:bg-[#f0e8dc] text-[#2d221c] border border-[#cfc1ae] text-xs font-bold px-2 py-1 rounded-md transition cursor-pointer"
+              className="px-2 py-1 text-[11px] font-semibold text-stone-600 hover:bg-white hover:shadow-2xs rounded-lg transition cursor-pointer"
               title="Giảm thời lượng 15 phút"
             >
               -15p
@@ -240,19 +267,19 @@ export function TimelineStopCard({
             <button
               type="button"
               onClick={() => onRippleShift(stop.id, 15)}
-              className="bg-white hover:bg-[#f0e8dc] text-[#2d221c] border border-[#cfc1ae] text-xs font-bold px-2 py-1 rounded-md transition cursor-pointer"
+              className="px-2 py-1 text-[11px] font-semibold text-stone-600 hover:bg-white hover:shadow-2xs rounded-lg transition cursor-pointer"
               title="Tăng thời lượng 15 phút"
             >
               +15p
             </button>
-
+            <div className="w-px h-3.5 bg-stone-200 mx-0.5" />
             <button
               type="button"
               onClick={() => onTogglePin(stop.id, stop.isLocked, stopItem.startTimeStr)}
-              className={`px-2 py-1 rounded-md border text-xs font-bold transition cursor-pointer ${
+              className={`p-1 rounded-lg transition cursor-pointer ${
                 stop.isLocked
-                  ? "bg-[#c84b31] text-white border-[#b03e26]"
-                  : "bg-white text-[#c84b31] border-[#cfc1ae] hover:bg-[#fff2ef]"
+                  ? "bg-rose-500 text-white"
+                  : "text-stone-400 hover:text-rose-600 hover:bg-white"
               }`}
               title={
                 stop.isLocked
@@ -262,20 +289,18 @@ export function TimelineStopCard({
             >
               📌
             </button>
-
             <button
               type="button"
               onClick={openDetailedEditor}
-              className="p-1.5 rounded-md bg-white hover:bg-[#f0e8dc] text-[#5c4738] border border-[#cfc1ae] transition cursor-pointer"
+              className="p-1 text-stone-400 hover:text-stone-700 hover:bg-white rounded-lg transition cursor-pointer"
               title="Sửa chi tiết chặng"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
-
             <button
               type="button"
               onClick={() => onDeleteStop(stop.id)}
-              className="p-1.5 rounded-md bg-white hover:bg-[#fdeceb] text-[#b93829] border border-[#cfc1ae] transition cursor-pointer"
+              className="p-1 text-stone-400 hover:text-rose-600 hover:bg-white rounded-lg transition cursor-pointer"
               title="Xóa địa điểm này"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -283,54 +308,23 @@ export function TimelineStopCard({
           </div>
         </div>
 
-        {/* Row 2: Travel leg & warnings */}
-        <div className="mt-2 space-y-1 text-xs text-[#6e5645]">
-          {index === 0 ? (
-            <p className="flex items-center gap-1.5 font-medium">
-              <span>📍</span> Điểm hẹn mở đầu hành trình ({stop.duration} phút tại quán)
-            </p>
-          ) : (
-            <p className="flex items-center gap-1.5">
-              <span>🛵</span>
-              <span>
-                Di chuyển từ <b>{previousStopName}</b>:{" "}
-                <strong className="text-[#2d221c]">+{stopItem.travelMins} phút</strong> (
-                {stopItem.distKm} km, đã tính 8p gửi xe) • Dừng chân {stop.duration} phút
-              </span>
-            </p>
-          )}
-
-          {stop.planBNote && (
-            <p className="text-[#5c4738] italic flex items-center gap-1.5">
-              <span>🏷️</span> {stop.planBNote}
-            </p>
-          )}
-
-          {stopItem.timeConflictWarning && (
-            <p className="text-[#b83723] font-semibold flex items-center gap-1 bg-[#fceae6] px-2 py-1 rounded">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              {stopItem.timeConflictWarning}
-            </p>
-          )}
-        </div>
-
-        {/* Row 3: Quick inline stop note */}
-        <div className="mt-2.5">
+        {/* Row 2: Note */}
+        <div className="mt-3">
           {isEditingNote ? (
-            <div className="bg-white border border-[#c84b31] rounded-lg p-2 space-y-2">
+            <div className="bg-white border border-rose-300 rounded-xl p-2.5 space-y-2 shadow-2xs">
               <textarea
                 rows={2}
                 value={noteDraft}
                 onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder="Nhập ghi chú cho chặng này (VD: Đặt bàn tầng 2, mua hoa, góc chụp đẹp...)"
-                className="w-full text-xs text-[#2d221c] focus:outline-none resize-none"
+                placeholder="Nhập ghi chú cho chặng này (VD: Đặt bàn tầng 2, góc chụp vintage, thử món signature...)"
+                className="w-full text-xs text-stone-800 focus:outline-none resize-none"
                 autoFocus
               />
               <div className="flex justify-end gap-1.5">
                 <button
                   type="button"
                   onClick={() => setIsEditingNote(false)}
-                  className="px-2.5 py-1 rounded text-xs text-[#6e5645] hover:bg-[#f3ede2] cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg text-xs text-stone-600 hover:bg-stone-100 cursor-pointer"
                 >
                   Hủy
                 </button>
@@ -340,7 +334,7 @@ export function TimelineStopCard({
                     onSaveQuickNote(stop.id, noteDraft);
                     setIsEditingNote(false);
                   }}
-                  className="px-2.5 py-1 rounded text-xs font-bold bg-[#c84b31] text-white hover:bg-[#a63922] cursor-pointer"
+                  className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer shadow-2xs"
                 >
                   Lưu ghi chú
                 </button>
@@ -352,24 +346,24 @@ export function TimelineStopCard({
                 setNoteDraft(stop.note || "");
                 setIsEditingNote(true);
               }}
-              className="group cursor-pointer bg-[#fdfbf7] hover:bg-white border border-[#e6dac8] rounded-lg px-2.5 py-1.5 flex items-start justify-between gap-2 transition"
+              className="group/note cursor-pointer bg-[#FFF0F3]/60 hover:bg-[#FFF0F3] border border-rose-100/80 rounded-xl px-3.5 py-2 flex items-center justify-between gap-2 transition"
               title="Bấm để sửa ghi chú cho mốc thời gian này"
             >
-              <div className="flex items-start gap-1.5 text-xs text-[#4f3d30]">
-                <StickyNote className="w-3.5 h-3.5 text-[#c84b31] shrink-0 mt-0.5" />
-                <span>
-                  <strong className="font-semibold text-[#785118]">Ghi chú: </strong>
+              <div className="flex items-center gap-2 text-xs text-stone-700 min-w-0">
+                <span className="text-rose-500 shrink-0">💌</span>
+                <span className="truncate">
+                  <strong className="font-semibold text-[#C84650]">Ghi chú: </strong>
                   {stop.note ? (
                     stop.note
                   ) : (
-                    <span className="italic text-[#9c8874]">
+                    <span className="italic text-stone-400">
                       Bấm để thêm ghi chú cho mốc giờ này...
                     </span>
                   )}
                 </span>
               </div>
-              <span className="text-[11px] text-[#c84b31] opacity-0 group-hover:opacity-100 font-semibold shrink-0">
-                Sửa ghi chú ✎
+              <span className="text-[11px] text-rose-500 opacity-0 group-hover/note:opacity-100 font-semibold shrink-0">
+                Sửa ✎
               </span>
             </div>
           )}
@@ -377,35 +371,35 @@ export function TimelineStopCard({
 
         {/* Optional detailed stop editor */}
         {isEditingDetails && (
-          <div className="mt-3 pt-3 border-t border-[#e2d6c3] bg-white rounded-xl p-3 space-y-3">
+          <div className="mt-3 pt-3 border-t border-rose-100 bg-rose-50/30 rounded-xl p-3.5 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-[#c84b31] uppercase">
+              <span className="text-xs font-extrabold text-rose-600 uppercase tracking-wide">
                 {`CHỈNH SỬA CHI TIẾT CHẶNG #${index + 1}`}
               </span>
               <button
                 type="button"
                 onClick={() => setIsEditingDetails(false)}
-                className="text-xs text-[#7d6856] hover:text-[#2d221c] cursor-pointer"
+                className="text-xs text-stone-500 hover:text-stone-800 cursor-pointer"
               >
                 Đóng ✕
               </button>
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
+              <label className="block text-[11px] font-semibold text-stone-600 mb-1">
                 Tên hiển thị tại chặng
               </label>
               <input
                 type="text"
                 value={detailForm.name}
                 onChange={(e) => setDetailForm({ ...detailForm, name: e.target.value })}
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-rose-400"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
               <div>
-                <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
+                <label className="block text-[11px] font-semibold text-stone-600 mb-1">
                   Thời lượng dừng (phút)
                 </label>
                 <input
@@ -420,12 +414,12 @@ export function TimelineStopCard({
                       duration: Number(e.target.value) || 60,
                     })
                   }
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-rose-400"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
+                <label className="block text-[11px] font-semibold text-stone-600 mb-1">
                   Chế độ mốc giờ
                 </label>
                 <label className="flex items-center gap-1.5 text-xs py-1.5 cursor-pointer">
@@ -435,16 +429,16 @@ export function TimelineStopCard({
                     onChange={(e) =>
                       setDetailForm({ ...detailForm, isLocked: e.target.checked })
                     }
-                    className="accent-[#c84b31]"
+                    className="accent-rose-500"
                   />
-                  <span className="text-[#2d221c]">📌 Cố định giờ bắt đầu</span>
+                  <span className="text-stone-700">📌 Cố định giờ bắt đầu</span>
                 </label>
               </div>
 
               <div>
                 {detailForm.isLocked && (
                   <>
-                    <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
+                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
                       Giờ bắt đầu cố định
                     </label>
                     <input
@@ -453,7 +447,7 @@ export function TimelineStopCard({
                       onChange={(e) =>
                         setDetailForm({ ...detailForm, lockedStartTime: e.target.value })
                       }
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-rose-400"
                     />
                   </>
                 )}
@@ -461,14 +455,14 @@ export function TimelineStopCard({
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-[#6e5645] mb-1">
+              <label className="block text-[11px] font-semibold text-stone-600 mb-1">
                 Ghi chú tại chặng này
               </label>
               <input
                 type="text"
                 value={detailForm.note}
                 onChange={(e) => setDetailForm({ ...detailForm, note: e.target.value })}
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#d5c5b0] text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-rose-400"
                 placeholder="Ghi chú chỗ ngồi, món nước, góc chụp ảnh..."
               />
             </div>
@@ -477,7 +471,7 @@ export function TimelineStopCard({
               <button
                 type="button"
                 onClick={() => setIsEditingDetails(false)}
-                className="px-3 py-1 rounded-lg text-xs font-semibold text-[#6e5645] hover:bg-[#f3ede2] cursor-pointer"
+                className="px-3 py-1 rounded-lg text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer"
               >
                 Hủy
               </button>
@@ -487,7 +481,7 @@ export function TimelineStopCard({
                   onSaveDetailedEdit(stop.id, detailForm);
                   setIsEditingDetails(false);
                 }}
-                className="px-3.5 py-1 rounded-lg text-xs font-bold bg-[#c84b31] text-white hover:bg-[#a63922] cursor-pointer"
+                className="px-3.5 py-1 rounded-lg text-xs font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer shadow-2xs"
               >
                 Lưu thay đổi
               </button>
@@ -496,18 +490,18 @@ export function TimelineStopCard({
         )}
 
         {/* Row 4: Google Maps link & stop span */}
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="mt-3 pt-2.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
           <a
             href={mapsUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 font-bold text-[#c84b31] hover:underline"
+            className="font-semibold text-rose-600 hover:underline flex items-center gap-1"
           >
             <Navigation className="w-3 h-3" />
-            {`Chỉ đường (${stop.address})`}
+            <span>{`Chỉ đường (${stop.address})`}</span>
           </a>
-          <span className="text-[11px] text-[#9c8874]">
-            {`Mốc #${index + 1}: ${stopItem.startTimeStr} ➔ ${stopItem.endTimeStr}`}
+          <span className="text-stone-400 text-[11px]">
+            {`Mốc #${index + 1}: ${stopItem.startTimeStr} → ${stopItem.endTimeStr}`}
           </span>
         </div>
       </div>

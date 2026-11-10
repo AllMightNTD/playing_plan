@@ -4,30 +4,29 @@ import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { SwipeDeck } from "@/components/scrapbook/SwipeDeck";
 import { BlindDateTicket } from "@/components/scrapbook/BlindDateTicket";
-import { ScratchMapHanoi } from "@/components/scrapbook/ScratchMapHanoi";
 import { SecretNotesBoard } from "@/components/scrapbook/SecretNotesBoard";
 import { cn } from "@/lib/utils";
 
-type GameTab = "swipe" | "blind" | "scratch" | "all";
+type GameTab = "swipe" | "blind" | "notes" | "all";
 
 const TABS: { key: GameTab; label: string }[] = [
   { key: "swipe", label: "💞 1. Quẹt thẻ Hợp Gu" },
   { key: "blind", label: "🎫 2. Vé Mù Bí Mật" },
-  { key: "scratch", label: "🗺️ 3. Bản Đồ Cào & Thư Tình" },
+  { key: "notes", label: "💌 3. Hộp Thư Tình Bí Mật" },
   { key: "all", label: "Xem tất cả" },
 ];
 
 export default function MatchPage() {
   const { quickAddPlaceToPlan, setActiveDetailSlug, homeSummary, roomProfile, addToast } = useApp();
   const [tab, setTab] = useState<GameTab>("swipe");
-  // Check-in ở vé mù / thư tình làm bản đồ cào cập nhật lại
+  // Check-in ở vé mù / thư tình làm mới dữ liệu
   const [checkInTrigger, setCheckInTrigger] = useState(0);
 
   const toast = (message: string, type?: "success" | "error" | "info") => addToast(message, type);
   const onCheckIn = () => setCheckInTrigger((n) => n + 1);
   const showSwipe = tab === "swipe" || tab === "all";
   const showBlind = tab === "blind" || tab === "all";
-  const showScratch = tab === "scratch" || tab === "all";
+  const showNotes = tab === "notes" || tab === "all";
 
   return (
     <section className="space-y-5 animate-in fade-in duration-300">
@@ -71,11 +70,10 @@ export default function MatchPage() {
         />
       )}
 
-      {(showBlind || showScratch) && (
-        <div className={cn("grid grid-cols-1 gap-6", tab === "all" ? "responsive-3col lg:grid-cols-3" : showScratch ? "responsive-2col lg:grid-cols-2" : "max-w-xl")}>
+      {(showBlind || showNotes) && (
+        <div className={cn("grid grid-cols-1 gap-6", tab === "all" ? "responsive-2col lg:grid-cols-2" : "max-w-xl")}>
           {showBlind && <BlindDateTicket onToast={toast} onCheckInSuccess={onCheckIn} />}
-          {showScratch && <ScratchMapHanoi onToast={toast} refreshTrigger={checkInTrigger} />}
-          {showScratch && <SecretNotesBoard onToast={toast} onCheckInSuccess={onCheckIn} />}
+          {showNotes && <SecretNotesBoard onToast={toast} onCheckInSuccess={onCheckIn} />}
         </div>
       )}
     </section>

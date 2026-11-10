@@ -3,23 +3,23 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Copy,
+  Navigation,
+  Heart,
+  Plus,
+  ArrowRight,
+} from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { calculateHanoiTravelMinutes } from "@/lib/travel-time";
-import { resolveDistrictKey } from "@/lib/districts";
-import {
-  getModalBackdropClasses,
-  getModalShellClasses,
-  getModalHeaderClasses,
-  getModalBodyClasses,
-  getModalFooterClasses,
-} from "@/lib/modal-layout";
-import { DistrictScratchMap } from "./DistrictScratchMap";
-import { LocationChip } from "./LocationChip";
+import { getModalBackdropClasses } from "@/lib/modal-layout";
 
 /** Mốc trung tâm để ước lượng thời gian di chuyển: Hồ Gươm. */
 const CITY_CENTER = { lat: 21.0285, lng: 105.8542, name: "Hồ Gươm" };
-
-type MapMode = "directions" | "google";
 
 /** Cẩm nang địa điểm dạng modal: ảnh nhiều góc, góc chụp, tạo dáng, phối đồ, bản đồ và thêm vào lịch. */
 export function PlaceDetailModal() {
@@ -35,8 +35,6 @@ export function PlaceDetailModal() {
     distanceToPlace,
   } = useApp();
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
-  const [mapMode, setMapMode] = useState<MapMode>("directions");
-  const [activeSwatch, setActiveSwatch] = useState<string | null>(null);
 
   const place = useMemo(
     () => (activeDetailSlug ? places.find((p) => p.slug === activeDetailSlug) ?? null : null),
@@ -45,8 +43,6 @@ export function PlaceDetailModal() {
 
   useEffect(() => {
     setActivePhotoIdx(0);
-    setMapMode("directions");
-    setActiveSwatch(null);
   }, [activeDetailSlug]);
 
   useEffect(() => {
@@ -99,332 +95,442 @@ export function PlaceDetailModal() {
         role="dialog"
         aria-modal="true"
         aria-label={place.displayName || place.name}
-        className={getModalShellClasses("lg")}
+        className="w-full max-w-4xl bg-[#FFFDF9] rounded-[2rem] border border-[#F2E4DC] shadow-[0_25px_60px_-15px_rgba(90,60,50,0.2)] overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in duration-200"
       >
-        {/* Fixed Header */}
-        <div className={getModalHeaderClasses()}>
-          <div className="flex flex-col min-w-0 pr-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xl sm:text-2xl shrink-0" aria-hidden="true">{place.emoji}</span>
-              <h3 className="font-serif font-extrabold text-base sm:text-xl text-paper-ink leading-tight truncate">
+        {/* 1. HEADER MODAL */}
+        <div className="px-6 pt-6 pb-4 border-b border-stone-100 flex items-start justify-between gap-4 bg-gradient-to-b from-rose-50/40 to-transparent shrink-0">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 h-9 rounded-2xl bg-rose-100/80 text-[#E15B64] flex items-center justify-center text-lg shadow-xs">
+                {place.emoji || "📸"}
+              </span>
+              <h2 className="font-serif text-2xl md:text-[26px] font-bold text-stone-800 tracking-tight">
                 {place.displayName || place.name}
-              </h3>
+              </h2>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-              <span className="px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-bold bg-[#DCE6D5] text-[#2F4F2F]">
+
+            {/* Badges */}
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                 📍 {place.area}
               </span>
               {place.costText && (
-                <span className="px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-extrabold bg-[#FADCD2] text-brand-terracottaDark">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/60">
                   💰 {place.costText}
                 </span>
               )}
-              {place.bestTimeText && (
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-bold bg-[#FFF6EA] border border-brand-coral text-brand-terracotta">
-                  ✨ {place.bestTimeText}
-                </span>
-              )}
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-[#E15B64] border border-rose-200/70">
+                ✨ {place.bestTimeText || "Hợp đi ngắm cảnh cùng người ấy"}
+              </span>
             </div>
           </div>
+
+          {/* Nút Đóng */}
           <button
             type="button"
             onClick={close}
-            className="shrink-0 w-11 h-11 sm:w-10 sm:h-10 min-w-[44px] min-h-[44px] rounded-full bg-[#E6D7C3] hover:bg-brand-terracotta hover:text-white text-paper-ink font-extrabold flex items-center justify-center transition"
+            className="w-10 h-10 rounded-full bg-stone-100 hover:bg-rose-100 text-stone-500 hover:text-[#E15B64] flex items-center justify-center transition shrink-0 cursor-pointer"
             aria-label="Đóng"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Scrollable Body */}
-        <div className={getModalBodyClasses()}>
-          {/* Phần 1: ảnh nhiều góc + thông tin nhanh */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            <div className="lg:col-span-7 space-y-2.5">
-              <div className="relative h-52 sm:h-64 rounded-2xl overflow-hidden border-2 border-[#CBB292] bg-stone-900 shadow-md">
+        {/* 2. SCROLLABLE BODY */}
+        <div className="p-6 overflow-y-auto space-y-6">
+          {/* KHỐI TRÊN: GALLERY ẢNH (TRÁI 7 CỘT) & THÔNG TIN ĐỊA ĐIỂM (PHẢI 5 CỘT) */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+            {/* Cột Trái: Carousel Ảnh */}
+            <div className="md:col-span-7 space-y-3">
+              <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-stone-900 group shadow-xs border border-stone-200/60">
                 {photo ? (
-                  <Image src={photo.url} alt={photo.caption || place.name} fill sizes="(max-width: 1024px) 100vw, 520px" className="object-cover" unoptimized referrerPolicy="no-referrer" />
+                  <Image
+                    src={photo.url}
+                    alt={photo.caption || place.name}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 560px"
+                    className="object-cover transition duration-500"
+                    unoptimized
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-5xl bg-brand-peach/40">{place.emoji}</div>
+                  <div className="w-full h-full flex items-center justify-center text-5xl bg-rose-50">
+                    {place.emoji || "✨"}
+                  </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20 pointer-events-none" />
+
+                {/* Badge Góc 1/N */}
                 {gallery.length > 0 && (
-                  <span className="absolute top-3 left-3 bg-brand-terracotta text-white text-[11px] font-extrabold px-2.5 py-1 rounded-full shadow">
-                    📷 Góc {activePhotoIdx + 1}/{gallery.length}
-                  </span>
+                  <div className="absolute top-3.5 left-3.5 px-3 py-1 rounded-full bg-[#E15B64]/95 backdrop-blur-xs text-white text-xs font-bold shadow-xs flex items-center gap-1.5">
+                    📸 Góc {activePhotoIdx + 1}/{gallery.length}
+                  </div>
                 )}
+
+                {/* Nút điều hướng Trái/Phải */}
                 {gallery.length > 1 && (
                   <>
                     <button
                       type="button"
                       onClick={() => showPhoto(activePhotoIdx - 1)}
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/55 hover:bg-brand-terracotta text-white font-bold flex items-center justify-center"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xs text-white flex items-center justify-center opacity-80 group-hover:opacity-100 transition cursor-pointer"
                       aria-label="Ảnh trước"
                     >
-                      ‹
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={() => showPhoto(activePhotoIdx + 1)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/55 hover:bg-brand-terracotta text-white font-bold flex items-center justify-center"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xs text-white flex items-center justify-center opacity-80 group-hover:opacity-100 transition cursor-pointer"
                       aria-label="Ảnh sau"
                     >
-                      ›
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </>
                 )}
-                {(photo?.caption || photo?.credit) && (
-                  <div className="absolute bottom-2.5 left-3 right-3 text-white">
-                    {photo.caption && <p className="text-xs font-medium leading-snug drop-shadow">{photo.caption}</p>}
-                    {photo.credit && <p className="text-[10px] text-white/75">Ảnh: {photo.credit}</p>}
+
+                {/* Chú thích ảnh dưới đáy */}
+                {(photo?.caption || photo?.credit || place.name) && (
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-4 pt-10 text-white pointer-events-none">
+                    <p className="text-xs md:text-sm font-semibold leading-snug drop-shadow-xs">
+                      {photo?.caption || place.name}
+                    </p>
+                    {photo?.credit && (
+                      <p className="text-[11px] text-stone-300 mt-0.5">Ảnh: {photo.credit}</p>
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* 4 Thumbnails */}
               {gallery.length > 1 && (
-                <div className="grid grid-cols-4 gap-2">
-                  {gallery.slice(0, 8).map((img, idx) => (
+                <div className="grid grid-cols-4 gap-2.5">
+                  {gallery.slice(0, 4).map((img, idx) => (
                     <button
-                      key={img.url}
+                      key={img.url + idx}
                       type="button"
                       onClick={() => setActivePhotoIdx(idx)}
-                      className={`relative h-16 rounded-xl overflow-hidden border-2 transition ${
-                        idx === activePhotoIdx ? "border-brand-terracotta ring-2 ring-brand-terracotta/40" : "border-[#D5C5B0] opacity-75 hover:opacity-100"
+                      className={`rounded-xl overflow-hidden h-14 border-2 transition relative cursor-pointer ${
+                        idx === activePhotoIdx
+                          ? "border-[#E15B64] ring-2 ring-rose-200"
+                          : "border-transparent opacity-70 hover:opacity-100"
                       }`}
-                      aria-label={`Xem góc ảnh ${idx + 1}`}
+                      aria-label={`Góc ảnh ${idx + 1}`}
                     >
-                      <Image src={img.url} alt="" fill sizes="120px" className="object-cover" unoptimized referrerPolicy="no-referrer" />
+                      <Image
+                        src={img.url}
+                        alt=""
+                        fill
+                        sizes="120px"
+                        className="object-cover"
+                        unoptimized
+                        referrerPolicy="no-referrer"
+                      />
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="lg:col-span-5 space-y-3">
-              <p className="text-xs sm:text-sm text-paper-muted leading-relaxed">{place.summary}</p>
+            {/* Cột Phải: Mô tả & Thẻ Thông tin */}
+            <div className="md:col-span-5 flex flex-col justify-between space-y-4">
+              <p className="text-sm text-stone-600 leading-relaxed font-medium bg-stone-50/80 p-3.5 rounded-2xl border border-stone-200/60 italic">
+                &ldquo;{place.summary}&rdquo;
+              </p>
 
-              <div className="bg-[#FFFDF9] border border-[#DECBB3] rounded-2xl p-3 space-y-2 text-xs shadow-2xs">
-                <div className="flex items-start gap-2">
-                  <span className="text-brand-terracotta font-bold shrink-0">🏠 Địa chỉ:</span>
-                  <span className="font-semibold text-paper-ink">{addressText}</span>
-                </div>
-                {travel && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-brand-olive font-bold shrink-0">🛵 Di chuyển:</span>
-                    <span className="text-paper-muted">
-                      ~{travel.minutes} phút từ {travel.from} ({travel.km.toFixed(1)} km, đã tính gửi xe)
+              {/* Card Địa chỉ / Di chuyển / Mẹo */}
+              <div className="bg-white rounded-2xl p-4 border border-[#F2E4DC] shadow-xs space-y-3.5 text-xs">
+                <div className="flex items-start gap-3">
+                  <span className="w-7 h-7 rounded-xl bg-rose-50 text-[#E15B64] flex items-center justify-center shrink-0 mt-0.5 text-sm">
+                    🏠
+                  </span>
+                  <div>
+                    <span className="text-stone-400 font-semibold block text-[11px] uppercase tracking-wider">
+                      Địa chỉ
+                    </span>
+                    <span className="font-bold text-stone-800 text-xs leading-snug">
+                      {addressText}
                     </span>
                   </div>
+                </div>
+
+                <div className="h-px bg-stone-100" />
+
+                {travel && (
+                  <>
+                    <div className="flex items-start gap-3">
+                      <span className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 text-sm">
+                        🛵
+                      </span>
+                      <div>
+                        <span className="text-stone-400 font-semibold block text-[11px] uppercase tracking-wider">
+                          Di chuyển
+                        </span>
+                        <span className="text-stone-700 leading-snug">
+                          ~{travel.minutes} phút từ {travel.from}{" "}
+                          <strong className="text-emerald-700">
+                            ({travel.km.toFixed(1)} km, đã tính gửi xe)
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-px bg-stone-100" />
+                  </>
                 )}
-                {place.bestTimeText && (
-                  <div className="flex items-start gap-2 sm:hidden">
-                    <span className="text-brand-terracotta font-bold shrink-0">✨ Giờ đẹp:</span>
-                    <span className="text-paper-muted">{place.bestTimeText}</span>
-                  </div>
-                )}
+
                 {place.tips && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-brand-airmailBlue font-bold shrink-0">💡 Mẹo:</span>
-                    <span className="text-paper-muted">{place.tips}</span>
+                  <div className="flex items-start gap-3">
+                    <span className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5 text-sm">
+                      💡
+                    </span>
+                    <div>
+                      <span className="text-stone-400 font-semibold block text-[11px] uppercase tracking-wider">
+                        Mẹo nhỏ cho hai bạn
+                      </span>
+                      <span className="text-stone-700 leading-snug">{place.tips}</span>
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
+              {/* Tags Vibe */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-[11px] text-stone-400 font-semibold mr-1">Vibe:</span>
                 {place.moodLabels.map((tag) => (
-                  <span key={tag} className="text-[11px] font-semibold bg-[#EFE5D4] text-paper-ink px-2.5 py-1 rounded-full">
-                    {tag}
+                  <span
+                    key={tag}
+                    className="px-3 py-1 rounded-full bg-stone-100 hover:bg-rose-50 hover:text-[#E15B64] text-stone-600 text-xs font-semibold transition cursor-default"
+                  >
+                    #{tag}
                   </span>
                 ))}
-                {place.indoor && <span className="text-[11px] font-semibold bg-[#E4EEF5] text-brand-airmailBlue px-2.5 py-1 rounded-full">☔ Trong nhà</span>}
+                {place.indoor && (
+                  <span className="px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-xs font-semibold">
+                    ☔ Trong nhà
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Phần 2: góc chụp + tạo dáng & phối đồ */}
-          {(place.photoSpots.length > 0 || place.poses.length > 0 || hasOutfit) && (
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="md:col-span-7 bg-[#FFFDF9] border border-[#DECBB3] rounded-2xl p-4 space-y-3 shadow-2xs">
-                <h4 className="font-serif font-extrabold text-sm sm:text-base text-brand-terracotta">📸 Góc chụp &quot;thần thánh&quot; tại quán</h4>
+          {/* DẢI CARD NGANG Ở GIỮA: TỌA ĐỘ GPS & GOOGLE MAPS DẪN ĐƯỜNG */}
+          <div className="bg-white rounded-2xl p-4 border border-[#F2E4DC] shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-3">
+              {hasCoords && (
+                <span className="font-semibold text-stone-700 flex items-center gap-1.5">
+                  <span>🧭</span> Tọa độ GPS:{" "}
+                  <code className="font-mono text-[#E15B64] font-bold">
+                    {place.lat!.toFixed(5)}, {place.lng!.toFixed(5)}
+                  </code>
+                </span>
+              )}
+              <span className="text-stone-500 flex items-center gap-1 truncate max-w-md">
+                <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                {addressText}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(addressText);
+                  addToast("📋 Đã sao chép địa chỉ quán!", "info");
+                }}
+                className="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy địa chỉ</span>
+              </button>
+              <a
+                href={googleMapsNavUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-[#E15B64] hover:bg-[#C84650] text-white font-bold transition flex items-center gap-1.5 shadow-xs shadow-rose-200"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                <span>Mở Google Maps dẫn đường</span>
+              </a>
+            </div>
+          </div>
+
+          {/* KHỐI DƯỚI: 2 CỘT BENTO CÂN ĐỐI CHIỀU CAO */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            {/* Cột Trái: Góc chụp thần thánh & Thời điểm đẹp */}
+            <div className="bg-white rounded-2xl p-5 border border-[#F2E4DC] shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3.5">
+                  <h3 className="text-sm font-extrabold text-[#C84650] flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-xl bg-rose-50 flex items-center justify-center text-sm">
+                      📸
+                    </span>
+                    Góc chụp &quot;thần thánh&quot; tại quán
+                  </h3>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-[#E15B64]">
+                    Must-try
+                  </span>
+                </div>
+
                 {place.photoSpots.length === 0 ? (
-                  <p className="text-xs text-paper-muted">Quán này chưa có hướng dẫn góc chụp.</p>
+                  <p className="text-xs text-stone-400 italic">
+                    Quán này chưa có hướng dẫn góc chụp chi tiết.
+                  </p>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     {place.photoSpots.map((spot) => (
-                      <div key={spot.name} className="p-2.5 rounded-xl bg-[#FAF5EB] border border-[#E5D8C5] space-y-1">
-                        <strong className="text-xs font-extrabold text-paper-ink block">{spot.name}</strong>
-                        {spot.howToFind && <p className="text-xs text-paper-muted leading-snug">📍 {spot.howToFind}</p>}
-                        {spot.tip && <p className="text-[11px] font-semibold text-brand-terracotta">💡 {spot.tip}</p>}
+                      <div
+                        key={spot.name}
+                        className="bg-[#FFFDF9] rounded-xl p-3.5 border border-[#F2E4DC]/80 space-y-1.5"
+                      >
+                        <div className="font-bold text-stone-800 text-xs md:text-sm">{spot.name}</div>
+                        {spot.howToFind && (
+                          <div className="flex items-center gap-1.5 text-xs text-stone-600">
+                            <span className="text-[#E15B64]">📍</span>
+                            <span>{spot.howToFind}</span>
+                          </div>
+                        )}
+                        {spot.tip && (
+                          <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50/80 px-2.5 py-1.5 rounded-lg border border-amber-200/50">
+                            <span>☀️</span>
+                            <span>{spot.tip}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              <div className="md:col-span-5 bg-[#FAF2D6]/90 border border-[#E2CF9F] rounded-2xl p-4 flex flex-col space-y-3 shadow-2xs">
-                {place.poses.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-serif font-extrabold text-sm sm:text-base text-paper-ink">👩‍❤️‍👨 Cách tạo dáng tự nhiên</h4>
-                    <ul className="text-xs text-paper-ink leading-relaxed bg-[#FFFDF9]/80 p-3 rounded-xl border border-[#E5D6B0] space-y-1">
-                      {place.poses.map((pose) => (
-                        <li key={pose.title}>
-                          <strong>{pose.title}:</strong> {pose.desc}
-                        </li>
-                      ))}
-                    </ul>
+              {/* Gợi ý tư thế & tạo dáng */}
+              <div className="mt-4 pt-3.5 border-t border-stone-100">
+                <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1.5">
+                  <span>💑</span> Cách tạo dáng tự nhiên cho hai bạn:
+                </div>
+                {place.poses.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {place.poses.map((pose) => (
+                      <p
+                        key={pose.title}
+                        className="text-xs text-stone-600 bg-rose-50/50 border border-rose-100 rounded-xl p-3 leading-relaxed"
+                      >
+                        <strong className="text-[#C84650]">{pose.title}:</strong> {pose.desc}
+                      </p>
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-xs text-stone-600 bg-rose-50/50 border border-rose-100 rounded-xl p-3 leading-relaxed">
+                    <strong className="text-[#C84650]">Nắm tay đi dạo tự nhiên:</strong> Hai người vừa đi
+                    vừa trò chuyện tự nhiên, chụp bắt khoảnh khắc cười rạng rỡ.
+                  </p>
                 )}
-                {hasOutfit && (
-                  <div className="pt-2.5 border-t border-dashed border-[#D5C08E] space-y-2">
-                    <h5 className="font-extrabold text-xs sm:text-sm text-paper-ink">👗 Gợi ý phối đồ đôi (OOTD):</h5>
-                    {outfit.tonSurTon && <p className="text-xs text-paper-muted leading-snug">{outfit.tonSurTon}</p>}
-                    {outfit.contrast && <p className="text-xs text-paper-muted leading-snug">🎨 {outfit.contrast}</p>}
-                    {outfit.avoid && <p className="text-xs text-paper-muted leading-snug">🚫 Tránh: {outfit.avoid}</p>}
-                    {outfit.weatherTip && <p className="text-xs text-paper-muted leading-snug">🌤️ {outfit.weatherTip}</p>}
-                    {outfit.palette.length > 0 && (
-                      <div className="flex items-center gap-2.5 pt-1">
-                        <span className="text-xs font-bold text-paper-ink">Tone màu hợp:</span>
-                        <div className="flex items-center gap-2">
-                          {outfit.palette.map((hex) => (
-                            <button
-                              key={hex}
-                              type="button"
-                              onClick={() => setActiveSwatch(hex)}
-                              title={hex}
-                              aria-label={`Màu ${hex}`}
-                              className={`w-7 h-7 rounded-full border-2 hover:scale-110 transition shadow-xs ${
-                                activeSwatch === hex ? "border-paper-ink" : "border-paper-ink/30"
-                              }`}
-                              style={{ backgroundColor: hex }}
-                            />
-                          ))}
-                        </div>
-                        {activeSwatch && <code className="text-[11px] font-mono text-paper-muted">{activeSwatch}</code>}
+              </div>
+            </div>
+
+            {/* Cột Phải: Gợi ý phối đồ đôi (OOTD) & Lưu ý */}
+            <div className="bg-gradient-to-br from-amber-50/70 via-[#FFFDF9] to-rose-50/40 rounded-2xl p-5 border border-amber-200/70 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3.5">
+                  <h3 className="text-sm font-extrabold text-amber-900 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-xl bg-amber-100/80 flex items-center justify-center text-sm">
+                      👗
+                    </span>
+                    Gợi ý phối đồ đôi (OOTD)
+                  </h3>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100/80 text-amber-800">
+                    Tone Hợp Cảnh
+                  </span>
+                </div>
+
+                <div className="bg-white rounded-xl p-3.5 border border-amber-100 mb-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-stone-800 leading-snug">
+                      {outfit?.tonSurTon || "Áo dài truyền thống, váy tiểu thư hoặc sơ mi kem"}
+                    </span>
+                    {outfit?.palette && outfit.palette.length > 0 && (
+                      <div className="flex -space-x-1.5 shrink-0">
+                        {outfit.palette.map((hex) => (
+                          <span
+                            key={hex}
+                            className="w-4 h-4 rounded-full border border-stone-300 shadow-2xs"
+                            style={{ backgroundColor: hex }}
+                            title={hex}
+                          />
+                        ))}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Phần 3: bản đồ & chỉ đường */}
-          <div className="bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-4 space-y-3 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="space-y-1">
-                <h4 className="font-serif font-extrabold text-sm sm:text-base text-paper-ink">🗺️ Bản Đồ & Chỉ Đường Tới Quán</h4>
-                <LocationChip />
-              </div>
-              {hasCoords && (
-                <div className="flex items-center gap-1 bg-[#FAF4E8] p-1 rounded-xl border border-[#D8CBB8]">
-                  {(
-                    [
-                      { key: "directions", label: "🧭 Chỉ đường" },
-                      { key: "google", label: "🌍 Bản đồ Google Maps" },
-                    ] as const
-                  ).map((mode) => (
-                    <button
-                      key={mode.key}
-                      type="button"
-                      onClick={() => setMapMode(mode.key)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                        mapMode === mode.key ? "bg-brand-terracotta text-white" : "text-paper-ink hover:bg-[#EFE5D4]"
-                      }`}
-                    >
-                      {mode.label}
-                    </button>
-                  ))}
+                  {outfit?.contrast ? (
+                    <p className="text-xs text-stone-600 flex items-start gap-1.5">
+                      <span>🎨</span>
+                      <span>{outfit.contrast}</span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-stone-600 flex items-start gap-1.5">
+                      <span>🎨</span>
+                      <span>
+                        Tone trắng tinh khôi hoặc kem/be sẽ cực kỳ nổi bật trên nền ảnh hẹn hò.
+                      </span>
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-xs font-extrabold text-paper-ink">🪙 Bản đồ cào Hà Nội</span>
-              <DistrictScratchMap placeDistrictKey={resolveDistrictKey(place.area)} placeName={place.name} />
-            </div>
-
-            {mapMode === "google" && hasCoords && (
-              <div className="rounded-xl overflow-hidden border border-[#CBB292] h-52 bg-stone-200">
-                <iframe
-                  title={`Bản đồ ${place.name}`}
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  loading="lazy"
-                  allowFullScreen
-                  referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://maps.google.com/maps?q=${mapEmbedQuery}&z=16&output=embed`}
-                />
               </div>
-            )}
 
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex flex-wrap items-center gap-3">
-                {hasCoords && (
-                  <span className="font-bold text-paper-ink">
-                    🧭 Tọa độ GPS:{" "}
-                    <code className="font-mono text-brand-terracotta">
-                      {place.lat!.toFixed(5)}, {place.lng!.toFixed(5)}
-                    </code>
+              {/* Checklist Lưu ý thời tiết & an toàn */}
+              <div className="space-y-2 text-xs">
+                <div className="flex items-start gap-2.5 bg-white/90 px-3.5 py-2.5 rounded-xl border border-rose-100 text-stone-700">
+                  <span className="text-[#E15B64] mt-0.5 shrink-0">🚫</span>
+                  <span>
+                    <strong className="text-[#C84650]">Lưu ý nhỏ:</strong>{" "}
+                    {outfit?.avoid || "Tránh trang phục cồng kềnh hoặc giày cao gót khó di chuyển."}
                   </span>
-                )}
-                <span className="text-paper-muted">📍 {addressText}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(addressText);
-                    addToast("📋 Đã sao chép địa chỉ quán!", "info");
-                  }}
-                  className="bg-[#FFFDF9] hover:bg-[#EFE5D4] border border-[#CBB292] text-paper-ink font-bold text-[11px] px-2.5 py-1.5 min-h-[36px] rounded-lg inline-flex items-center"
-                >
-                  📋 Copy địa chỉ
-                </button>
-                <a
-                  href={googleMapsNavUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-brand-airmailBlue hover:bg-slate-700 text-white font-bold text-[11px] px-3 py-1.5 min-h-[36px] rounded-lg inline-flex items-center gap-1"
-                >
-                  🚀 Mở Google Maps dẫn đường
-                </a>
+                </div>
+
+                <div className="flex items-start gap-2.5 bg-white/90 px-3.5 py-2.5 rounded-xl border border-amber-100 text-stone-700">
+                  <span className="text-amber-500 mt-0.5 shrink-0">🌤️</span>
+                  <span>
+                    <strong className="text-amber-900">Thời tiết lý tưởng:</strong>{" "}
+                    {outfit?.weatherTip ||
+                      "Buổi chiều hoàng hôn hoặc sáng sớm mát mẻ, nắng thu trong trẻo."}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Sticky Action Footer */}
-        <div className={getModalFooterClasses()}>
+        {/* 3. FOOTER ACTION BAR */}
+        <div className="px-6 py-4 bg-white border-t border-stone-100 flex flex-wrap items-center justify-between gap-4 shrink-0">
           <Link
             href={`/places/${place.slug}`}
             onClick={close}
-            className="text-xs sm:text-sm font-bold text-brand-terracotta hover:underline"
+            className="text-xs md:text-sm font-bold text-[#E15B64] hover:text-[#C84650] flex items-center gap-1.5 group transition"
           >
-            📖 Mở cẩm nang chi tiết →
+            <span>📖 Mở cẩm nang chi tiết</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => toggleSavePlace(place.slug)}
-              className={`flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl text-xs font-bold border transition flex items-center justify-center ${
-                saved
-                  ? "bg-brand-terracotta text-white border-brand-terracotta"
-                  : "bg-[#FFFDF9] text-paper-ink border-[#CBB292] hover:border-brand-terracotta"
-              }`}
+              className="px-4 py-2.5 rounded-xl border border-stone-200 hover:border-rose-200 hover:bg-rose-50/50 text-xs font-bold text-stone-700 hover:text-[#E15B64] transition flex items-center gap-2 cursor-pointer"
             >
-              {saved ? "♥ Đã lưu vào sổ tay" : "♡ Lưu vào sổ tay"}
+              <Heart
+                className={`w-4 h-4 ${saved ? "fill-[#E15B64] text-[#E15B64]" : "text-[#E15B64]"}`}
+              />
+              <span>{saved ? "Đã lưu vào sổ tay" : "Lưu vào sổ tay"}</span>
             </button>
             <button
               type="button"
               onClick={() => quickAddPlaceToPlan(place)}
               disabled={inSchedule}
-              className={`flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center justify-center ${
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                 inSchedule
-                  ? "bg-brand-olive text-white cursor-default"
-                  : "bg-brand-terracotta hover:bg-brand-terracottaDark text-white shadow"
+                  ? "bg-emerald-600 text-white cursor-default"
+                  : "bg-[#E15B64] hover:bg-[#C84650] text-white shadow-xs shadow-rose-200 cursor-pointer"
               }`}
             >
-              {inSchedule ? "✓ Đã nằm trong lịch hẹn" : "+ Thêm vào lịch hẹn"}
+              <Plus className="w-4 h-4" />
+              <span>{inSchedule ? "Đã nằm trong lịch hẹn" : "Thêm vào lịch hẹn"}</span>
             </button>
           </div>
         </div>

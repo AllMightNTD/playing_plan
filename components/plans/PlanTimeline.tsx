@@ -478,7 +478,7 @@ export function PlanTimeline({
 
   return (
     <div
-      className={`bg-[#fdfbf7] border border-[#e2d6c3] rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 ${className}`.trim()}
+      className={`bg-[#FFFDF9]/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-[#F2E4DC] shadow-xs space-y-5 relative ${className}`.trim()}
     >
       <PlanHeaderBar
         title={localTitle}
@@ -488,6 +488,7 @@ export function PlanTimeline({
         isSecret={plan.isSecret}
         isEditing={isEditingHeader}
         isSaving={isSavingHeader}
+        stopsCount={computedTimeline.length}
         form={headerForm}
         onChangeForm={setHeaderForm}
         onStartEdit={() => {
@@ -520,7 +521,7 @@ export function PlanTimeline({
       />
 
       {computedTimeline.length > 0 && (
-        <div className="relative timeline-line space-y-3.5">
+        <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-[11px] before:top-5 before:bottom-5 before:w-0.5 before:bg-gradient-to-b before:from-rose-300 before:via-amber-200 before:to-rose-200">
           {computedTimeline.map((stopItem, idx) => (
             <TimelineStopCard
               key={stopItem.item.id}

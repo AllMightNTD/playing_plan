@@ -21,7 +21,7 @@ concurrency:
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
 
     steps:
       - name: Checkout Codebase
@@ -47,6 +47,8 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           REAL_PHOTOS_DAILY_LIMIT: ${{ vars.REAL_PHOTOS_DAILY_LIMIT || '0' }}
+          AI_HOTSPOT_MAX_VIDEOS_PER_RUN: "10"
+          AI_HOTSPOT_MAX_RUNTIME_SEC: "180"
           NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: pnpm pipeline:daily
 

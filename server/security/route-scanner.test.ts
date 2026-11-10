@@ -37,7 +37,6 @@ export const PUBLIC_ALLOWLIST = new Set([
 export const PROTECTED_ROUTES = new Set([
   "gamification/blind-date",
   "gamification/check-in",
-  "gamification/scratch-map",
   "gamification/secret-notes",
   "home/summary",
   "matches",

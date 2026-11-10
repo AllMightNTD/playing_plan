@@ -24,7 +24,8 @@ export const AI_HOTSPOT_ACTOR = "ai:gemini";
 /** Free tier Gemini giới hạn ~8 giờ video YouTube/ngày; để dư cho việc khác. */
 const DEFAULT_DAILY_BUDGET_SEC = 6 * 60 * 60;
 const DEFAULT_MAX_VIDEO_SEC = 60 * 60;
-const DEFAULT_MAX_VIDEOS_PER_RUN = 50;
+const DEFAULT_MAX_VIDEOS_PER_RUN = 10;
+const DEFAULT_MAX_RUNTIME_SEC = 180;
 const BUDGET_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** Video phân tích lỗi (không phải do hết quota) được thử lại sau 7 ngày. */
 const RETRY_FAILED_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
@@ -69,13 +70,16 @@ export async function runAiVideoHotspots(options: { maxVideos?: number; now?: Da
   const model = process.env.GEMINI_VIDEO_MODEL?.trim() || DEFAULT_VIDEO_AI_MODEL;
   const dailyBudgetSec = readPositiveIntEnv("AI_HOTSPOT_DAILY_VIDEO_SECONDS", DEFAULT_DAILY_BUDGET_SEC);
   const maxVideoSec = readPositiveIntEnv("AI_HOTSPOT_MAX_VIDEO_SECONDS", DEFAULT_MAX_VIDEO_SEC);
+  const maxVideos = options.maxVideos ?? readPositiveIntEnv("AI_HOTSPOT_MAX_VIDEOS_PER_RUN", DEFAULT_MAX_VIDEOS_PER_RUN);
+  const maxRuntimeSec = readPositiveIntEnv("AI_HOTSPOT_MAX_RUNTIME_SEC", DEFAULT_MAX_RUNTIME_SEC);
+  const deadlineMs = now.getTime() + maxRuntimeSec * 1000;
 
   const [usedSec, pause, videos, placeRows] = await Promise.all([
     sumAnalyzedDurationSince(new Date(now.getTime() - BUDGET_WINDOW_MS)),
     getPublishPauseState(),
     listVideosPendingAi(
       maxVideoSec,
-      options.maxVideos ?? DEFAULT_MAX_VIDEOS_PER_RUN,
+      maxVideos,
       new Date(now.getTime() - RETRY_FAILED_AFTER_MS)
     ),
     db.select({ id: places.id, name: places.name, area: places.area }).from(places).where(eq(places.status, "published")),
@@ -84,12 +88,25 @@ export async function runAiVideoHotspots(options: { maxVideos?: number; now?: Da
   const candidates: PlaceCandidate[] = placeRows.map((p) => ({ id: p.id, name: p.name, area: p.area ?? "" }));
   let remaining = dailyBudgetSec - usedSec;
 
+  console.log(
+    `[AI Hotspots] Tìm thấy ${videos.length} video chờ phân tích (Ngân sách: ${remaining}s video, thời gian tối đa: ${maxRuntimeSec}s)...`
+  );
+
   for (const video of videos) {
+    if (Date.now() >= deadlineMs) {
+      console.log(`[AI Hotspots] Đã đạt giới hạn thời gian thực thi (${maxRuntimeSec}s). Dừng an toàn để bảo vệ pipeline.`);
+      summary.stoppedReason = "budget";
+      break;
+    }
+
     const durationSec = video.durationSec ?? 0;
     if (durationSec > remaining) {
       summary.stoppedReason = "budget";
       break;
     }
+
+    const progressIdx = summary.analyzedVideos + summary.failedVideos + 1;
+    console.log(`[AI Hotspots] [${progressIdx}/${videos.length}] Đang phân tích video ${video.videoId} (${durationSec}s)...`);
 
     try {
       const mentions = await detectPlaceMentions({ apiKey, model, videoId: video.videoId, videoTitle: video.title, candidates });

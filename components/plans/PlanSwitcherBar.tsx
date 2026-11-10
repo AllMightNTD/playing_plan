@@ -33,7 +33,7 @@ export function PlanSwitcherBar({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div
-          className="inline-flex items-center gap-1 bg-[#EFE5D4] p-1 rounded-2xl border border-[#CBB292]"
+          className="inline-flex items-center gap-1 bg-stone-100 p-1 rounded-2xl border border-stone-200/80 shadow-2xs"
           role="tablist"
         >
           <button
@@ -44,8 +44,8 @@ export function PlanSwitcherBar({
             className={cn(
               "px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer",
               filterTab === "upcoming"
-                ? "bg-[#c84b31] text-white shadow-2xs"
-                : "text-[#4a3423] hover:bg-[#FFFDF9]"
+                ? "bg-rose-500 text-white shadow-2xs"
+                : "text-stone-600 hover:text-stone-900 hover:bg-white/60"
             )}
           >
             📍 Sắp tới ({upcomingPlans.length})
@@ -58,8 +58,8 @@ export function PlanSwitcherBar({
             className={cn(
               "px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer",
               filterTab === "done"
-                ? "bg-[#2b6e44] text-white shadow-2xs"
-                : "text-[#4a3423] hover:bg-[#FFFDF9]"
+                ? "bg-emerald-600 text-white shadow-2xs"
+                : "text-stone-600 hover:text-stone-900 hover:bg-white/60"
             )}
           >
             ✅ Đã đi ({completedPlans.length})
@@ -69,7 +69,7 @@ export function PlanSwitcherBar({
         <button
           type="button"
           onClick={onOpenCreateModal}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#c84b31] hover:bg-[#ad3b23] text-white text-xs font-extrabold shadow-xs transition cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-xs shadow-rose-200 transition cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Tạo buổi hẹn mới</span>
@@ -86,22 +86,22 @@ export function PlanSwitcherBar({
                 type="button"
                 onClick={() => onSelectPlan(p.id)}
                 className={cn(
-                  "px-3.5 py-2 rounded-2xl text-xs font-bold border whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer shrink-0",
+                  "px-3.5 py-2 rounded-2xl text-xs font-bold border whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs",
                   isSelected
-                    ? "bg-[#362721] text-white border-[#362721] shadow-xs"
-                    : "bg-[#FFFDF9] text-[#4a3423] border-[#E6D7C3] hover:bg-[#fff5f2]"
+                    ? "bg-stone-800 text-white border-stone-800 shadow-xs"
+                    : "bg-white text-stone-700 border-[#F2E4DC] hover:border-rose-300 hover:bg-rose-50/30"
                 )}
               >
                 {p.status === "done" ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#7A9E87]" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 ) : p.isSecret ? (
-                  <Gift className="w-3.5 h-3.5 text-[#FF9E8D]" />
+                  <Gift className="w-3.5 h-3.5 text-rose-400" />
                 ) : (
-                  <Calendar className="w-3.5 h-3.5" />
+                  <Calendar className="w-3.5 h-3.5 text-stone-400" />
                 )}
                 <span>{p.title}</span>
-                <span className="opacity-60">•</span>
-                <span className="opacity-85">{formatVietnameseDate(p.planDate)}</span>
+                <span className="opacity-50">•</span>
+                <span className="opacity-80 font-normal">{formatVietnameseDate(p.planDate)}</span>
               </button>
             );
           })}

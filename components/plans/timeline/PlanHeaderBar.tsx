@@ -18,6 +18,7 @@ export interface PlanHeaderBarProps {
   isSecret: boolean;
   isEditing: boolean;
   isSaving: boolean;
+  stopsCount?: number;
   form: PlanHeaderFormState;
   onChangeForm: (next: PlanHeaderFormState) => void;
   onStartEdit: () => void;
@@ -36,6 +37,7 @@ export function PlanHeaderBar({
   isSecret,
   isEditing,
   isSaving,
+  stopsCount,
   form,
   onChangeForm,
   onStartEdit,
@@ -48,21 +50,27 @@ export function PlanHeaderBar({
   const isCompleted = status === "done";
 
   return (
-    <div className="border-b border-[#eee5d7] pb-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <div className="border-b border-[#F2E4DC] pb-5 mb-5">
+      {/* Top badges & secondary actions */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
         <div className="flex flex-wrap items-center gap-2">
           {isCompleted ? (
-            <span className="inline-flex items-center gap-1 bg-[#e8f4ec] text-[#2b6e44] text-xs font-bold px-2.5 py-1 rounded-full border border-[#bce0c8]">
-              ✅ Đã hoàn thành
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              Đã hoàn thành
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 bg-[#e8f4ec] text-[#2b6e44] text-xs font-bold px-2.5 py-1 rounded-full border border-[#bce0c8]">
-              📍 Lịch hẹn sắp tới
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              Lịch hẹn sắp tới
             </span>
           )}
 
           {isSecret && (
-            <span className="inline-flex items-center gap-1 bg-[#fff0ec] text-[#c84b31] text-xs font-bold px-2.5 py-1 rounded-full border border-[#f5c6bc]">
+            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">
               <Gift className="w-3.5 h-3.5" />
               Hẹn bất ngờ
             </span>
@@ -71,42 +79,32 @@ export function PlanHeaderBar({
           <button
             type="button"
             onClick={onStartEdit}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#5c4738] bg-[#f5efe6] hover:bg-[#ebe0d0] px-2.5 py-1 rounded-full border border-[#dcd0be] transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-700 bg-stone-100 hover:bg-stone-200/70 px-3 py-1 rounded-full border border-stone-200/60 transition cursor-pointer"
             title="Bấm để đổi ngày & giờ bắt đầu"
           >
-            <Calendar className="w-3.5 h-3.5 text-[#c84b31]" />
+            <Calendar className="w-3.5 h-3.5 text-rose-500" />
             <span>{formatVietnameseDate(planDate)}</span>
             <span>•</span>
-            <Clock className="w-3.5 h-3.5 text-[#c84b31]" />
+            <Clock className="w-3.5 h-3.5 text-rose-500" />
             <span>{`Bắt đầu ${startTime}`}</span>
-            <Edit3 className="w-3 h-3 opacity-60" />
+            <Edit3 className="w-3 h-3 opacity-60 ml-0.5" />
           </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          {!isCompleted && onCompletePlan && (
-            <button
-              type="button"
-              onClick={onCompletePlan}
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#2b6e44] hover:text-white bg-[#e8f4ec] hover:bg-[#2b6e44] px-2.5 py-1 rounded-lg border border-[#bce0c8] transition cursor-pointer"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Hoàn thành buổi hẹn</span>
-            </button>
-          )}
           {onShareStory && (
             <button
               type="button"
               onClick={onShareStory}
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#c84b31] hover:text-[#a3361f] bg-[#fff5f2] hover:bg-[#ffe8e2] px-2.5 py-1 rounded-lg border border-[#f5c6bc] transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl border border-rose-200/70 transition cursor-pointer shadow-2xs"
             >
-              🖼️ Tạo ảnh Story chia sẻ
+              <span>🖼️ Tạo Story</span>
             </button>
           )}
           <button
             type="button"
             onClick={() => (isEditing ? onCancelEdit() : onStartEdit())}
-            className="p-1.5 rounded-lg text-[#6e5645] hover:bg-[#f2eae0] transition cursor-pointer"
+            className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
             title="Sửa tiêu đề & ngày giờ lịch hẹn"
           >
             <Edit3 className="w-4 h-4" />
@@ -114,7 +112,7 @@ export function PlanHeaderBar({
           <button
             type="button"
             onClick={onRequestDeletePlan}
-            className="p-1.5 rounded-lg text-[#b93829] hover:bg-[#fdeceb] transition cursor-pointer"
+            className="p-1.5 rounded-xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
             title="Xóa lịch hẹn này"
           >
             <Trash2 className="w-4 h-4" />
@@ -180,15 +178,32 @@ export function PlanHeaderBar({
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-2">
-          <h1
-            onClick={onStartEdit}
-            className="text-xl sm:text-2xl font-extrabold text-[#231915] cursor-pointer hover:text-[#c84b31] transition flex items-center gap-2 group"
-            title="Bấm để sửa tên lịch hẹn"
-          >
-            <span>{title}</span>
-            <Edit3 className="w-4 h-4 opacity-0 group-hover:opacity-70 text-[#c84b31] transition" />
-          </h1>
+        <div className="flex flex-wrap items-baseline justify-between gap-3 pt-1">
+          <div>
+            <h1
+              onClick={onStartEdit}
+              className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-800 cursor-pointer hover:text-rose-600 transition flex items-center gap-2 group"
+              title="Bấm để sửa tên lịch hẹn"
+            >
+              <span>{title}</span>
+              <span className="text-lg font-normal text-rose-400">✨</span>
+              <Edit3 className="w-4 h-4 opacity-0 group-hover:opacity-70 text-rose-500 transition" />
+            </h1>
+            <p className="text-xs text-stone-400 mt-1">
+              Lên kế hoạch cùng người thương • {stopsCount ? `${stopsCount} điểm đến ấm cúng` : "Lịch trình ấm cúng"}
+            </p>
+          </div>
+
+          {!isCompleted && onCompletePlan && (
+            <button
+              type="button"
+              onClick={onCompletePlan}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-xs shadow-emerald-200 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Hoàn thành</span>
+            </button>
+          )}
         </div>
       )}
     </div>

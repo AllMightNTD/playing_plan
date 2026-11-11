@@ -123,8 +123,7 @@ interface AppContextType {
   isSearchDrawerOpen: boolean;
   setIsSearchDrawerOpen: (open: boolean) => void;
 
-  // Toasts
-  toasts: ToastItem[];
+  // Toasts (danh sách toast nằm ở ToastProvider riêng để không re-render cả app)
   addToast: (msg: string, type?: "info" | "success" | "error") => void;
   removeToast: (id: string) => void;
 
@@ -132,7 +131,61 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
+const TOAST_LIFETIME_MS = 3500;
+
+interface ToastActions {
+  addToast: AppContextType["addToast"];
+  removeToast: AppContextType["removeToast"];
+}
+
+const ToastItemsContext = createContext<ToastItem[]>([]);
+const ToastActionsContext = createContext<ToastActions>({
+  addToast: () => {},
+  removeToast: () => {},
+});
+
+/** Danh sách toast hiện hành: chỉ ToastContainer cần đăng ký, thay đổi toast không làm re-render các trang. */
+export function useToastItems(): ToastItem[] {
+  return useContext(ToastItemsContext);
+}
+
+/** Giữ state toast tách khỏi AppProvider; addToast/removeToast có identity ổn định. */
+function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const addToast = useCallback(
+    (message: string, type: "info" | "success" | "error" = "info") => {
+      const id = "t-" + Date.now() + Math.random().toString(36).substring(2, 6);
+      setToasts((prev) => [...prev, { id, message, type }]);
+      setTimeout(() => removeToast(id), TOAST_LIFETIME_MS);
+    },
+    [removeToast]
+  );
+
+  const actions = useMemo<ToastActions>(() => ({ addToast, removeToast }), [addToast, removeToast]);
+
+  return (
+    <ToastActionsContext.Provider value={actions}>
+      <ToastItemsContext.Provider value={toasts}>{children}</ToastItemsContext.Provider>
+    </ToastActionsContext.Provider>
+  );
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <ToastProvider>
+      <AppStateProvider>{children}</AppStateProvider>
+    </ToastProvider>
+  );
+}
+
+function AppStateProvider({ children }: { children: React.ReactNode }) {
+  const { addToast, removeToast } = useContext(ToastActionsContext);
+
   // 1. Places & Search (nạp trước trang đầu 24 quán, hỗ trợ cursor phân trang tải thêm)
   const [places, setPlaces] = useState<HanoiPlace[]>([]);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(true);
@@ -305,21 +358,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const slug = target ? target.slug : slugOrId;
     const id = target ? target.id : slugOrId;
     return savedPlaceSlugs.includes(slug) || savedPlaceSlugs.includes(id);
-  };
-
-  // 3. Toasts
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-
-  const addToast = (message: string, type: "info" | "success" | "error" = "info") => {
-    const id = "t-" + Date.now() + Math.random().toString(36).substring(2, 6);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3500);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
   const toggleSavePlace = async (slugOrId: string) => {
@@ -676,7 +714,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         locateWithGps,
         distanceToPlace,
 
-        toasts,
         addToast,
         removeToast,
       }}

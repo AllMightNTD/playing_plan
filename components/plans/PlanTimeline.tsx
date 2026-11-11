@@ -478,7 +478,7 @@ export function PlanTimeline({
 
   return (
     <div
-      className={`bg-[#FFFDF9]/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-[#F2E4DC] shadow-xs space-y-5 relative ${className}`.trim()}
+      className={`bg-[#FFFDF9]/95 backdrop-blur-md rounded-3xl p-4 sm:p-6 lg:p-8 border-2 border-[#D8C7B0] shadow-xs space-y-5 relative min-w-0 overflow-hidden ${className}`.trim()}
     >
       <PlanHeaderBar
         title={localTitle}
@@ -521,7 +521,7 @@ export function PlanTimeline({
       />
 
       {computedTimeline.length > 0 && (
-        <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-[11px] before:top-5 before:bottom-5 before:w-0.5 before:bg-gradient-to-b before:from-rose-300 before:via-amber-200 before:to-rose-200">
+        <div className="relative pl-5 sm:pl-6 space-y-5 sm:space-y-6 before:content-[''] before:absolute before:left-[9px] sm:before:left-[11px] before:top-5 before:bottom-5 before:w-0.5 before:bg-gradient-to-b before:from-brand-terracotta/60 before:via-amber-300 before:to-brand-coral/60">
           {computedTimeline.map((stopItem, idx) => (
             <TimelineStopCard
               key={stopItem.item.id}

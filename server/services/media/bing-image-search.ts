@@ -19,7 +19,7 @@ export class BingBlockedError extends Error {
 }
 
 const USER_AGENT =
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 export function buildPlaceImageQuery(place: { name: string; area?: string | null }): string {
   const parts = [place.name.trim()];
@@ -88,18 +88,21 @@ export async function searchBingImages(
   try {
     res = await fetchImpl(url.toString(), {
       headers: { "User-Agent": USER_AGENT, "Accept-Language": "vi-VN,vi;q=0.9" },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
     if (res.status !== 200) throw new BingBlockedError(`Bing trả status ${res.status}`);
     html = await res.text();
   } catch (e) {
     if (e instanceof BingBlockedError) throw e;
-    throw new BingBlockedError(`Lỗi mạng/timeout khi gọi Bing: ${(e as Error).message}`);
+    throw new Error(`Lỗi mạng/timeout khi gọi Bing: ${(e as Error).message}`);
   }
 
   const results = parseBingImageHtml(html);
-  if (results.length === 0 && (html.toLowerCase().includes("captcha") || html.length < 2000)) {
-    throw new BingBlockedError("Bing trả trang captcha hoặc rỗng");
+  if (
+    results.length === 0 &&
+    (html.toLowerCase().includes("captcha") || html.toLowerCase().includes("/challenge"))
+  ) {
+    throw new BingBlockedError("Bing trả trang captcha");
   }
   return results;
 }

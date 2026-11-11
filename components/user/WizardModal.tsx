@@ -29,8 +29,9 @@ export function WizardModal() {
     quickAddPlaceToPlan,
   } = useApp();
 
-  // Scored places for step 5 qua scoring engine chuẩn F05
+  // Scored places for step 5 qua scoring engine chuẩn F05 (chỉ tính khi modal mở ở bước kết quả)
   const scoredPlaces = useMemo(() => {
+    if (!isWizardOpen || wizardStep !== 5) return [];
     const criteria: RecommendCriteria = {
       budget: wizardAnswers.budget,
       moods: wizardAnswers.moods as MoodKey[],
@@ -38,9 +39,11 @@ export function WizardModal() {
       transport: wizardAnswers.transport,
     };
     return recommendPlaces(places, criteria, { limit: 3 });
-  }, [places, wizardAnswers]);
+  }, [isWizardOpen, wizardStep, places, wizardAnswers]);
 
   if (!isWizardOpen) return null;
+
+  const progressPct = Math.min(100, Math.round((Math.min(wizardStep, 4) / 4) * 100));
 
   const toggleMood = (moodKey: string) => {
     const current = [...wizardAnswers.moods];
@@ -55,9 +58,24 @@ export function WizardModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200 select-none">
-      <div className="bg-[#FAF4E8] w-full max-w-lg rounded-3xl shadow-2xl border-2 border-[#CBB292] overflow-hidden relative max-h-[90dvh] flex flex-col">
-        <div className="washi-tape washi-terracotta -top-3.5 left-10" />
+    <div
+      onClick={() => setIsWizardOpen(false)}
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 select-none"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Gợi ý hẹn hò 4 bước"
+        className="bg-[#FAF4E8] w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border-t-2 sm:border-2 border-[#CBB292] overflow-hidden relative max-h-[92dvh] sm:max-h-[90dvh] pb-[env(safe-area-inset-bottom,0px)] flex flex-col"
+      >
+        <div className="bg-[#FFFDF9] pt-2.5 sm:hidden shrink-0">
+          <div
+            aria-hidden="true"
+            className="w-10 h-1.5 rounded-full bg-[#CBB292] mx-auto"
+          />
+        </div>
+        <div className="hidden sm:block washi-tape washi-terracotta -top-3.5 left-10" />
 
         {/* Header */}
         <div className="px-5 py-4 bg-[#FFFDF9] border-b border-[#E6D7C3] flex items-center justify-between shrink-0">
@@ -76,11 +94,19 @@ export function WizardModal() {
           </div>
           <button
             onClick={() => setIsWizardOpen(false)}
-            className="w-8 h-8 rounded-full bg-[#E6D7C3] hover:bg-brand-peach flex items-center justify-center text-paper-ink transition"
+            className="w-8 h-8 rounded-full bg-[#E6D7C3] hover:bg-brand-peach flex items-center justify-center text-paper-ink transition cursor-pointer"
             aria-label="Đóng"
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Step Progress Bar */}
+        <div className="w-full h-1.5 bg-[#E6D7C3]/70 overflow-hidden shrink-0">
+          <div
+            className="h-full bg-gradient-to-r from-brand-terracotta via-brand-coral to-brand-olive transition-all duration-300"
+            style={{ width: `${wizardStep === 5 ? 100 : progressPct}%` }}
+          />
         </div>
 
         {/* Content */}

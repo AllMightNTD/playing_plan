@@ -80,7 +80,7 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
     const currentStepData = ticket.steps.find((s) => s.step === ticket.currentStep);
     if (!currentStepData?.placeId) return;
 
-    // Check-in GPS: đo khoảng cách thật từ vị trí thiết bị tới địa điểm của chặng
+    // GPS check-in: measure real Haversine distance from device position to step coordinates
     if (method === "gps_auto") {
       const place = places.find((p) => p.id === currentStepData.placeId);
       if (place?.lat == null || place?.lng == null || !navigator.geolocation) {
@@ -128,18 +128,34 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
     }
   };
 
+  const unlockedCount = ticket?.steps.filter((s) => s.isUnlocked).length ?? 1;
+
   return (
-    <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4">
+    <div className="relative bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between space-y-4 min-w-0 overflow-hidden">
+      {/* Perforated vintage ticket notches on left and right edges */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-3 bottom-[106px] w-6 h-6 rounded-full bg-[#F4ECE1] border-2 border-[#D8C7B0]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-3 bottom-[106px] w-6 h-6 rounded-full bg-[#F4ECE1] border-2 border-[#D8C7B0]"
+      />
+
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-brand-terracotta text-white">
-            🎫 Vé Mù Hẹn Hò
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-brand-terracotta text-white flex items-center gap-1">
+            <span>🎫 Vé Mù Hẹn Hò</span>
+            <span className="text-[10px] bg-white/20 px-1.5 rounded-full">
+              {unlockedCount}/3
+            </span>
           </span>
           <select
             value={budgetTier}
             onChange={(e) => handleBudgetChange(e.target.value as "budget" | "medium" | "luxury")}
             disabled={isSubmitting}
-            className="text-xs font-bold bg-[#FAF4E8] border border-[#CBB292] rounded px-2 py-1 text-paper-ink focus:outline-none"
+            aria-label="Chọn mức ngân sách vé mù"
+            className="text-base sm:text-xs font-bold bg-[#FAF4E8] border border-[#CBB292] rounded-lg px-2 py-1 text-paper-ink focus:outline-none"
           >
             <option value="medium">Vừa vặn (150-300k)</option>
             <option value="budget">Tiết kiệm (&lt;150k)</option>
@@ -152,35 +168,66 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
           Các điểm đến tiếp theo sẽ được giữ bí mật cho tới khi hai bạn đặt chân tới điểm hẹn hiện tại!
         </p>
 
-        {/* Danh sách 3 chặng */}
-        <div className="space-y-2.5 my-4">
+        {/* 3-step visual progress bar */}
+        <div className="flex items-center gap-1.5 mt-3 mb-1">
+          {[1, 2, 3].map((stepNum) => {
+            const stepItem = ticket?.steps.find((st) => st.step === stepNum);
+            const isStepUnlocked = stepItem?.isUnlocked ?? stepNum === 1;
+            return (
+              <div
+                key={stepNum}
+                className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                  isStepUnlocked ? "bg-brand-terracotta" : "bg-[#E6D8C5]"
+                }`}
+              />
+            );
+          })}
+        </div>
+
+        {/* 3-step mystery itinerary list */}
+        <div className="space-y-2.5 my-3">
           {ticket?.steps.map((s) => {
             const unlocked = s.isUnlocked;
             return (
               <div
                 key={s.step}
-                className={`p-2.5 rounded-xl border text-xs transition-all ${
+                className={`p-3 rounded-xl border text-xs transition-all relative overflow-hidden ${
                   unlocked
                     ? "bg-[#FAF4E8] border-brand-terracotta shadow-xs"
-                    : "bg-stone-200/70 border-stone-300 opacity-75"
+                    : "bg-[#EFE6D8]/80 border-dashed border-[#CBB292]"
                 }`}
               >
-                <div className="flex items-center justify-between font-bold">
-                  <span className="text-paper-ink">{s.title}</span>
+                <div className="flex items-center justify-between font-bold gap-2">
+                  <span className="text-paper-ink flex items-center gap-1.5">
+                    <span
+                      className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-extrabold ${
+                        unlocked
+                          ? "bg-brand-terracotta text-white"
+                          : "bg-stone-300 text-stone-700"
+                      }`}
+                    >
+                      {s.step}
+                    </span>
+                    <span>{s.title}</span>
+                  </span>
                   <span
                     className={
                       unlocked
-                        ? "text-emerald-700 font-extrabold text-[11px] bg-emerald-100 px-1.5 py-0.5 rounded"
-                        : "text-stone-600 font-bold text-[11px] bg-stone-300/80 px-1.5 py-0.5 rounded"
+                        ? "text-emerald-700 font-extrabold text-[10px] bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full shrink-0"
+                        : "text-amber-900 font-bold text-[10px] bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-full shrink-0"
                     }
                   >
-                    {unlocked ? "🔓 Đã mở" : "🔒 Bí mật"}
+                    {unlocked ? "🔓 Đã mở khóa" : "🪙 Lớp phủ bí mật"}
                   </span>
                 </div>
-                <p className="text-[11px] text-paper-muted mt-0.5 leading-snug">{s.hint}</p>
-                {unlocked && (
-                  <p className="text-[11px] font-extrabold text-brand-terracotta mt-1">
-                    📍 Tọa độ: {s.placeName}
+                <p className="text-[11px] text-paper-muted mt-1 leading-snug">{s.hint}</p>
+                {unlocked ? (
+                  <p className="text-[11px] font-extrabold text-brand-terracotta mt-1.5 flex items-center gap-1">
+                    <span>📍 Điểm đến: {s.placeName}</span>
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-semibold text-stone-500 italic mt-1">
+                    ✨ Check-in chặng trước để cào mở tọa độ này
                   </p>
                 )}
               </div>
@@ -189,19 +236,21 @@ export function BlindDateTicket({ onCheckInSuccess, onToast }: BlindDateTicketPr
         </div>
       </div>
 
-      {/* Nút hành động */}
-      <div className="space-y-2 pt-2 border-t border-dashed border-[#D8CBB8]">
+      {/* Perforated tear-off divider and action buttons */}
+      <div className="space-y-2 pt-3 border-t-2 border-dashed border-[#CBB292]">
         <button
+          type="button"
           onClick={() => handleCheckIn("gps_auto")}
           disabled={isSubmitting || ticket?.status === "completed"}
-          className="w-full bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2.5 rounded-xl shadow transition active:scale-98 disabled:opacity-50"
+          className="min-h-10 w-full bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-bold text-xs py-2.5 rounded-xl shadow transition active:scale-98 disabled:opacity-50 cursor-pointer"
         >
           📍 Tụi mình đã tới nơi! Mở chặng tiếp theo
         </button>
         <button
+          type="button"
           onClick={() => handleCheckIn("manual_confirm")}
           disabled={isSubmitting || ticket?.status === "completed"}
-          className="w-full bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs py-2 rounded-xl transition active:scale-98 disabled:opacity-50"
+          className="min-h-9 w-full bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs py-2 rounded-xl transition active:scale-98 disabled:opacity-50 cursor-pointer"
         >
           ✍️ Xác nhận thủ công (đã tới nơi)
         </button>

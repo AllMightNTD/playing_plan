@@ -110,7 +110,7 @@ describe("components/plans/PlanTimeline", () => {
     // Top buttons assertions
     expect(html).toContain("🌅 Tự xếp giờ khớp Hoàng hôn");
     expect(html).toContain("🌧️ Đổi sang quán Trong nhà (Phòng mưa)");
-    expect(html).toContain("Kéo thả để đổi thứ tự hoặc di chuột vào thẻ để chỉnh mốc giờ");
+    expect(html).toContain("Chạm ••• trên mỗi chặng để sửa giờ hoặc đổi vị trí");
     expect(html).toContain("Thêm chặng mới");
 
     // Stops assertions
@@ -119,6 +119,9 @@ describe("components/plans/PlanTimeline", () => {
     expect(html).toContain("Ngồi ban công tầng 2");
     expect(html).toContain("Ngắm hoàng hôn");
     expect(html).toContain("📌 Cố định giờ");
+    expect(html).toContain("Tùy chỉnh chặng");
+    expect(html).not.toContain("Điểm hẹn thứ 2");
+    expect(html).not.toContain("đã tính 8p gửi xe");
 
     // Checklist button assertion
     expect(html).toContain("1/2 xong");
@@ -190,7 +193,7 @@ describe("components/plans/PlanTimeline", () => {
 
     expect(html).toContain("☕");
     expect(html).toContain("📸");
-    expect(html).toContain("✨ Tối ưu thứ tự");
+    expect(html).toContain("Tối ưu thứ tự");
     expect(html).toContain("Hoàn thành");
     expect(html).toContain("Xem quán");
   });

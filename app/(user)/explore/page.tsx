@@ -5,10 +5,10 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { PlaceCard } from "@/components/user/PlaceCard";
 import { LocationChip } from "@/components/user/LocationChip";
-import { MoodMatchQuiz } from "@/components/explore/MoodMatchQuiz";
 import { ExploreSearchBar } from "@/components/explore/ExploreSearchBar";
 import { ExploreFilterSection } from "@/components/explore/ExploreFilterSection";
-import { HIDDEN_SAFETY_PLACE } from "@/lib/constants/catalog";
+import { HIDDEN_SAFETY_PLACE, EXPLORE_MOODS } from "@/lib/constants/catalog";
+import { HANOI_7_DISTRICTS, OTHER_DISTRICT_KEY } from "@/lib/districts";
 import { isTrainStreetQuery } from "@/lib/catalog-filter";
 import type { HanoiPlace } from "@/lib/types/catalog";
 import type { PlaceSuggestion } from "@/lib/catalog-filter";
@@ -34,6 +34,9 @@ function ExploreContent() {
     isPlaceSaved,
     userLocation,
     distanceToPlace,
+    places: sharedPlaces,
+    placesNextCursor: sharedNextCursor,
+    isLoadingPlaces: isLoadingSharedPlaces,
   } = useApp();
 
   // Đọc params từ URL
@@ -55,6 +58,14 @@ function ExploreContent() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [mobileGridCols, setMobileGridCols] = useState<1 | 2>(2);
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+
+  const activeAdvancedFilterCount =
+    (mood !== "all" ? 1 : 0) +
+    (district !== "all" ? 1 : 0) +
+    (budget !== "all" ? 1 : 0) +
+    (sortBy !== "default" ? 1 : 0);
 
   // Debounce search query 300ms
   useEffect(() => {
@@ -81,9 +92,33 @@ function ExploreContent() {
     [pathname, router, searchParams]
   );
 
+  // Bộ lọc mặc định trùng đúng truy vấn AppProvider đã nạp sẵn (24 quán đầu), khỏi gọi API lần hai
+  const isDefaultQuery =
+    !debouncedQuery.trim() &&
+    category === "all" &&
+    mood === "all" &&
+    district === "all" &&
+    budget === "all" &&
+    quickFilter !== "indoor" &&
+    quickFilter !== "outdoor";
+
   // Gọi API tải địa điểm khi filter hoặc debounced query thay đổi
   useEffect(() => {
     let active = true;
+
+    if (isDefaultQuery) {
+      if (isLoadingSharedPlaces) {
+        setIsLoading(true);
+        return;
+      }
+      if (sharedPlaces.length > 0) {
+        setPlaces(sharedPlaces);
+        setNextCursor(sharedNextCursor);
+        setIsLoading(false);
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     const queryParams = new URLSearchParams();
@@ -121,7 +156,18 @@ function ExploreContent() {
     return () => {
       active = false;
     };
-  }, [debouncedQuery, category, mood, district, budget, quickFilter]);
+  }, [
+    debouncedQuery,
+    category,
+    mood,
+    district,
+    budget,
+    quickFilter,
+    isDefaultQuery,
+    isLoadingSharedPlaces,
+    sharedPlaces,
+    sharedNextCursor,
+  ]);
 
   // Tải thêm trang kế tiếp
   const handleLoadMore = async () => {
@@ -236,10 +282,10 @@ function ExploreContent() {
   };
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-300">
-      <section className="space-y-4">
-        {/* Header & Quick Filters */}
-        <div className="explore-header-row flex flex-col md:flex-row md:items-end justify-between gap-3">
+    <div className="space-y-8 sm:space-y-12 animate-in fade-in duration-300">
+      <section className="space-y-3 sm:space-y-4">
+        {/* Desktop Header (Compact on mobile so places appear immediately above the fold) */}
+        <div className="hidden md:flex md:items-end justify-between gap-3">
           <div>
             <span className="text-xs font-bold text-brand-terracotta uppercase tracking-wider">
               🧭 Gợi ý địa điểm chọn lọc
@@ -251,7 +297,7 @@ function ExploreContent() {
               Chạm vào từng tấm ảnh để xem bí kíp góc chụp đẹp, cách tạo dáng và gợi ý phối đồ đôi (OOTD)
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="hidden md:flex flex-wrap items-center gap-1.5">
             {QUICK_FILTERS.map((f) => (
               <button
                 key={f.key}
@@ -270,18 +316,39 @@ function ExploreContent() {
           </div>
         </div>
 
-        {/* Search & 2-Tier Filter Section */}
-        <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-4 shadow-2xs space-y-4">
-          {/* Ô tìm kiếm có Autocomplete Dropdown */}
-          <ExploreSearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            onSearch={handleSearchSubmit}
-            onSelectSuggestion={handleSelectSuggestion}
-            onOpenWheel={() => setIsWheelOpen(true)}
-          />
+        {/* Native App Search + Category Icon Strip + Quick Toolbar */}
+        <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-3 sm:p-4 shadow-2xs space-y-3">
+          {/* Row 1: Search Bar + Mobile Filter Bottom Sheet Trigger */}
+          <div className="flex items-center gap-2">
+            <ExploreSearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onSearch={handleSearchSubmit}
+              onSelectSuggestion={handleSelectSuggestion}
+              onOpenWheel={() => setIsWheelOpen(true)}
+            />
+            <button
+              type="button"
+              onClick={() => setIsFilterSheetOpen(true)}
+              aria-label="Mở bộ lọc tọa độ hẹn hò"
+              className={cn(
+                "md:hidden h-10 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition active:scale-95 cursor-pointer shadow-2xs",
+                activeAdvancedFilterCount > 0
+                  ? "bg-brand-peach/40 border-brand-terracotta text-brand-terracottaDark"
+                  : "bg-[#FAF4E8] text-paper-ink border-[#CBB292]"
+              )}
+            >
+              <span aria-hidden="true">🎛️</span>
+              <span>Lọc</span>
+              {activeAdvancedFilterCount > 0 && (
+                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand-terracotta text-white text-[10px] font-extrabold flex items-center justify-center leading-none">
+                  {activeAdvancedFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
 
-          {/* Bộ lọc 2 tầng: Thể loại + Gu hẹn hò + Dropdowns */}
+          {/* Row 2: Category Icon Tiles + Desktop 2nd-tier filters */}
           <ExploreFilterSection
             category={category}
             onSelectCategory={handleCategoryChange}
@@ -299,10 +366,105 @@ function ExploreContent() {
             onResetFilters={handleResetFilters}
           />
 
-          <LocationChip />
+          {/* Row 3 (Mobile Quick Action Bar + Segmented View Switcher) */}
+          <div className="flex md:hidden items-center justify-between gap-2 pt-2 border-t border-dashed border-[#E8DAC6]">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 min-w-0">
+              <button
+                type="button"
+                onClick={() => handleQuickFilterChange(quickFilter === "saved" ? "all" : "saved")}
+                className={cn(
+                  "shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer",
+                  quickFilter === "saved"
+                    ? "bg-brand-terracotta text-white border-brand-terracottaDark shadow-2xs"
+                    : "bg-[#FAF4E8] text-paper-ink border-[#D8C7B0]"
+                )}
+              >
+                ❤️ Đã lưu
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSortChange(sortBy === "near" ? "default" : "near")}
+                disabled={!userLocation}
+                className={cn(
+                  "shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer disabled:opacity-50",
+                  sortBy === "near"
+                    ? "bg-brand-terracotta text-white border-brand-terracottaDark shadow-2xs"
+                    : "bg-[#FAF4E8] text-paper-ink border-[#D8C7B0]"
+                )}
+              >
+                📍 Gần tôi
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleQuickFilterChange(quickFilter === "indoor" ? "all" : "indoor")
+                }
+                className={cn(
+                  "shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer",
+                  quickFilter === "indoor"
+                    ? "bg-brand-terracotta text-white border-brand-terracottaDark shadow-2xs"
+                    : "bg-[#FAF4E8] text-paper-ink border-[#D8C7B0]"
+                )}
+              >
+                ❄️ Trong nhà
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleQuickFilterChange(quickFilter === "outdoor" ? "all" : "outdoor")
+                }
+                className={cn(
+                  "shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer",
+                  quickFilter === "outdoor"
+                    ? "bg-brand-terracotta text-white border-brand-terracottaDark shadow-2xs"
+                    : "bg-[#FAF4E8] text-paper-ink border-[#D8C7B0]"
+                )}
+              >
+                🌅 Ngoài trời
+              </button>
+            </div>
+
+            {/* iOS Segmented Icon Toggle (⊞ 2 cột / ▭ 1 cột) */}
+            <div className="flex items-center bg-[#EFE5D4] p-0.5 rounded-lg border border-[#CBB292] shrink-0">
+              <button
+                type="button"
+                onClick={() => setMobileGridCols(2)}
+                aria-pressed={mobileGridCols === 2}
+                aria-label="Lưới 2 cột"
+                title="Lưới 2 cột"
+                className={cn(
+                  "px-2 py-1 rounded-md text-xs font-bold transition cursor-pointer flex items-center justify-center",
+                  mobileGridCols === 2
+                    ? "bg-[#FFFDF9] text-brand-terracotta shadow-xs"
+                    : "text-paper-ink/60"
+                )}
+              >
+                ⊞
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileGridCols(1)}
+                aria-pressed={mobileGridCols === 1}
+                aria-label="Thẻ lớn 1 cột"
+                title="Thẻ lớn 1 cột"
+                className={cn(
+                  "px-2 py-1 rounded-md text-xs font-bold transition cursor-pointer flex items-center justify-center",
+                  mobileGridCols === 1
+                    ? "bg-[#FFFDF9] text-brand-terracotta shadow-xs"
+                    : "text-paper-ink/60"
+                )}
+              >
+                ▭
+              </button>
+            </div>
+          </div>
+
+          <div className="hidden md:block">
+            <LocationChip />
+          </div>
         </div>
 
-        {/* Cảnh báo an toàn đường tàu (Mục 14.2) */}
+        {/* Train street safety warning (Section 14.2) */}
         {isTrainStreet && (
           <div className="bg-[#FAF4E8] border-2 border-brand-terracotta rounded-2xl p-5 space-y-3 shadow-sm animate-in fade-in duration-200">
             <div className="flex items-start gap-3">
@@ -334,7 +496,7 @@ function ExploreContent() {
           </div>
         )}
 
-        {/* Danh sách địa điểm */}
+        {/* Places Discovery Grid (2-col Lemon8/Pinterest feed on mobile by default, 2-col on tablet, 3-col on desktop) */}
         {isLoading ? (
           <div className="text-center text-sm text-paper-muted py-14 flex flex-col items-center justify-center gap-2">
             <div className="w-8 h-8 border-3 border-brand-terracotta border-t-transparent rounded-full animate-spin" />
@@ -342,9 +504,21 @@ function ExploreContent() {
           </div>
         ) : displayedPlaces.length > 0 ? (
           <>
-            <div className="responsive-3col grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-1">
+            <div
+              className={cn(
+                "grid gap-3 sm:gap-5 md:gap-6 pt-1",
+                mobileGridCols === 2
+                  ? "grid-cols-2 md:grid-cols-2 lg:grid-cols-3"
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+              )}
+            >
               {displayedPlaces.map((place, idx) => (
-                <PlaceCard key={place.id} place={place} index={idx} />
+                <PlaceCard
+                  key={place.id}
+                  place={place}
+                  index={idx}
+                  compact={mobileGridCols === 2}
+                />
               ))}
             </div>
 
@@ -394,7 +568,184 @@ function ExploreContent() {
         )}
       </section>
 
-      <MoodMatchQuiz />
+      {/* Micro Lucky Wheel Trigger Banner (Compact, replaces heavy quiz on explore feed) */}
+      <div id="explore-quiz-anchor" className="pt-6 pb-2 max-w-md mx-auto">
+        <div className="bg-[#FFF8EE] border border-dashed border-[#CBB292] rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl select-none">🎲</span>
+            <div>
+              <h4 className="font-serif font-bold text-xs sm:text-sm text-paper-ink">
+                Chưa biết hẹn ở đâu hôm nay?
+              </h4>
+              <p className="text-[11px] text-paper-muted">
+                Bốc quẻ ngẫu nhiên một tọa độ hẹn hò chuẩn gu hai bạn
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsWheelOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-brand-terracotta text-white font-bold text-xs hover:bg-brand-terracottaDark transition active:scale-95 cursor-pointer shadow-2xs shrink-0"
+          >
+            Bốc Quẻ ➔
+          </button>
+        </div>
+      </div>
+
+      {/* Native iOS Filter Bottom Sheet Drawer on Mobile (< 768px) */}
+      {isFilterSheetOpen && (
+        <div
+          onClick={() => setIsFilterSheetOpen(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center md:hidden animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Bộ lọc tọa độ hẹn hò"
+            className="w-full bg-[#FAF4E8] border-t-2 border-paper-ink rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl max-h-[88dvh] overflow-y-auto overscroll-contain space-y-4"
+          >
+            <div
+              aria-hidden="true"
+              className="w-10 h-1.5 rounded-full bg-[#CBB292] mx-auto -mt-1 mb-1"
+            />
+
+            <div className="flex items-center justify-between border-b border-[#E6D7C3] pb-2.5">
+              <h3 className="font-serif font-extrabold text-base text-paper-ink flex items-center gap-1.5">
+                <span aria-hidden="true">🎛️</span>
+                <span>Bộ lọc tọa độ hẹn hò</span>
+              </h3>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-xs font-bold text-brand-terracotta hover:underline cursor-pointer"
+              >
+                ↺ Đặt lại
+              </button>
+            </div>
+
+            {/* 1. Moods */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-extrabold text-paper-muted uppercase tracking-wider block">
+                💖 Gu hẹn hò &amp; Không khí
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {EXPLORE_MOODS.map((m) => {
+                  const isActive = mood === m.key;
+                  return (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => handleMoodChange(isActive ? "all" : m.key)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1 cursor-pointer",
+                        isActive
+                          ? "bg-brand-peach border-2 border-brand-terracotta text-brand-terracotta font-extrabold"
+                          : "bg-[#FFFDF9] text-paper-ink border border-[#D8C7B0] font-semibold"
+                      )}
+                    >
+                      <span>{m.emoji}</span>
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Districts */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-extrabold text-paper-muted uppercase tracking-wider block">
+                📍 Khu vực / Quận
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleDistrictChange("all")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer",
+                    district === "all"
+                      ? "bg-brand-terracotta text-white border-brand-terracottaDark"
+                      : "bg-[#FFFDF9] text-paper-ink border-[#D8C7B0]"
+                  )}
+                >
+                  Tất cả Quận
+                </button>
+                {HANOI_7_DISTRICTS.map((d) => (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() => handleDistrictChange(district === d.key ? "all" : d.key)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer",
+                      district === d.key
+                        ? "bg-brand-terracotta text-white border-brand-terracottaDark"
+                        : "bg-[#FFFDF9] text-paper-ink border-[#D8C7B0]"
+                    )}
+                  >
+                    {d.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDistrictChange(
+                      district === OTHER_DISTRICT_KEY ? "all" : OTHER_DISTRICT_KEY
+                    )
+                  }
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer",
+                    district === OTHER_DISTRICT_KEY
+                      ? "bg-brand-terracotta text-white border-brand-terracottaDark"
+                      : "bg-[#FFFDF9] text-paper-ink border-[#D8C7B0]"
+                  )}
+                >
+                  Khu vực khác
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Budget */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-extrabold text-paper-muted uppercase tracking-wider block">
+                💰 Mức ngân sách
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "all", label: "💰 Mọi mức giá" },
+                  { value: "1", label: "🌱 Tiết kiệm" },
+                  { value: "2", label: "☕ Vừa vặn" },
+                  { value: "3", label: "🥂 Dịp đặc biệt" },
+                ].map((b) => (
+                  <button
+                    key={b.value}
+                    type="button"
+                    onClick={() => handleBudgetChange(b.value)}
+                    className={cn(
+                      "min-h-10 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer",
+                      budget === b.value
+                        ? "bg-brand-terracotta text-white border-brand-terracottaDark"
+                        : "bg-[#FFFDF9] text-paper-ink border-[#D8C7B0]"
+                    )}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Location Chip */}
+            <LocationChip />
+
+            <button
+              type="button"
+              onClick={() => setIsFilterSheetOpen(false)}
+              className="min-h-11 w-full bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-extrabold text-xs py-3 rounded-2xl shadow-md transition active:scale-98 cursor-pointer"
+            >
+              Xem {displayedPlaces.length} tọa độ phù hợp ➔
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { X, Plus, Sparkles, Search, CheckCircle2 } from "lucide-react";
 import {
   getModalBackdropClasses,
@@ -138,6 +138,15 @@ export function AddStopModal({
       .map((entry) => entry.place);
   }, [form.name, places]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSelectCatalogPlace = (place: HanoiPlace) => {
@@ -195,8 +204,14 @@ export function AddStopModal({
   };
 
   return (
-    <div className={getModalBackdropClasses()}>
-      <div className={getModalShellClasses("md")}>
+    <div onClick={onClose} className={getModalBackdropClasses()}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Thêm chặng mới vào lịch hẹn"
+        className={getModalShellClasses("md")}
+      >
         <div className={getModalHeaderClasses()}>
           <h3 className="text-base font-extrabold text-[#231915] flex items-center gap-2">
             <span>📍</span> Thêm chặng mới vào lịch hẹn
@@ -204,7 +219,7 @@ export function AddStopModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#7d6856] hover:bg-[#f3ede2] hover:text-[#231915] transition cursor-pointer"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[#7d6856] hover:bg-[#f3ede2] hover:text-[#231915] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
             aria-label="Đóng modal"
           >
             <X className="w-5 h-5" />
@@ -292,7 +307,7 @@ export function AddStopModal({
                 value={form.name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="VD: Là Việt Coffee, Hồ Tây, Phố Sách..."
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
               />
             </div>
 
@@ -314,7 +329,7 @@ export function AddStopModal({
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, duration: Number(e.target.value) || 60 }))
                   }
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                  className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
                 />
               </div>
               <div>
@@ -328,7 +343,7 @@ export function AddStopModal({
                   id="stop-category-select"
                   value={form.category}
                   onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-2.5 py-2 text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                  className="w-full px-2.5 py-2 text-base sm:text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
                 >
                   <option value="cafe">☕ Cà phê</option>
                   <option value="food">🍜 Ăn uống</option>
@@ -354,7 +369,7 @@ export function AddStopModal({
                 value={form.note}
                 onChange={(e) => setForm((prev) => ({ ...prev, note: e.target.value }))}
                 placeholder="VD: Đặt bàn trước, thử món bánh sừng bò, chụp ảnh ban công..."
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31] resize-none"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31] resize-none"
               />
             </div>
           </form>
@@ -364,7 +379,7 @@ export function AddStopModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold text-[#6e5645] hover:bg-[#eee5d7] transition cursor-pointer"
+            className="min-h-10 px-4 py-2 rounded-lg text-xs font-semibold text-[#6e5645] hover:bg-[#eee5d7] transition cursor-pointer"
           >
             Hủy
           </button>
@@ -372,7 +387,7 @@ export function AddStopModal({
             type="submit"
             form="add-stop-form"
             disabled={isSubmitting || !form.name.trim()}
-            className="px-4 py-2 rounded-lg text-xs font-bold bg-[#c84b31] text-white hover:bg-[#ad3b23] disabled:opacity-50 transition flex items-center gap-1.5 cursor-pointer"
+            className="min-h-10 px-4 py-2 rounded-lg text-xs font-bold bg-[#c84b31] text-white hover:bg-[#ad3b23] disabled:opacity-50 transition flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             {isSubmitting ? "Đang thêm..." : "Thêm vào lịch trình"}

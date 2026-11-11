@@ -42,6 +42,7 @@ export default function HomePage() {
   const [activeVideo, setActiveVideo] = useState<VideoCatalogItem | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [mobilePlanTab, setMobilePlanTab] = useState<"timeline" | "airmail">("timeline");
 
   useEffect(() => {
     let active = true;
@@ -149,80 +150,129 @@ export default function HomePage() {
   }, [computedTimeline]);
 
   return (
-    <div className="space-y-12">
-      <section id="section-home" className="scroll-section space-y-6">
+    <div className="space-y-8 sm:space-y-12">
+      <section id="section-home" className="scroll-section space-y-4 sm:space-y-6">
         <OnboardingCard onSendInvite={openShare} />
         {upcomingPlan ? (
-          <div className="responsive-2col grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-7">
-              {upcomingPlan.isSecretLocked ? (
-                <div className="p-6 sm:p-8 rounded-3xl bg-[#362721] text-white text-center space-y-4 border-2 border-dashed border-[#E6D7C3] shadow-md">
-                  <div className="text-5xl">🎁🔒</div>
-                  <h4 className="font-serif font-extrabold text-xl sm:text-2xl text-brand-peach">
-                    Người ấy đã chuẩn bị một buổi hẹn bất ngờ cho bạn!
-                  </h4>
-                  <p className="text-xs sm:text-sm text-white/85 max-w-md mx-auto leading-relaxed">
-                    Địa điểm sẽ tự mở khóa trước giờ hẹn lúc{" "}
-                    <strong className="text-brand-peach">{upcomingPlan.startTime}</strong>.
-                  </p>
-                </div>
-              ) : (
-                <PlanTimeline
-                  plan={upcomingPlan}
-                  places={places}
-                  onRefresh={async () => {
-                    await Promise.all([refetchHomeSummary(), refreshUpcomingPlan()]);
-                  }}
-                  onOpenPlaceDetail={setActiveDetailSlug}
-                  onShareStory={openShare}
-                  onNotifyPartner={handleNotifyPartner}
-                  onCompletePlan={
-                    upcomingPlan.status === "planned"
-                      ? () => setIsCompleteModalOpen(true)
-                      : undefined
-                  }
-                  onNotifyMessage={addToast}
-                  goldenHourStart={homePublic?.sun.goldenHour.start}
-                />
-              )}
+          <div className="space-y-4">
+            {/* Native Mobile/Tablet Segmented Control (< 1024px) */}
+            <div
+              role="tablist"
+              aria-label="Chế độ xem kế hoạch trên di động"
+              className="flex lg:hidden bg-[#EFE5D4] p-1 rounded-2xl border border-[#CBB292] shadow-inner gap-1"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobilePlanTab === "timeline"}
+                onClick={() => setMobilePlanTab("timeline")}
+                className={`min-h-10 flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mobilePlanTab === "timeline"
+                    ? "bg-brand-terracotta text-white shadow-xs"
+                    : "text-paper-ink/80 hover:text-paper-ink"
+                }`}
+              >
+                <span aria-hidden="true">📍</span>
+                <span>Lộ trình hẹn ({upcomingPlan.stops.length})</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobilePlanTab === "airmail"}
+                onClick={() => setMobilePlanTab("airmail")}
+                className={`min-h-10 flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mobilePlanTab === "airmail"
+                    ? "bg-brand-terracotta text-white shadow-xs"
+                    : "text-paper-ink/80 hover:text-paper-ink"
+                }`}
+              >
+                <span aria-hidden="true">💌</span>
+                <span>
+                  Bưu thiếp &amp; Thời tiết
+                  {homePublic ? ` (${homePublic.weather.temp}°C)` : ""}
+                </span>
+              </button>
             </div>
-            <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4">
-              <PlanAirmailCard
-                planId={upcomingPlan.id}
-                planDate={upcomingPlan.planDate}
-                planNote={upcomingPlan.note}
-                onSaveNote={handleSavePlanNote}
-                weather={
-                  homePublic
-                    ? {
-                        temp: homePublic.weather.temp,
-                        description: homePublic.weather.condition,
-                        rainProb: homePublic.weather.rainProbability,
-                        icon: homePublic.weather.icon === "sun" ? "☀️" : "🌤️",
-                        weatherTip: homePublic.weatherTip,
-                      }
-                    : null
-                }
-                sun={homePublic?.sun}
-                roomConnection={{
-                  isPaired,
-                  partnerNickname: partnerMember?.nickname ?? null,
-                  partnerLastSeenAt: partnerMember?.lastSeenAt ?? null,
-                }}
-                onOpenRoomModal={() => setIsRoomModalOpen(true)}
-                onShareInvitation={openShare}
-                computedTimeline={computedTimeline.map((s) => ({
-                  id: s.item.id,
-                  name: s.item.name,
-                  startTimeStr: s.startTimeStr,
-                  endTimeStr: s.endTimeStr,
-                  distKm: s.distKm,
-                  travelMins: s.travelMins,
-                  icon: s.item.icon,
-                }))}
-                itineraryStats={itineraryStats}
-                onNotifyPartner={handleNotifyPartner}
-              />
+
+            <div className="responsive-2col grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div
+                className={`lg:col-span-7 min-w-0 ${
+                  mobilePlanTab === "timeline" ? "block" : "hidden lg:block"
+                }`}
+              >
+                {upcomingPlan.isSecretLocked ? (
+                  <div className="p-6 sm:p-8 rounded-3xl bg-[#362721] text-white text-center space-y-4 border-2 border-dashed border-[#E6D7C3] shadow-md">
+                    <div className="text-5xl">🎁🔒</div>
+                    <h4 className="font-serif font-extrabold text-xl sm:text-2xl text-brand-peach">
+                      Người ấy đã chuẩn bị một buổi hẹn bất ngờ cho bạn!
+                    </h4>
+                    <p className="text-xs sm:text-sm text-white/85 max-w-md mx-auto leading-relaxed">
+                      Địa điểm sẽ tự mở khóa trước giờ hẹn lúc{" "}
+                      <strong className="text-brand-peach">{upcomingPlan.startTime}</strong>.
+                    </p>
+                  </div>
+                ) : (
+                  <PlanTimeline
+                    plan={upcomingPlan}
+                    places={places}
+                    onRefresh={async () => {
+                      await Promise.all([refetchHomeSummary(), refreshUpcomingPlan()]);
+                    }}
+                    onOpenPlaceDetail={setActiveDetailSlug}
+                    onShareStory={openShare}
+                    onNotifyPartner={handleNotifyPartner}
+                    onCompletePlan={
+                      upcomingPlan.status === "planned"
+                        ? () => setIsCompleteModalOpen(true)
+                        : undefined
+                    }
+                    onNotifyMessage={addToast}
+                    goldenHourStart={homePublic?.sun.goldenHour.start}
+                  />
+                )}
+              </div>
+              <div
+                className={`lg:col-span-5 min-w-0 lg:sticky lg:top-6 space-y-4 ${
+                  mobilePlanTab === "airmail" ? "block" : "hidden lg:block"
+                }`}
+              >
+                <PlanAirmailCard
+                  planId={upcomingPlan.id}
+                  planDate={upcomingPlan.planDate}
+                  planNote={upcomingPlan.note}
+                  onSaveNote={handleSavePlanNote}
+                  weather={
+                    homePublic
+                      ? {
+                          temp: homePublic.weather.temp,
+                          description: homePublic.weather.condition,
+                          rainProb: homePublic.weather.rainProbability,
+                          icon: homePublic.weather.icon === "sun" ? "☀️" : "🌤️",
+                          weatherTip: homePublic.weatherTip,
+                        }
+                      : null
+                  }
+                  sun={homePublic?.sun}
+                  roomConnection={{
+                    isPaired,
+                    partnerNickname: partnerMember?.nickname ?? null,
+                    partnerLastSeenAt: partnerMember?.lastSeenAt ?? null,
+                  }}
+                  onOpenRoomModal={() => setIsRoomModalOpen(true)}
+                  onShareInvitation={openShare}
+                  computedTimeline={computedTimeline.map((s) => ({
+                    id: s.item.id,
+                    name: s.item.name,
+                    startTimeStr: s.startTimeStr,
+                    endTimeStr: s.endTimeStr,
+                    distKm: s.distKm,
+                    travelMins: s.travelMins,
+                    icon: s.item.icon,
+                  }))}
+                  itineraryStats={itineraryStats}
+                  onNotifyPartner={handleNotifyPartner}
+                />
+              </div>
             </div>
           </div>
         ) : (
@@ -234,23 +284,31 @@ export default function HomePage() {
       </section>
 
       <section id="section-explore" className="scroll-section">
-        <div className="explore-header-row flex flex-wrap items-end justify-between gap-3 mb-6">
-          <div className="max-w-2xl">
-            <span className="text-xs font-bold text-brand-terracotta uppercase tracking-wider">
-              {weatherRec.weatherTag}
-            </span>
-            <h2 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink mt-0.5">
-              {weatherRec.headline}
-            </h2>
-            <p className="text-xs sm:text-sm text-paper-muted mt-1 leading-relaxed">
-              {weatherRec.subhead}
-            </p>
+        <div className="explore-header-row bg-[#FFF8EE] border border-[#EBDCC7] rounded-2xl p-4 sm:p-5 shadow-2xs mb-4 sm:mb-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl sm:text-3xl shrink-0">🌤️</span>
+              <div>
+                <span className="text-xs font-extrabold text-brand-terracotta uppercase tracking-wide">
+                  {weatherRec.weatherTag}
+                </span>
+                <h2 className="font-serif font-extrabold text-lg sm:text-xl text-paper-ink mt-0.5">
+                  {weatherRec.headline}
+                </h2>
+              </div>
+            </div>
+            <Link
+              href="/explore"
+              className="text-xs font-bold text-brand-terracotta bg-white px-3 py-1.5 rounded-full border border-[#EBDCC7] hover:bg-brand-peach/30 transition shrink-0 shadow-2xs"
+            >
+              Xem cả {places.length} quán →
+            </Link>
           </div>
-          <Link href="/explore" className="text-xs font-bold text-brand-terracotta hover:underline shrink-0">
-            Xem cả {places.length} quán →
-          </Link>
+          <p className="text-xs sm:text-sm text-paper-muted mt-2 leading-relaxed">
+            {weatherRec.subhead}
+          </p>
         </div>
-        <div className="polaroid-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7 pt-2">
+        <div className="polaroid-grid app-horizontal-carousel no-scrollbar grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
           {isLoadingPlaces && previewPlaces.length === 0 ? (
             <div className="col-span-full text-center text-sm text-paper-muted py-10">Đang lật sổ tìm tọa độ hẹn hò...</div>
           ) : (
@@ -287,7 +345,7 @@ export default function HomePage() {
           />
         </svg>
 
-        <div className="flex flex-wrap items-end justify-between gap-2 mb-5">
+        <div className="flex flex-wrap items-end justify-between gap-2 mb-4 sm:mb-5">
           <div>
             <div className="flex items-center gap-1.5 text-xs font-bold text-brand-terracotta uppercase tracking-wider">
               <span>🎞️ Thực tế &amp; Trực quan</span>
@@ -300,16 +358,18 @@ export default function HomePage() {
             </p>
           </div>
 
-          <Link
-            href="/videos"
-            className="text-xs font-bold text-brand-terracotta hover:underline flex items-center gap-1"
-          >
-            <span>Xem tất cả video</span>
-            <span>→</span>
-          </Link>
+          <div className="flex items-center justify-end w-full sm:w-auto gap-3">
+            <Link
+              href="/videos"
+              className="text-xs font-bold text-brand-terracotta hover:underline flex items-center gap-1"
+            >
+              <span>Xem tất cả video</span>
+              <span>→</span>
+            </Link>
+          </div>
         </div>
 
-        <div className="video-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="video-grid app-horizontal-carousel no-scrollbar grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {featuredVideos.length > 0 ? (
             featuredVideos.map((vid, vIdx) => (
               <VideoCard

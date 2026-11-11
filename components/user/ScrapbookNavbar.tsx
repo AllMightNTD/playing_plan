@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -25,16 +25,28 @@ export function ScrapbookNavbar() {
   const pathname = usePathname();
   const { setIsRoomModalOpen, homeSummary, roomProfile, isSearchDrawerOpen, setIsSearchDrawerOpen, searchQuery, selectedCategory } =
     useApp();
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
+    let rafId: number | null = null;
+    const updateProgress = () => {
+      rafId = null;
+      if (!progressBarRef.current) return;
       const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-      setScrollProgress(scrollable > 0 ? Math.min(100, (window.scrollY / scrollable) * 100) : 0);
+      const pct = scrollable > 0 ? Math.min(100, (window.scrollY / scrollable) * 100) : 0;
+      progressBarRef.current.style.width = `${pct}%`;
     };
-    handleScroll();
+    const handleScroll = () => {
+      if (rafId === null) {
+        rafId = window.requestAnimationFrame(updateProgress);
+      }
+    };
+    updateProgress();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
   }, [pathname]);
 
   // Đổi trang thì đóng ngăn kéo tìm kiếm
@@ -47,11 +59,14 @@ export function ScrapbookNavbar() {
   const initials = (roomProfile?.members ?? []).map((m) => m.nickname?.trim().charAt(0).toUpperCase() || "?");
 
   return (
-    <nav className="scrapbook-navbar kraft-texture select-none" aria-label="Điều hướng chính DateMate">
+    <nav className="scrapbook-navbar kraft-texture/95 backdrop-blur-md select-none pt-[env(safe-area-inset-top,0px)]" aria-label="Điều hướng chính DateMate">
       <div className="max-w-[1160px] mx-auto px-3 sm:px-6">
-        <div className="flex items-center justify-between gap-2 py-3">
+        <div className="flex items-center justify-between gap-2 py-2 sm:py-3">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 shrink-0 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta"
+          >
             <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-xs border-2 border-[#FAF4E8] group-hover:scale-105 transition-transform bg-[#FFFDF9] flex items-center justify-center">
               <Image
                 src="/logo.svg"
@@ -73,8 +88,15 @@ export function ScrapbookNavbar() {
           {/* 4 mục điều hướng */}
           <div className="desktop-nav-links flex items-center gap-2">
             {MAIN_NAV.map((item) => (
-              <Link key={item.href} href={item.href} className={cn("nav-craft-tab", isNavActive(pathname, item.match) && "active")}>
-                <span>{item.emoji}</span>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "nav-craft-tab focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta",
+                  isNavActive(pathname, item.match) && "active"
+                )}
+              >
+                <span aria-hidden="true">{item.emoji}</span>
                 <span>{item.label}</span>
               </Link>
             ))}
@@ -86,9 +108,10 @@ export function ScrapbookNavbar() {
               type="button"
               onClick={() => setIsSearchDrawerOpen(!isSearchDrawerOpen)}
               aria-expanded={isSearchDrawerOpen}
-              className="bg-[#FFFDF9] hover:bg-[#FFF5F0] border-2 border-brand-terracotta text-brand-terracottaDark px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-2xs transition"
+              aria-label="Tìm theo sở thích"
+              className="min-h-10 min-w-10 bg-[#FFFDF9] hover:bg-[#FFF5F0] border-2 border-brand-terracotta text-brand-terracottaDark px-3 py-1.5 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
             >
-              <span>🔍</span>
+              <span aria-hidden="true">🔍</span>
               <span className="hidden sm:inline">Tìm sở thích</span>
               {activeFilterCount > 0 && (
                 <span className="bg-brand-terracotta text-white text-[10px] px-1.5 rounded-full">{activeFilterCount}</span>
@@ -100,13 +123,14 @@ export function ScrapbookNavbar() {
             <button
               type="button"
               onClick={() => setIsRoomModalOpen(true)}
-              className="bg-[#FFFDF9] hover:bg-brand-peach/40 border border-[#CBB292] rounded-full p-1 pr-3 flex items-center gap-2 shadow-2xs transition"
+              className="min-h-10 bg-[#FFFDF9] hover:bg-brand-peach/40 border border-[#CBB292] rounded-full p-1 pr-2.5 sm:pr-3 flex items-center gap-2 shadow-2xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
               title="Quản lý phòng đôi & Mã ghép đôi"
+              aria-label="Quản lý phòng đôi & Mã ghép đôi"
             >
-              <div className="relative w-7 h-7 rounded-full border border-brand-terracotta shrink-0 bg-brand-peach flex items-center justify-center text-[11px] font-extrabold text-brand-terracottaDark">
+              <div className="relative w-8 h-8 rounded-full border border-brand-terracotta shrink-0 bg-brand-peach flex items-center justify-center text-[11px] font-extrabold text-brand-terracottaDark">
                 {initials.length > 0 ? initials.slice(0, 2).join("") : "💞"}
                 {room?.isPaired && (
-                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-500 ring-1 ring-white" />
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 ring-2 ring-white" />
                 )}
               </div>
               <div className="couple-badge-text text-left leading-tight">
@@ -121,22 +145,19 @@ export function ScrapbookNavbar() {
           </div>
         </div>
 
-        {/* Dải cuộn ngang cho tablet & mobile */}
-        <div className="mobile-scroll-pills hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-2 border-t border-[#DEC8AC]">
-          <button
-            type="button"
-            onClick={() => setIsSearchDrawerOpen(true)}
-            className="nav-craft-tab !py-1 !px-3 !text-xs !border-brand-terracotta !bg-[#FFF7F4] font-bold"
-          >
-            🔍 Tìm sở thích
-          </button>
+        {/* Horizontal nav pills displayed only on Tablet (768px - 1023px) when BottomNav is hidden */}
+        <div className="mobile-scroll-pills hidden items-center gap-2 overflow-x-auto no-scrollbar py-2 border-t border-[#DEC8AC]">
           {MAIN_NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={cn("nav-craft-tab !py-1 !px-3 !text-xs", isNavActive(pathname, item.match) && "active")}
+              className={cn(
+                "nav-craft-tab !py-1.5 !px-3.5 !text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta",
+                isNavActive(pathname, item.match) && "active"
+              )}
             >
-              {item.emoji} {item.short}
+              <span aria-hidden="true">{item.emoji}</span>
+              <span>{item.label}</span>
             </Link>
           ))}
         </div>
@@ -144,8 +165,8 @@ export function ScrapbookNavbar() {
 
       <SearchDrawer />
 
-      <div className="scroll-progress-track">
-        <div className="scroll-progress-bar" style={{ width: `${scrollProgress}%` }} />
+      <div className="scroll-progress-track" aria-hidden="true">
+        <div ref={progressBarRef} className="scroll-progress-bar" />
       </div>
     </nav>
   );

@@ -126,4 +126,24 @@ describe("components/plans/PlanAirmailCard", () => {
     expect(html).toContain("Khuyên ưu tiên điểm trong nhà");
     expect(html).toContain("OOTD: Tone be / pastel");
   });
+
+  it("strips duplicate rain probability suffix from weather description string", () => {
+    const html = renderToString(
+      <PlanAirmailCard
+        planId="plan-dedup"
+        planDate="2026-11-15"
+        weather={{
+          temp: 21,
+          description: "Trời quang đãng • Mưa 0%",
+          rainProb: 0,
+          icon: "☀️",
+        }}
+        computedTimeline={mockTimeline}
+        itineraryStats={mockStats}
+      />
+    );
+
+    expect(html).toContain("Trời quang đãng • Khả năng mưa ");
+    expect(html).not.toContain("Trời quang đãng • Mưa 0% • Khả năng mưa");
+  });
 });

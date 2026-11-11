@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import type { NewPlaceMedia } from "@/server/db/schema/places";
 import { buildPlaceImageQuery, type BingImageResult } from "./bing-image-search";
+import { buildFoodySearchQuery } from "./foody-search";
 import { rankImageCandidates, scoreImageCandidate } from "./image-candidate.filter";
 import type { ImageCheck } from "./image-url.verifier";
 
@@ -34,19 +35,20 @@ export interface PhotoFinderDeps {
   search: (query: string) => Promise<BingImageResult[]>;
   verify: (url: string) => Promise<ImageCheck>;
   excludeUrls?: Set<string>;
+  buildQuery?: (place: { name: string; area?: string | null }) => string;
 }
 
 const bump = (rec: Record<string, number>, key: string) => {
   rec[key] = (rec[key] ?? 0) + 1;
 };
 
-// Tìm ảnh thật cho 1 place: search Bing -> chấm điểm/lọc -> verify tuần tự tới khi đủ ảnh.
-// Lỗi từ search (vd BingBlockedError) được ném tiếp nguyên vẹn.
+// Tìm ảnh thật cho 1 place: search Foody/Shopee (hoặc Bing) -> chấm điểm/lọc -> verify tuần tự tới khi đủ ảnh.
+// Lỗi từ search được ném tiếp nguyên vẹn.
 export async function findRealPhotosForPlace(
   place: { id: string; name: string; area?: string | null },
   deps: PhotoFinderDeps,
 ): Promise<PlacePhotoOutcome> {
-  const query = buildPlaceImageQuery(place);
+  const query = deps.buildQuery ? deps.buildQuery(place) : buildPlaceImageQuery(place);
   const raw = await deps.search(query);
   const rejected: Record<string, number> = {};
 

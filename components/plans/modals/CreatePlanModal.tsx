@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X, CalendarPlus, Gift } from "lucide-react";
 import {
   getModalBackdropClasses,
@@ -40,6 +40,15 @@ export function CreatePlanModal({
   const [isSecret, setIsSecret] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,8 +80,14 @@ export function CreatePlanModal({
   };
 
   return (
-    <div className={getModalBackdropClasses()}>
-      <div className={getModalShellClasses("md")}>
+    <div onClick={onClose} className={getModalBackdropClasses()}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Tạo buổi hẹn mới"
+        className={getModalShellClasses("md")}
+      >
         <div className={getModalHeaderClasses()}>
           <h3 className="text-base font-extrabold text-[#231915] flex items-center gap-2">
             <CalendarPlus className="w-4 h-4 text-[#c84b31]" />
@@ -81,7 +96,7 @@ export function CreatePlanModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#7d6856] hover:bg-[#f3ede2] hover:text-[#231915] transition cursor-pointer"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[#7d6856] hover:bg-[#f3ede2] hover:text-[#231915] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
             aria-label="Đóng modal"
           >
             <X className="w-5 h-5" />
@@ -101,7 +116,7 @@ export function CreatePlanModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="VD: Chiều thu Hồ Tây, Kỷ niệm 1 năm..."
-                className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#d5c5b0] text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#d5c5b0] text-base sm:text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
                 autoFocus
               />
             </div>
@@ -116,7 +131,7 @@ export function CreatePlanModal({
                   required
                   value={planDate}
                   onChange={(e) => setPlanDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#d5c5b0] text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#d5c5b0] text-base sm:text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
                 />
               </div>
               <div>
@@ -128,7 +143,7 @@ export function CreatePlanModal({
                   required
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#d5c5b0] text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#d5c5b0] text-base sm:text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
                 />
               </div>
             </div>
@@ -142,7 +157,7 @@ export function CreatePlanModal({
                 value={budgetText}
                 onChange={(e) => setBudgetText(e.target.value)}
                 placeholder="VD: 500000"
-                className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#d5c5b0] text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#d5c5b0] text-base sm:text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
               />
             </div>
 
@@ -156,7 +171,7 @@ export function CreatePlanModal({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="VD: Mặc tone kem/nâu nhé, anh qua đón lúc 15:45!"
-                className="w-full px-3 py-2 rounded-xl bg-white border border-[#d5c5b0] text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31] resize-none"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-[#d5c5b0] text-base sm:text-xs text-[#2d221c] focus:outline-none focus:border-[#c84b31] resize-none"
               />
             </div>
 
@@ -182,7 +197,7 @@ export function CreatePlanModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-[#6e5645] hover:bg-[#eee5d7] transition cursor-pointer"
+            className="min-h-10 px-4 py-2 rounded-xl text-xs font-semibold text-[#6e5645] hover:bg-[#eee5d7] transition cursor-pointer"
           >
             Hủy
           </button>
@@ -190,7 +205,7 @@ export function CreatePlanModal({
             type="submit"
             form="create-plan-modal-form"
             disabled={isSubmitting || !title.trim()}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#c84b31] hover:bg-[#ad3b23] text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
+            className="min-h-10 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#c84b31] hover:bg-[#ad3b23] text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? "Đang tạo..." : "📅 Tạo lịch hẹn"}
           </button>

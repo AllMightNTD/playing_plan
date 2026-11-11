@@ -10,7 +10,7 @@ export interface ScoredCandidate extends BingImageResult {
   score: number;
 }
 
-export type RejectReason = "blocked_host" | "bad_extension" | "reject_keyword";
+export type RejectReason = "blocked_host" | "bad_extension" | "reject_keyword" | "missing_food_context";
 
 const BLOCKED_HOST_SUFFIXES = [
   "fbcdn.net",
@@ -29,6 +29,10 @@ const GENERIC_NAME_TOKENS = new Set([
 const OTHER_CITIES = ["sai gon", "saigon", "ho chi minh", "hcm", "tphcm", "da nang", "da lat", "hoi an", "nha trang"];
 const TRUSTED_PAGE_HOSTS = [
   "foody.vn",
+  "shopeefood.vn",
+  "riviu.vn",
+  "riviu.co",
+  "caphe.vn",
   "vnexpress.net",
   "kenh14.vn",
   "tripadvisor.com",
@@ -36,6 +40,20 @@ const TRUSTED_PAGE_HOSTS = [
   "mia.vn",
   "vietnamtourism.gov.vn",
 ];
+const TRUSTED_FOOD_CDN_HOSTS = [
+  "susercontent.com",
+  "foody.vn",
+  "riviu.vn",
+  "riviu.co",
+];
+const FOOD_AND_LOCATION_TOKENS = new Set([
+  "cafe", "coffee", "ca", "phe", "caphe", "quan", "tiem", "nha", "hang", "restaurant",
+  "bar", "pub", "tra", "sua", "an", "uong", "do", "mon", "am", "thuc", "food",
+  "bakery", "cocktail", "bistro", "lounge", "ha", "noi", "hanoi", "vietnam",
+  "cau", "giay", "hoan", "kiem", "ba", "dinh", "dong", "da", "tay", "ho", "hai", "trung",
+  "thanh", "xuan", "ha", "dong", "nam", "tu", "liem", "bac", "tu", "liem", "long", "bien",
+  "hoang", "mai", "gia", "lam", "soc", "son", "ba", "vi"
+]);
 
 /** Lowercase, bỏ dấu, đ→d, ký tự không phải chữ/số thành space, gộp space. */
 export function normalizeVi(text: string): string {
@@ -139,6 +157,7 @@ export function scoreImageCandidate(
   const nameTokens = accentTokens(place.name);
   let distinctive = nameTokens.filter((t) => t.bare.length >= 2 && !GENERIC_NAME_TOKENS.has(t.bare));
   if (distinctive.length === 0) distinctive = nameTokens; // fallback: tên toàn từ chung
+
   if (distinctive.length > 0) {
     // Độ phủ tên so theo dấu: title giữ dấu, path URL coi như không dấu
     const pathBare = normalizeVi(`${pageUrl?.pathname ?? ""} ${imageUrl?.pathname ?? ""}`)
@@ -147,6 +166,17 @@ export function scoreImageCandidate(
     const haystack = [...accentTokens(c.title), ...pathBare.map((bare) => ({ raw: bare, bare }))];
     const covered = distinctive.filter((n) => haystack.some((h) => tokenMatches(n, h))).length;
     const coverage = covered / distinctive.length;
+
+    // Chống false positive tên viết tắt/tên ngắn: nếu toàn bộ từ phân biệt đều ngắn (<= 4 ký tự, vd "Aha", "Mộc"),
+    // và có khớp tên, bắt buộc tiêu đề/URL phải chứa ít nhất 1 từ định danh ngành ẩm thực hoặc địa danh.
+    const isShortName = distinctive.length === 1 && distinctive[0].bare.length <= 4;
+    if (coverage > 0 && isShortName) {
+      const hasFoodOrLocation = tokens.some((t) => FOOD_AND_LOCATION_TOKENS.has(t));
+      if (!hasFoodOrLocation) {
+        return { score: 0, rejectReason: "missing_food_context" };
+      }
+    }
+
     if (coverage >= 0.6) score += 2;
     else if (coverage >= 0.34) score += 1;
   }
@@ -156,6 +186,7 @@ export function scoreImageCandidate(
   const nameBare = nameTokens.map((t) => t.bare);
   if (OTHER_CITIES.some((city) => !hasPhrase(nameBare, city) && hasPhrase(tokens, city))) score -= 3;
   if (pageUrl && hostMatches(pageUrl.hostname.toLowerCase(), TRUSTED_PAGE_HOSTS)) score += 1;
+  if (imageUrl && hostMatches(imageUrl.hostname.toLowerCase(), TRUSTED_FOOD_CDN_HOSTS)) score += 2;
 
   return { score, rejectReason: null };
 }

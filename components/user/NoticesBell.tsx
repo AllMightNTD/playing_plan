@@ -56,8 +56,15 @@ export function NoticesBell() {
     const handleClickOutside = (e: MouseEvent) => {
       if (!containerRef.current?.contains(e.target as Node)) setIsOpen(false);
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isOpen]);
 
   const unread = notices.filter((n) => !n.isRead);
@@ -75,11 +82,12 @@ export function NoticesBell() {
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="relative bg-[#FFFDF9] hover:bg-[#F9EFC7] border border-[#CBB292] text-paper-ink w-9 h-9 rounded-full flex items-center justify-center text-sm transition"
+        aria-expanded={isOpen}
+        className="relative bg-[#FFFDF9] hover:bg-[#F9EFC7] border border-[#CBB292] text-paper-ink w-10 h-10 rounded-full flex items-center justify-center text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
         title="Thông báo của hai bạn"
         aria-label={`Thông báo${unread.length > 0 ? `, ${unread.length} chưa đọc` : ""}`}
       >
-        <span>🔔</span>
+        <span aria-hidden="true">🔔</span>
         {unread.length > 0 && (
           <span className="absolute -top-1 -right-1 bg-brand-terracotta text-white text-[10px] font-extrabold min-w-4 h-4 px-0.5 flex items-center justify-center rounded-full">
             {unread.length > 9 ? "9+" : unread.length}

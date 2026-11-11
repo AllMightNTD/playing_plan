@@ -30,11 +30,13 @@ export function PlanSwitcherBar({
   const visiblePlans = filterTab === "upcoming" ? upcomingPlans : completedPlans;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
+    <div className="space-y-2.5 sm:space-y-3">
+      {/* Tầng 1: Bộ lọc trạng thái + Nút tạo hẹn */}
+      <div className="flex items-center justify-between gap-2">
         <div
-          className="inline-flex items-center gap-1 bg-stone-100 p-1 rounded-2xl border border-stone-200/80 shadow-2xs"
+          className="inline-flex items-center gap-1 bg-[#EFE5D4] p-1 rounded-2xl border border-[#CBB292] shadow-2xs"
           role="tablist"
+          aria-label="Lọc kế hoạch theo trạng thái"
         >
           <button
             type="button"
@@ -42,13 +44,21 @@ export function PlanSwitcherBar({
             aria-selected={filterTab === "upcoming"}
             onClick={() => onChangeFilterTab("upcoming")}
             className={cn(
-              "px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer",
+              "min-h-9 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1",
               filterTab === "upcoming"
-                ? "bg-rose-500 text-white shadow-2xs"
-                : "text-stone-600 hover:text-stone-900 hover:bg-white/60"
+                ? "bg-brand-terracotta text-white shadow-2xs"
+                : "text-paper-ink hover:bg-[#FFFDF9]"
             )}
           >
-            📍 Sắp tới ({upcomingPlans.length})
+            <span>📍 Sắp tới</span>
+            <span
+              className={cn(
+                "text-[10px] px-1.5 py-0.2 rounded-full font-mono",
+                filterTab === "upcoming" ? "bg-white/20 text-white" : "bg-[#DFCDB9] text-paper-ink"
+              )}
+            >
+              {upcomingPlans.length}
+            </span>
           </button>
           <button
             type="button"
@@ -56,28 +66,38 @@ export function PlanSwitcherBar({
             aria-selected={filterTab === "done"}
             onClick={() => onChangeFilterTab("done")}
             className={cn(
-              "px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer",
+              "min-h-9 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1",
               filterTab === "done"
-                ? "bg-emerald-600 text-white shadow-2xs"
-                : "text-stone-600 hover:text-stone-900 hover:bg-white/60"
+                ? "bg-brand-olive text-white shadow-2xs"
+                : "text-paper-ink hover:bg-[#FFFDF9]"
             )}
           >
-            ✅ Đã đi ({completedPlans.length})
+            <span>✅ Đã đi</span>
+            <span
+              className={cn(
+                "text-[10px] px-1.5 py-0.2 rounded-full font-mono",
+                filterTab === "done" ? "bg-white/20 text-white" : "bg-[#DFCDB9] text-paper-ink"
+              )}
+            >
+              {completedPlans.length}
+            </span>
           </button>
         </div>
 
         <button
           type="button"
           onClick={onOpenCreateModal}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-xs shadow-rose-200 transition cursor-pointer"
+          className="min-h-9 sm:min-h-10 inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl bg-brand-terracotta hover:bg-brand-terracottaDark text-white text-xs font-bold shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer shrink-0 active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          <span>Tạo buổi hẹn mới</span>
+          <span className="hidden sm:inline">Tạo buổi hẹn mới</span>
+          <span className="sm:hidden">Tạo hẹn</span>
         </button>
       </div>
 
+      {/* Tầng 2: Hàng chip buổi hẹn trượt ngang Date Scroller Carousel */}
       {visiblePlans.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar app-horizontal-carousel">
           {visiblePlans.map((p) => {
             const isSelected = p.id === selectedPlanId;
             return (
@@ -86,22 +106,22 @@ export function PlanSwitcherBar({
                 type="button"
                 onClick={() => onSelectPlan(p.id)}
                 className={cn(
-                  "px-3.5 py-2 rounded-2xl text-xs font-bold border whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs",
+                  "min-h-10 px-3.5 py-2 rounded-2xl text-xs font-bold border whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs active:scale-[0.98]",
                   isSelected
-                    ? "bg-stone-800 text-white border-stone-800 shadow-xs"
-                    : "bg-white text-stone-700 border-[#F2E4DC] hover:border-rose-300 hover:bg-rose-50/30"
+                    ? "bg-paper-ink text-[#FFFDF9] border-paper-ink shadow-xs"
+                    : "bg-[#FFFDF9] text-paper-ink border-[#D5C5B0] hover:border-brand-terracotta hover:bg-[#FAF4E8]"
                 )}
               >
                 {p.status === "done" ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-brand-olive shrink-0" />
                 ) : p.isSecret ? (
-                  <Gift className="w-3.5 h-3.5 text-rose-400" />
+                  <Gift className="w-3.5 h-3.5 text-brand-coral shrink-0" />
                 ) : (
-                  <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                  <Calendar className="w-3.5 h-3.5 text-paper-muted shrink-0" />
                 )}
-                <span>{p.title}</span>
-                <span className="opacity-50">•</span>
-                <span className="opacity-80 font-normal">{formatVietnameseDate(p.planDate)}</span>
+                <span className="max-w-[160px] sm:max-w-none truncate">{p.title}</span>
+                <span className="opacity-40">•</span>
+                <span className="opacity-75 font-normal text-[11px]">{formatVietnameseDate(p.planDate)}</span>
               </button>
             );
           })}
@@ -110,4 +130,3 @@ export function PlanSwitcherBar({
     </div>
   );
 }
-

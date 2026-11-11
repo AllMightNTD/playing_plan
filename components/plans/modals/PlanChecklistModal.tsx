@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X, CheckSquare, Square, Trash2, Plus } from "lucide-react";
 import {
   getModalBackdropClasses,
@@ -39,6 +39,15 @@ export function PlanChecklistModal({
   const [newText, setNewText] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const completedCount = items.filter((i) => i.isChecked).length;
@@ -58,8 +67,14 @@ export function PlanChecklistModal({
   };
 
   return (
-    <div className={getModalBackdropClasses()}>
-      <div className={getModalShellClasses("md")}>
+    <div onClick={onClose} className={getModalBackdropClasses()}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Đồ cần chuẩn bị"
+        className={getModalShellClasses("md")}
+      >
         {/* Header */}
         <div className={getModalHeaderClasses()}>
           <div className="flex items-center gap-2">
@@ -73,7 +88,7 @@ export function PlanChecklistModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#7d6856] hover:bg-[#f3ede2] hover:text-[#231915] transition"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[#7d6856] hover:bg-[#f3ede2] hover:text-[#231915] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
             aria-label="Đóng modal"
           >
             <X className="w-5 h-5" />
@@ -129,8 +144,9 @@ export function PlanChecklistModal({
                     type="button"
                     onClick={() => onDeleteItem(item.id)}
                     disabled={isSubmitting}
-                    className="text-[#b93829] hover:bg-[#fdeceb] p-1.5 rounded-lg transition"
+                    className="min-w-8 min-h-8 flex items-center justify-center text-[#b93829] hover:bg-[#fdeceb] p-1.5 rounded-lg transition cursor-pointer"
                     title="Xóa đồ này"
+                    aria-label={`Xóa ${item.item}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -146,12 +162,12 @@ export function PlanChecklistModal({
               value={newText}
               onChange={(e) => setNewText(e.target.value)}
               placeholder="Thêm đồ cần chuẩn bị (VD: Áo khoác, sạc dự phòng, hoa...)"
-              className="flex-1 px-3 py-2 text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
+              className="flex-1 px-3 py-2 text-base sm:text-xs rounded-lg border border-[#d5c5b0] bg-white text-[#2d221c] focus:outline-none focus:border-[#c84b31]"
             />
             <button
               type="submit"
               disabled={isAdding || !newText.trim()}
-              className="px-3.5 py-2 rounded-lg text-xs font-bold bg-[#c84b31] text-white hover:bg-[#ad3b23] disabled:opacity-50 transition flex items-center gap-1 shrink-0"
+              className="min-h-10 px-3.5 py-2 rounded-lg text-xs font-bold bg-[#c84b31] text-white hover:bg-[#ad3b23] disabled:opacity-50 transition flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               Thêm
@@ -164,7 +180,7 @@ export function PlanChecklistModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2 rounded-lg text-xs font-bold bg-[#f3ede2] hover:bg-[#e8dfd1] text-[#3d2d24] transition"
+            className="min-h-10 w-full sm:w-auto px-5 py-2 rounded-lg text-xs font-bold bg-[#f3ede2] hover:bg-[#e8dfd1] text-[#3d2d24] transition cursor-pointer"
           >
             Đóng
           </button>

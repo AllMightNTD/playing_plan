@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { X } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import type { InviteDto } from "@/server/services/user/room.service";
 import { NICKNAME_MAX_LENGTH, ROOM_NAME_MAX_LENGTH } from "@/lib/constants/user";
@@ -33,13 +34,29 @@ export function RoomModal() {
   const [restoreKeyInput, setRestoreKeyInput] = useState("");
   const [isRestoring, setIsRestoring] = useState(false);
   const [isDissolving, setIsDissolving] = useState(false);
+  const [isConfirmingDissolve, setIsConfirmingDissolve] = useState(false);
 
   useEffect(() => {
-    if (!isRoomModalOpen || !roomProfile) return;
+    if (!isRoomModalOpen) {
+      setIsConfirmingDissolve(false);
+      return;
+    }
+    if (!roomProfile) return;
     setNickname(roomProfile.me.nickname ?? "");
     setRoomName(roomProfile.room.name ?? "");
     setAnniversaryDate(roomProfile.room.anniversaryDate ?? "");
   }, [isRoomModalOpen, roomProfile]);
+
+  useEffect(() => {
+    if (!isRoomModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsRoomModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isRoomModalOpen, setIsRoomModalOpen]);
 
   const inviteUrl = invite && typeof window !== "undefined" ? `${window.location.origin}${invite.path}` : null;
 
@@ -180,9 +197,6 @@ export function RoomModal() {
   };
 
   const handleDissolve = async () => {
-    if (!window.confirm("Giải tán phòng đôi? Phòng và ảnh sẽ bị xóa vĩnh viễn sau 14 ngày, trong thời gian đó vẫn giữ lại được.")) {
-      return;
-    }
     setIsDissolving(true);
     try {
       const res = await fetch("/api/v1/user/rooms/me", { method: "DELETE" });
@@ -190,6 +204,7 @@ export function RoomModal() {
         addToast(await readError(res, "Chưa gửi được yêu cầu giải tán."), "error");
         return;
       }
+      setIsConfirmingDissolve(false);
       addToast("Đã gửi yêu cầu giải tán phòng. Bạn vẫn có 14 ngày để đổi ý.", "info");
       await syncRoom();
     } catch {
@@ -215,17 +230,31 @@ export function RoomModal() {
   };
 
   const inputClass =
-    "w-full px-3 py-2 rounded-lg bg-[#FFFDF9] border border-[#CBB292] text-xs focus:outline-none focus:border-brand-terracotta text-paper-ink";
+    "w-full px-3 py-2 rounded-lg bg-[#FFFDF9] border border-[#CBB292] text-base sm:text-xs focus:outline-none focus:border-brand-terracotta focus-visible:ring-2 focus-visible:ring-brand-terracotta/30 text-paper-ink";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-[#FAF4E8] border-2 border-paper-ink rounded-2xl max-w-lg w-full p-5 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div
+      onClick={() => setIsRoomModalOpen(false)}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Quản lý phòng đôi"
+        className="bg-[#FAF4E8] border-t-2 sm:border-2 border-paper-ink rounded-t-3xl sm:rounded-2xl sm:max-w-lg w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-5 relative shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain"
+      >
+        <div
+          aria-hidden="true"
+          className="w-10 h-1.5 rounded-full bg-[#CBB292] mx-auto -mt-1 mb-3 sm:hidden"
+        />
         <button
+          type="button"
           onClick={() => setIsRoomModalOpen(false)}
-          className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-[#E5D1B8] hover:bg-brand-terracotta hover:text-white text-paper-ink font-bold transition flex items-center justify-center shadow-xs"
+          className="absolute top-3.5 right-3.5 w-10 h-10 rounded-full bg-[#E5D1B8] hover:bg-brand-terracotta hover:text-white text-paper-ink font-bold transition flex items-center justify-center shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
           aria-label="Đóng"
         >
-          ✕
+          <X className="w-5 h-5" />
         </button>
 
         <div className="text-center">
@@ -236,7 +265,9 @@ export function RoomModal() {
             {room?.name ?? "Mời người ấy vào phòng"}
           </h3>
           {daysLeft !== null && (
-            <p className="font-hand text-xl text-brand-terracotta mt-1">Kỷ niệm tiếp theo còn {daysLeft} ngày nữa 💕</p>
+            <p className="font-hand text-xl text-brand-terracotta mt-1">
+              {`Kỷ niệm tiếp theo còn ${daysLeft} ngày nữa 💕`}
+            </p>
           )}
 
           {roomProfile && roomProfile.members.length > 0 && (
@@ -401,22 +432,53 @@ export function RoomModal() {
         </div>
 
         {roomProfile && !roomProfile.room.pendingDeletedAt && (
-          <div className="mt-4 pt-3 border-t border-dashed border-[#CBB292] flex flex-wrap items-center justify-between gap-2">
-            <a
-              href="/api/v1/user/rooms/archive"
-              download
-              className="bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs px-3.5 py-2 rounded-xl"
-            >
-              📦 Tải toàn bộ Kỷ niệm (.zip)
-            </a>
-            <button
-              type="button"
-              onClick={handleDissolve}
-              disabled={isDissolving}
-              className="bg-red-100 hover:bg-red-200 text-red-800 font-bold text-xs px-3.5 py-2 rounded-xl border border-red-300 disabled:opacity-50"
-            >
-              🗑️ Yêu cầu giải tán phòng
-            </button>
+          <div className="mt-4 pt-3 border-t border-dashed border-[#CBB292] space-y-3">
+            {isConfirmingDissolve ? (
+              <div className="w-full bg-red-50/90 border border-red-200 rounded-xl p-3.5 space-y-2.5 text-left">
+                <p className="text-xs font-bold text-red-900">
+                  ⚠️ Xác nhận giải tán phòng đôi?
+                </p>
+                <p className="text-[11px] text-red-800/90 leading-relaxed">
+                  Phòng và album ảnh sẽ được lên lịch xóa vĩnh viễn sau 14 ngày. Trong thời gian chờ, hai bạn vẫn có thể hủy yêu cầu để giữ lại phòng.
+                </p>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmingDissolve(false)}
+                    disabled={isDissolving}
+                    className="min-h-9 px-3 py-1.5 rounded-lg bg-[#FFFDF9] border border-[#CBB292] text-paper-ink text-xs font-bold hover:bg-[#FAF4E8] transition cursor-pointer"
+                  >
+                    Giữ lại phòng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDissolve}
+                    disabled={isDissolving}
+                    className="min-h-9 px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {isDissolving ? "Đang gửi..." : "Xác nhận giải tán"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <a
+                  href="/api/v1/user/rooms/archive"
+                  download
+                  className="min-h-10 inline-flex items-center bg-[#EFE5D4] hover:bg-[#E2D2B8] text-paper-ink font-bold text-xs px-3.5 py-2 rounded-xl transition"
+                >
+                  📦 Tải toàn bộ Kỷ niệm (.zip)
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingDissolve(true)}
+                  disabled={isDissolving}
+                  className="min-h-10 bg-red-100 hover:bg-red-200 text-red-800 font-bold text-xs px-3.5 py-2 rounded-xl border border-red-300 disabled:opacity-50 transition cursor-pointer"
+                >
+                  🗑️ Yêu cầu giải tán phòng
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

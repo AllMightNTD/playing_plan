@@ -62,11 +62,11 @@ export default {
         },
       },
       fontFamily: {
-        serif: ["Fraunces", "Georgia", "serif"],
-        sans: ['"Be Vietnam Pro"', "Nunito", "sans-serif"],
-        hand: ["Caveat", "cursive"],
-        display: ["Fraunces", "Nunito", '"Be Vietnam Pro"', "sans-serif"],
-        mono: ['"JetBrains Mono"', "monospace"],
+        serif: ["var(--font-serif)", "Fraunces", "Georgia", "serif"],
+        sans: ["var(--font-sans)", '"Be Vietnam Pro"', "Nunito", "sans-serif"],
+        hand: ["var(--font-hand)", "Caveat", "cursive"],
+        display: ["var(--font-serif)", "Fraunces", "Nunito", '"Be Vietnam Pro"', "sans-serif"],
+        mono: ["var(--font-mono)", '"JetBrains Mono"', "monospace"],
       },
       borderRadius: {
         "2xl": "16px",

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import { motion, useMotionValue, useTransform } from "framer-motion";
 import {
   RotateCcw,
   Sparkles,
@@ -10,6 +11,7 @@ import {
   RefreshCw,
   SlidersHorizontal,
   Check,
+  BookOpen,
 } from "lucide-react";
 import { HOBBY_TAGS, type HobbyTagId } from "@/lib/catalog/hobby-filter";
 import { calculateNextPollInterval } from "@/lib/polling-backoff";
@@ -63,6 +65,25 @@ export function SwipeDeck({
   const [showCelebration, setShowCelebration] = useState(false);
   const [latestMatchPlace, setLatestMatchPlace] = useState<HanoiPlace | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // GPU-accelerated motion values for 60fps touch/drag swipe
+  const dragX = useMotionValue(0);
+  const cardRotate = useTransform(dragX, [-220, 0, 220], [-10, 0, 10]);
+  const likeBadgeOpacity = useTransform(dragX, [25, 100], [0, 1]);
+  const nopeBadgeOpacity = useTransform(dragX, [-100, -25], [1, 0]);
+
+  useEffect(() => {
+    dragX.set(0);
+  }, [currentIndex, dragX]);
+
+  useEffect(() => {
+    if (!showCelebration) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowCelebration(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showCelebration]);
 
   // Hiệu ứng Canvas Confetti nhẹ nhàng không cần thư viện ngoài
   const triggerConfetti = useCallback(() => {
@@ -340,10 +361,26 @@ export function SwipeDeck({
   }, [triggerConfetti]);
 
   const currentPlace = deck[currentIndex];
+  const nextPlace = deck[currentIndex + 1];
   const ruleText =
     roomMode === "couple"
       ? "👩‍❤️‍👨 Cần 2/2 thành viên thả tim"
       : "👯‍♂️ Chế độ Nhóm: Cần ≥ 50% thành viên thả tim";
+
+  const handleDragEnd = (
+    _event: MouseEvent | TouchEvent | PointerEvent,
+    info: { offset: { x: number }; velocity: { x: number } }
+  ) => {
+    const swipeThreshold = 95;
+    const velocityThreshold = 500;
+    if (info.offset.x > swipeThreshold || info.velocity.x > velocityThreshold) {
+      void handleCardSwipe("like");
+    } else if (info.offset.x < -swipeThreshold || info.velocity.x < -velocityThreshold) {
+      void handleCardSwipe("nope");
+    } else {
+      dragX.set(0);
+    }
+  };
 
   return (
     <div className="bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 sm:p-6 shadow-sm space-y-5">
@@ -412,71 +449,126 @@ export function SwipeDeck({
               <p className="text-sm font-medium text-[#362721]/70">Đang chuẩn bị bộ thẻ hẹn hò...</p>
             </div>
           ) : currentPlace ? (
-            /* Thẻ Polaroid chính */
-            <div className="w-full max-w-md bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-3.5 shadow-md transition-all duration-300">
-              {/* Khung ảnh Polaroid */}
-              <div className="relative h-60 w-full rounded-xl overflow-hidden bg-stone-200">
-                {currentPlace.coverUrl ? (
-                  <Image
-                    src={currentPlace.coverUrl}
-                    alt={currentPlace.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 448px"
-                    className="object-cover"
-                    priority
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div
-                    className={`w-full h-full bg-gradient-to-br ${
-                      currentPlace.coverGradient || "from-amber-400 to-rose-400"
-                    } flex items-center justify-center text-4xl`}
-                  >
-                    {currentPlace.emoji || "✨"}
-                  </div>
-                )}
+            /* Polaroid stack: next card preview underneath + 60fps draggable active card */
+            <div className="relative w-full max-w-md">
+              {nextPlace && (
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-[#FFFDF9] border-2 border-[#CBB292]/80 rounded-2xl p-3.5 shadow-xs scale-[0.96] translate-y-2 opacity-60 pointer-events-none select-none"
+                />
+              )}
 
-                {/* Badge Quận & Giá */}
-                <span className="absolute top-3 left-3 bg-black/75 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow">
-                  <MapPin className="w-3 h-3 text-[#F29B7E]" />
-                  <span>{currentPlace.area}</span>
-                  {currentPlace.costText && (
-                    <>
-                      <span>•</span>
-                      <span>{currentPlace.costText}</span>
-                    </>
+              <motion.div
+                key={currentPlace.id}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.85}
+                onDragEnd={handleDragEnd}
+                style={{ x: dragX, rotate: cardRotate }}
+                whileTap={{ scale: 0.99 }}
+                className="relative z-10 w-full bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-3.5 shadow-md cursor-grab active:cursor-grabbing touch-pan-y select-none"
+              >
+                {/* Visual stamps shown while dragging left/right */}
+                <motion.div
+                  style={{ opacity: likeBadgeOpacity }}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-6 left-6 z-20 -rotate-12 border-3 border-[#C84B31] bg-[#FFFDF9]/95 text-[#C84B31] font-extrabold text-sm px-3 py-1 rounded-xl shadow-md"
+                >
+                  ❤️ THÍCH QUÁN NÀY
+                </motion.div>
+                <motion.div
+                  style={{ opacity: nopeBadgeOpacity }}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-6 right-6 z-20 rotate-12 border-3 border-[#362721] bg-[#FFFDF9]/95 text-[#362721] font-extrabold text-sm px-3 py-1 rounded-xl shadow-md"
+                >
+                  👈 ĐỔI QUÁN
+                </motion.div>
+
+                {/* Khung ảnh Polaroid */}
+                <div className="relative h-60 w-full rounded-xl overflow-hidden bg-stone-200">
+                  {currentPlace.coverUrl ? (
+                    <Image
+                      src={currentPlace.coverUrl}
+                      alt={currentPlace.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 448px"
+                      className="object-cover pointer-events-none"
+                      priority
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div
+                      className={`w-full h-full bg-gradient-to-br ${
+                        currentPlace.coverGradient || "from-amber-400 to-rose-400"
+                      } flex items-center justify-center text-4xl`}
+                    >
+                      {currentPlace.emoji || "✨"}
+                    </div>
                   )}
-                </span>
 
-                {/* Badge Quy tắc phòng */}
-                <span className="absolute bottom-3 right-3 bg-[#C84B31] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-md shadow">
-                  {ruleText}
-                </span>
-              </div>
+                  {/* Badge Quận & Giá */}
+                  <span className="absolute top-3 left-3 bg-black/75 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow">
+                    <MapPin className="w-3 h-3 text-[#F29B7E]" />
+                    <span>{currentPlace.area}</span>
+                    {currentPlace.costText && (
+                      <>
+                        <span>•</span>
+                        <span>{currentPlace.costText}</span>
+                      </>
+                    )}
+                  </span>
 
-              {/* Thông tin địa điểm */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-serif font-bold text-xl text-[#362721]">
-                    {currentPlace.name}
-                  </h3>
-                  <span className="text-xs bg-[#E6D3B8]/60 text-[#362721] px-2 py-0.5 rounded-full font-medium">
-                    {currentPlace.categoryLabel || currentPlace.category}
+                  {/* Badge Quy tắc phòng */}
+                  <span className="absolute bottom-3 right-3 bg-[#C84B31] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-md shadow">
+                    {ruleText}
                   </span>
                 </div>
 
-                {currentPlace.summary && (
-                  <p className="text-xs text-[#362721]/80 mt-1.5 line-clamp-2 leading-relaxed">{currentPlace.summary}</p>
-                )}
-
-                {/* Khung giờ vàng ngắm cảnh */}
-                {currentPlace.goldenAfternoon && (
-                  <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-[#C84B31] font-semibold bg-[#FADCD2]/40 px-2 py-1 rounded-md">
-                    <Sparkles className="w-3 h-3" />
-                    <span>Giờ vàng săn ảnh: {currentPlace.goldenAfternoon}</span>
+                {/* Thông tin địa điểm */}
+                <div className="mt-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3
+                      onClick={() => onOpenDetail?.(currentPlace.slug)}
+                      className="font-serif font-bold text-xl text-[#362721] hover:text-[#C84B31] transition cursor-pointer"
+                    >
+                      {currentPlace.name}
+                    </h3>
+                    <span className="text-xs bg-[#E6D3B8]/60 text-[#362721] px-2.5 py-0.5 rounded-full font-medium shrink-0">
+                      {currentPlace.categoryLabel || currentPlace.category}
+                    </span>
                   </div>
-                )}
-              </div>
+
+                  {currentPlace.summary && (
+                    <p className="text-xs text-[#362721]/80 mt-1.5 line-clamp-2 leading-relaxed">{currentPlace.summary}</p>
+                  )}
+
+                  {/* Golden hour badge + Open place detail trigger */}
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    {currentPlace.goldenAfternoon ? (
+                      <div className="flex items-center gap-1.5 text-[11px] text-[#C84B31] font-semibold bg-[#FADCD2]/40 px-2.5 py-1 rounded-md">
+                        <Sparkles className="w-3 h-3 shrink-0" />
+                        <span>Giờ vàng săn ảnh: {currentPlace.goldenAfternoon}</span>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-[#362721]/60 font-medium">
+                        ↔ Vuốt trái/phải hoặc bấm nút bên dưới
+                      </span>
+                    )}
+
+                    {onOpenDetail && (
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => onOpenDetail(currentPlace.slug)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#EFE5D4] hover:bg-[#E2D2B8] text-[#362721] text-xs font-bold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta"
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-[#C84B31]" />
+                        <span>Xem cẩm nang</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
             </div>
           ) : (
             /* Khi đã quẹt hết thẻ */
@@ -506,9 +598,9 @@ export function SwipeDeck({
               type="button"
               disabled={!currentPlace}
               onClick={() => handleCardSwipe("nope")}
-              className="bg-[#FFFDF9] hover:bg-stone-100 border border-[#CBB292] text-paper-ink font-bold px-5 py-2.5 rounded-full shadow-xs flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 disabled:opacity-40"
+              className="min-h-11 bg-[#FFFDF9] hover:bg-stone-100 border border-[#CBB292] text-paper-ink font-bold px-5 py-2.5 rounded-full shadow-xs flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
             >
-              <span>👈</span>
+              <span aria-hidden="true">👈</span>
               <span>Đổi quán khác</span>
             </button>
 
@@ -517,7 +609,8 @@ export function SwipeDeck({
               disabled={swipeHistory.length === 0 || isUndoing}
               onClick={handleUndoSwipe}
               title="Hoàn tác lượt quẹt vừa rồi"
-              className="bg-[#FFFDF9] hover:bg-[#E6D3B8]/50 border border-[#CBB292] text-paper-ink font-bold p-2.5 rounded-full shadow-xs transition transform active:scale-95 disabled:opacity-30"
+              aria-label="Hoàn tác lượt quẹt vừa rồi"
+              className="min-w-11 min-h-11 bg-[#FFFDF9] hover:bg-[#E6D3B8]/50 border border-[#CBB292] text-paper-ink font-bold p-2.5 rounded-full shadow-xs flex items-center justify-center transition transform active:scale-95 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -526,9 +619,9 @@ export function SwipeDeck({
               type="button"
               disabled={!currentPlace}
               onClick={() => handleCardSwipe("like")}
-              className="bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-extrabold px-6 py-2.5 rounded-full shadow-md flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 disabled:opacity-40"
+              className="min-h-11 bg-brand-terracotta hover:bg-brand-terracottaDark text-white font-extrabold px-6 py-2.5 rounded-full shadow-md flex items-center gap-1.5 text-xs sm:text-sm transition transform active:scale-95 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracottaDark cursor-pointer"
             >
-              <span>❤️</span>
+              <span aria-hidden="true">❤️</span>
               <span>Thích quán này!</span>
             </button>
           </div>
@@ -621,18 +714,35 @@ export function SwipeDeck({
         </div>
       </div>
 
-      {/* Modal Chúc Mừng Khi Nổ Match (Celebration Modal) */}
+      {/* Match Celebration Modal */}
       {showCelebration && latestMatchPlace && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#FFFDF9] border-2 border-[#362721] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden">
-            {/* Washi tape trang trí */}
+        <div
+          onClick={() => setShowCelebration(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Đã tìm thấy điểm hẹn chung"
+            className="bg-[#FFFDF9] border-2 border-[#362721] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden"
+          >
+            {/* Decorative washi tape */}
             <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-6 bg-[#C84B31]/40 rotate-1 rounded-sm border border-white/50" />
 
-            <div className="w-16 h-16 rounded-full bg-rose-100 border-2 border-[#C84B31] flex items-center justify-center text-3xl mx-auto mb-4 mt-2 animate-bounce">
-              ❤️
+            <div className="flex items-center justify-center gap-2 mb-3 mt-2">
+              <div className="w-12 h-12 rounded-full bg-rose-100 border-2 border-[#C84B31] flex items-center justify-center text-2xl shadow-sm -rotate-6">
+                🥰
+              </div>
+              <div className="w-14 h-14 rounded-full bg-[#C84B31] text-white border-2 border-[#362721] flex items-center justify-center text-2xl shadow-md animate-bounce z-10">
+                💖
+              </div>
+              <div className="w-12 h-12 rounded-full bg-amber-100 border-2 border-[#C84B31] flex items-center justify-center text-2xl shadow-sm rotate-6">
+                😍
+              </div>
             </div>
 
-            <span className="text-xs font-bold uppercase tracking-wider text-[#C84B31]">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[#C84B31]">
               {roomMode === "couple" ? "✨ MATCH 2/2 HOÀN HẢO!" : "🎉 MATCH NHÓM ĐA SỐ!"}
             </span>
 
@@ -640,16 +750,27 @@ export function SwipeDeck({
               Đã Tìm Thấy Điểm Hẹn Chung!
             </h3>
 
-            <div className="my-4 p-3 bg-[#FAF4E8] border border-[#E6D3B8] rounded-xl text-left">
-              <h4 className="font-bold text-sm text-[#362721]">
-                {latestMatchPlace.name}
-              </h4>
-              <p className="text-xs text-[#362721]/70 mt-0.5">
-                📍 {latestMatchPlace.area} • {latestMatchPlace.costText}
-              </p>
+            {/* Polaroid preview of the matched place */}
+            <div className="my-4 p-3 bg-[#FAF4E8] border-2 border-[#E6D3B8] rounded-2xl text-left flex items-center gap-3.5 shadow-sm">
+              <div
+                className={`w-16 h-16 rounded-xl bg-gradient-to-br ${latestMatchPlace.coverGradient || "from-amber-400 to-rose-400"} flex items-center justify-center text-3xl shrink-0 overflow-hidden relative border border-[#CBB292]`}
+              >
+                <span>{latestMatchPlace.emoji || "📍"}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-100 text-[#C84B31]">
+                  {latestMatchPlace.categoryLabel}
+                </span>
+                <h4 className="font-serif font-bold text-base text-[#362721] truncate mt-0.5">
+                  {latestMatchPlace.name}
+                </h4>
+                <p className="text-xs text-[#362721]/70 mt-0.5 truncate">
+                  📍 {latestMatchPlace.area} • {latestMatchPlace.costText}
+                </p>
+              </div>
             </div>
 
-            <p className="text-xs text-[#362721]/80 italic font-hand text-base mb-5">
+            <p className="text-[#362721]/80 italic font-hand text-base mb-5">
               Cả hai đều cùng thích nơi này. Lên lịch trình ngay để không bỏ lỡ nhé!
             </p>
 
@@ -660,7 +781,7 @@ export function SwipeDeck({
                   setShowCelebration(false);
                   onAddToPlan?.(latestMatchPlace.id, latestMatchPlace.name);
                 }}
-                className="flex-1 py-2.5 px-4 bg-[#C84B31] hover:bg-[#9E331E] text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5"
+                className="min-h-11 flex-1 py-2.5 px-4 bg-[#C84B31] hover:bg-[#9E331E] text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <CalendarPlus className="w-4 h-4" />
                 <span>Thêm vào lịch trình</span>
@@ -668,7 +789,7 @@ export function SwipeDeck({
               <button
                 type="button"
                 onClick={() => setShowCelebration(false)}
-                className="py-2.5 px-4 bg-[#E6D3B8]/50 hover:bg-[#E6D3B8] text-[#362721] font-bold text-xs rounded-xl transition"
+                className="min-h-11 py-2.5 px-4 bg-[#E6D3B8]/50 hover:bg-[#E6D3B8] text-[#362721] font-bold text-xs rounded-xl transition cursor-pointer"
               >
                 Tiếp tục quẹt
               </button>

@@ -6,12 +6,13 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
-  Edit3,
+  Clock,
   ExternalLink,
   GripVertical,
+  MoreHorizontal,
   Navigation,
-  StickyNote,
   Trash2,
+  X,
 } from "lucide-react";
 import type { ComputedTimelineItem } from "@/lib/plan-optimizer";
 import type { EnrichedPlanStop } from "@/lib/plan-enrichment";
@@ -44,7 +45,7 @@ export interface TimelineStopCardProps {
   onOpenPlaceDetail?: (slug: string) => void;
 }
 
-export function TimelineStopCard({
+export const TimelineStopCard = React.memo(function TimelineStopCard({
   stopItem,
   index,
   totalStops,
@@ -59,23 +60,16 @@ export function TimelineStopCard({
   onRippleShift,
   onTogglePin,
   onSaveQuickNote,
-  onSaveDetailedEdit,
   onDeleteStop,
   onOpenPlaceDetail,
 }: TimelineStopCardProps) {
   const stop = stopItem.item;
-  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(stop.note || "");
-  const [isEditingDetails, setIsEditingDetails] = useState(false);
-  const [detailForm, setDetailForm] = useState<DetailedStopEditPayload>({
-    name: stop.name,
-    duration: stop.durationMin,
-    isLocked: stop.isPinnedTime,
-    lockedStartTime: stop.plannedTime || stopItem.startTimeStr,
-    note: stop.note || "",
-  });
+  const [isEditingNoteInline, setIsEditingNoteInline] = useState(false);
 
-  const canOpenDetail = Boolean(stop.placeSlug && onOpenPlaceDetail);
+  const targetDetailSlug = stop.placeSlug || stop.placeId;
+  const canOpenDetail = Boolean(targetDetailSlug && onOpenPlaceDetail);
   const destinationQuery =
     stop.address && !stop.name.toLowerCase().includes(stop.address.toLowerCase())
       ? `${stop.name}, ${stop.address}`
@@ -86,31 +80,16 @@ export function TimelineStopCard({
       : `${destinationQuery}, Hà Nội`
   )}`;
 
-  const openDetailedEditor = () => {
-    if (isEditingDetails) {
-      setIsEditingDetails(false);
-      return;
-    }
-    setDetailForm({
-      name: stop.name,
-      duration: stop.durationMin,
-      isLocked: stop.isPinnedTime,
-      lockedStartTime: stop.plannedTime || stopItem.startTimeStr,
-      note: stop.note || "",
-    });
-    setIsEditingDetails(true);
-  };
-
   const nodeBgClass =
     index === 0
-      ? "bg-rose-500 text-white"
+      ? "bg-brand-terracotta text-white"
       : index === 1
-      ? "bg-amber-500 text-white"
-      : "bg-rose-400 text-white";
+      ? "bg-amber-600 text-white"
+      : "bg-brand-coral text-white";
 
   return (
     <div
-      draggable={!isEditingDetails && !isEditingNote}
+      draggable={!isActionSheetOpen}
       onDragStart={(e) => onDragStart(e, index)}
       onDragOver={(e) => onDragOver(e, index)}
       onDrop={(e) => onDrop(e, index)}
@@ -119,393 +98,374 @@ export function TimelineStopCard({
         isBeingDragged ? "opacity-45 scale-[0.98]" : "opacity-100"
       } ${isDragOver ? "translate-y-1" : ""}`}
     >
-      {/* Left timeline index node */}
+      {/* Mốc chỉ mục bên trái timeline */}
       <div
-        className={`absolute -left-6 top-5 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ring-4 ring-[#FFFDF9] shadow-2xs z-10 ${nodeBgClass}`}
+        className={`absolute -left-5 sm:-left-6 top-4 sm:top-5 w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[11px] sm:text-xs font-bold flex items-center justify-center ring-4 ring-[#FFFDF9] shadow-2xs z-10 ${nodeBgClass}`}
         title={`Mốc ${index + 1}: ${stopItem.startTimeStr}`}
       >
         {index + 1}
       </div>
 
+      {/* Transit pill tinh gọn giữa 2 chặng */}
+      {index > 0 && (
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FAF4E8] border border-[#E2D5C1] text-paper-muted text-[11px] font-medium mb-2.5 shadow-2xs">
+          <span>🛵</span>
+          <span className="text-brand-terracotta font-bold whitespace-nowrap">
+            +{stopItem.travelMins} phút
+          </span>
+          <span>•</span>
+          <span>{stopItem.distKm} km</span>
+          {previousStopName && (
+            <span className="text-paper-muted/80 hidden sm:inline truncate max-w-[150px]">
+              từ {previousStopName}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Thẻ chặng chính - Tinh gọn, thoáng đãng */}
       <div
-        className={`bg-white rounded-2xl p-4 border border-[#F2E4DC] shadow-2xs hover:shadow-md hover:border-rose-200 transition-all ${
-          isDragOver ? "border-2 border-dashed border-rose-400 bg-rose-50/20" : ""
+        className={`rounded-2xl p-3.5 sm:p-4 transition-all min-w-0 ${
+          stopItem.overlapsGoldenHour
+            ? "border-2 border-amber-400 bg-gradient-to-br from-[#FFFDF9] via-[#FFFDF9] to-amber-50/60 shadow-md hover:shadow-lg"
+            : "bg-[#FFFDF9] border border-[#E2D6C5] shadow-2xs hover:shadow-md hover:border-brand-coral"
+        } ${
+          isDragOver ? "border-2 border-dashed border-brand-terracotta bg-brand-peach/20" : ""
         }`}
       >
-        {/* Transit pill above destination content for index > 0 */}
-        {index > 0 && previousStopName && (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-[11px] font-medium mb-3">
-            <span>🛵 Di chuyển từ <strong>{previousStopName}</strong>:</span>
-            <span className="text-rose-600 font-bold">+{stopItem.travelMins} phút</span>
-            <span>({stopItem.distKm} km, đã tính 8p gửi xe) • Dừng chân {stop.duration} phút</span>
+        <div className="flex items-start gap-2.5 sm:gap-3.5 min-w-0">
+          {/* Grip drag thả trên desktop */}
+          <div
+            className="cursor-grab active:cursor-grabbing text-paper-muted/50 hover:text-paper-ink p-0.5 -ml-1 mt-1 shrink-0 hidden sm:block"
+            title="Kéo thả để sắp xếp lại mốc giờ"
+          >
+            <GripVertical className="w-4 h-4" />
           </div>
-        )}
 
-        {/* Row 1: Image + Info + Action Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-          <div className="flex items-start gap-3.5 min-w-0">
-            <div
-              className="cursor-grab active:cursor-grabbing text-stone-300 hover:text-stone-500 p-0.5 -ml-1 mt-1 shrink-0"
-              title="Kéo thả để sắp xếp lại mốc giờ"
+          {/* Ảnh quán */}
+          {stop.coverUrl && (
+            <button
+              type="button"
+              onClick={() => targetDetailSlug && onOpenPlaceDetail?.(targetDetailSlug)}
+              className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-[#E2D6C5] shrink-0 bg-[#FAF4E8] cursor-pointer shadow-2xs"
+              title={stop.name}
             >
-              <GripVertical className="w-4 h-4" />
-            </div>
+              <Image
+                src={stop.coverUrl}
+                alt={stop.name}
+                fill
+                sizes="64px"
+                className="object-cover"
+                unoptimized
+                referrerPolicy="no-referrer"
+              />
+            </button>
+          )}
 
-            {stop.coverUrl && (
-              <button
-                type="button"
-                onClick={() => stop.placeSlug && onOpenPlaceDetail?.(stop.placeSlug)}
-                className="relative w-16 h-16 rounded-2xl overflow-hidden border border-stone-100 shrink-0 bg-stone-100 cursor-pointer shadow-2xs"
-                title={stop.name}
-              >
-                <Image
-                  src={stop.coverUrl}
-                  alt={stop.name}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                  unoptimized
-                  referrerPolicy="no-referrer"
-                />
-              </button>
-            )}
-
-            <div className="min-w-0 space-y-1">
+          {/* Thông tin chặng */}
+          <div className="flex-1 min-w-0 space-y-1.5">
+            {/* Hàng 1: Khung giờ + Badges + Menu ba chấm (•••) */}
+            <div className="flex items-center justify-between gap-1.5">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="px-2.5 py-0.5 rounded-lg bg-rose-500 text-white text-xs font-bold tracking-wide shadow-2xs">
+                <span className="px-2.5 py-0.5 rounded-lg bg-brand-terracotta text-white text-xs font-bold tracking-wide shadow-2xs whitespace-nowrap">
                   {`${stopItem.startTimeStr} - ${stopItem.endTimeStr}`}
                 </span>
 
                 {stop.isLocked && (
-                  <span className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-700 border border-stone-200 text-[11px] font-semibold">
+                  <span
+                    className="px-2 py-0.5 rounded-lg bg-[#FAF4E8] text-paper-ink border border-[#E2D6C5] text-[11px] font-semibold whitespace-nowrap"
+                    title="Đã cố định giờ bắt đầu"
+                  >
                     📌 Cố định giờ
                   </span>
                 )}
 
                 {stopItem.overlapsGoldenHour && (
-                  <span className="px-2.5 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/60 text-[11px] font-semibold">
-                    🌅 Đón Hoàng hôn
+                  <span className="px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-amber-400 text-[10px] font-extrabold uppercase tracking-wide shadow-2xs whitespace-nowrap flex items-center gap-1">
+                    <span>🌅</span>
+                    <span>Giờ Vàng (SunCalc)</span>
                   </span>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                <h3
-                  onClick={() => stop.placeSlug && onOpenPlaceDetail?.(stop.placeSlug)}
-                  className={`text-base font-bold text-stone-800 flex items-center gap-1.5 ${
-                    canOpenDetail ? "cursor-pointer hover:text-rose-600" : ""
-                  }`}
-                >
-                  <span>{stop.icon}</span>
-                  <span className="break-words">{stop.name}</span>
-                </h3>
+              {/* Nút menu 3 chấm (More Actions) */}
+              <button
+                type="button"
+                onClick={() => setIsActionSheetOpen(true)}
+                className="w-8 h-8 rounded-full hover:bg-black/5 active:bg-black/10 flex items-center justify-center text-paper-muted hover:text-paper-ink transition shrink-0 cursor-pointer"
+                title="Tùy chỉnh chặng này"
+                aria-label={`Tùy chỉnh chặng ${stop.name}`}
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            </div>
 
+            {/* Hàng 2: Tên quán + Các nút hành động chính (Bản đồ / Xem quán) */}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-0.5">
+              <h3
+                onClick={() => targetDetailSlug && onOpenPlaceDetail?.(targetDetailSlug)}
+                className={`text-sm sm:text-base font-bold text-paper-ink leading-snug min-w-0 ${
+                  canOpenDetail ? "cursor-pointer hover:text-brand-terracotta" : ""
+                }`}
+              >
+                <span className="mr-1.5">{stop.icon}</span>
+                <span className="break-words">{stop.name}</span>
+              </h3>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-semibold text-paper-ink bg-white/80 border border-[#E2D6C5] hover:border-brand-terracotta px-2 py-0.5 rounded-md transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shadow-2xs"
+                  title="Chỉ đường trên Google Maps"
+                >
+                  <Navigation className="w-2.5 h-2.5 text-brand-terracotta" />
+                  <span>Bản đồ</span>
+                </a>
                 {canOpenDetail && (
                   <button
                     type="button"
-                    onClick={() => stop.placeSlug && onOpenPlaceDetail?.(stop.placeSlug)}
-                    className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md hover:bg-rose-100 transition inline-flex items-center gap-0.5 cursor-pointer"
+                    onClick={() => targetDetailSlug && onOpenPlaceDetail?.(targetDetailSlug)}
+                    className="text-[11px] font-semibold text-brand-terracotta bg-brand-peach/40 px-2 py-0.5 rounded-md hover:bg-brand-peach/70 transition inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
                   >
                     <span>Xem quán</span>
                     <ExternalLink className="w-2.5 h-2.5" />
                   </button>
                 )}
               </div>
+            </div>
 
-              <p className="text-xs text-stone-500 mt-0.5">
-                {index === 0
-                  ? `📍 Điểm hẹn mở đầu hành trình (${stop.duration} phút tại quán)`
-                  : `📍 Điểm hẹn thứ ${index + 1} (${stop.duration} phút tại quán)`}
+            {/* Plan B note nếu có */}
+            {stop.planBNote && (
+              <p className="text-paper-muted italic flex items-center gap-1.5 text-xs">
+                <span>🏷️</span> {stop.planBNote}
               </p>
+            )}
 
-              {stop.planBNote && (
-                <p className="text-stone-500 italic flex items-center gap-1.5 text-xs">
-                  <span>🏷️</span> {stop.planBNote}
-                </p>
-              )}
-
-              {stopItem.timeConflictWarning && (
-                <p className="text-rose-600 font-semibold flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-lg text-xs mt-1">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  {stopItem.timeConflictWarning}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Action toolbar */}
-          <div className="flex items-center gap-1 opacity-85 group-hover:opacity-100 transition bg-stone-50 p-1 rounded-xl border border-stone-200/60 shadow-2xs self-start sm:ml-auto shrink-0">
-            <div className="flex items-center border border-stone-200/80 rounded-lg bg-white overflow-hidden mr-0.5">
-              <button
-                type="button"
-                onClick={() => onReorder(index, index - 1)}
-                disabled={index === 0}
-                className="p-1 text-stone-500 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
-                title="Đẩy lên chặng trước"
-              >
-                <ArrowUp className="w-3 h-3" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onReorder(index, index + 1)}
-                disabled={index === totalStops - 1}
-                className="p-1 text-stone-500 hover:bg-stone-100 disabled:opacity-30 border-l border-stone-200/80 cursor-pointer"
-                title="Đẩy xuống chặng sau"
-              >
-                <ArrowDown className="w-3 h-3" />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => onRippleShift(stop.id, -15)}
-              className="px-2 py-1 text-[11px] font-semibold text-stone-600 hover:bg-white hover:shadow-2xs rounded-lg transition cursor-pointer"
-              title="Giảm thời lượng 15 phút"
-            >
-              -15p
-            </button>
-            <button
-              type="button"
-              onClick={() => onRippleShift(stop.id, 15)}
-              className="px-2 py-1 text-[11px] font-semibold text-stone-600 hover:bg-white hover:shadow-2xs rounded-lg transition cursor-pointer"
-              title="Tăng thời lượng 15 phút"
-            >
-              +15p
-            </button>
-            <div className="w-px h-3.5 bg-stone-200 mx-0.5" />
-            <button
-              type="button"
-              onClick={() => onTogglePin(stop.id, stop.isLocked, stopItem.startTimeStr)}
-              className={`p-1 rounded-lg transition cursor-pointer ${
-                stop.isLocked
-                  ? "bg-rose-500 text-white"
-                  : "text-stone-400 hover:text-rose-600 hover:bg-white"
-              }`}
-              title={
-                stop.isLocked
-                  ? "Đang cố định giờ (Bấm để mở khóa)"
-                  : "Bấm để cố định mốc giờ này"
-              }
-            >
-              📌
-            </button>
-            <button
-              type="button"
-              onClick={openDetailedEditor}
-              className="p-1 text-stone-400 hover:text-stone-700 hover:bg-white rounded-lg transition cursor-pointer"
-              title="Sửa chi tiết chặng"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onDeleteStop(stop.id)}
-              className="p-1 text-stone-400 hover:text-rose-600 hover:bg-white rounded-lg transition cursor-pointer"
-              title="Xóa địa điểm này"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {/* Cảnh báo xung đột thời gian (nếu có) */}
+            {stopItem.timeConflictWarning && (
+              <p className="text-brand-terracottaDark font-semibold flex items-center gap-1 bg-brand-peach/40 px-2 py-1 rounded-lg text-xs mt-1">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                {stopItem.timeConflictWarning}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Row 2: Note */}
-        <div className="mt-3">
-          {isEditingNote ? (
-            <div className="bg-white border border-rose-300 rounded-xl p-2.5 space-y-2 shadow-2xs">
-              <textarea
-                rows={2}
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder="Nhập ghi chú cho chặng này (VD: Đặt bàn tầng 2, góc chụp vintage, thử món signature...)"
-                className="w-full text-xs text-stone-800 focus:outline-none resize-none"
-                autoFocus
-              />
-              <div className="flex justify-end gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setIsEditingNote(false)}
-                  className="px-2.5 py-1 rounded-lg text-xs text-stone-600 hover:bg-stone-100 cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSaveQuickNote(stop.id, noteDraft);
-                    setIsEditingNote(false);
-                  }}
-                  className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer shadow-2xs"
-                >
-                  Lưu ghi chú
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={() => {
-                setNoteDraft(stop.note || "");
-                setIsEditingNote(true);
-              }}
-              className="group/note cursor-pointer bg-[#FFF0F3]/60 hover:bg-[#FFF0F3] border border-rose-100/80 rounded-xl px-3.5 py-2 flex items-center justify-between gap-2 transition"
-              title="Bấm để sửa ghi chú cho mốc thời gian này"
-            >
-              <div className="flex items-center gap-2 text-xs text-stone-700 min-w-0">
-                <span className="text-rose-500 shrink-0">💌</span>
-                <span className="truncate">
-                  <strong className="font-semibold text-[#C84650]">Ghi chú: </strong>
-                  {stop.note ? (
-                    stop.note
-                  ) : (
-                    <span className="italic text-stone-400">
-                      Bấm để thêm ghi chú cho mốc giờ này...
-                    </span>
-                  )}
-                </span>
-              </div>
-              <span className="text-[11px] text-rose-500 opacity-0 group-hover/note:opacity-100 font-semibold shrink-0">
-                Sửa ✎
+        {/* Hộp ghi chú: CHỈ HIỂN THỊ KHI ĐÃ CÓ NỘI DUNG (Triệt tiêu rác thị giác) */}
+        {stop.note && stop.note.trim() && !isEditingNoteInline && (
+          <div
+            onClick={() => {
+              setNoteDraft(stop.note || "");
+              setIsEditingNoteInline(true);
+            }}
+            className="mt-2.5 group/note cursor-pointer bg-[#FAF4E8] hover:bg-brand-peach/25 border border-[#E2D6C5] rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 transition min-w-0"
+            title="Bấm để sửa ghi chú"
+          >
+            <div className="flex items-center gap-1.5 text-xs text-paper-ink flex-1 min-w-0">
+              <span className="text-brand-terracotta shrink-0">💌</span>
+              <span className="truncate">
+                <strong className="font-semibold text-brand-terracottaDark">Ghi chú: </strong>
+                {stop.note}
               </span>
             </div>
-          )}
-        </div>
+            <span className="text-[11px] text-brand-terracotta sm:opacity-0 sm:group-hover/note:opacity-100 font-semibold shrink-0">
+              Sửa ✎
+            </span>
+          </div>
+        )}
 
-        {/* Optional detailed stop editor */}
-        {isEditingDetails && (
-          <div className="mt-3 pt-3 border-t border-rose-100 bg-rose-50/30 rounded-xl p-3.5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-rose-600 uppercase tracking-wide">
-                {`CHỈNH SỬA CHI TIẾT CHẶNG #${index + 1}`}
-              </span>
+        {/* Khi đang sửa ghi chú inline */}
+        {isEditingNoteInline && (
+          <div className="mt-2.5 bg-[#FFFDF9] border border-brand-coral rounded-xl p-2.5 space-y-2 shadow-2xs">
+            <textarea
+              rows={2}
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              placeholder="Nhập ghi chú cho chặng này (VD: Đặt bàn tầng 2, góc chụp vintage...)"
+              className="w-full text-base sm:text-xs text-paper-ink bg-transparent focus:outline-none resize-none"
+              autoFocus
+            />
+            <div className="flex justify-end gap-1.5">
               <button
                 type="button"
-                onClick={() => setIsEditingDetails(false)}
-                className="text-xs text-stone-500 hover:text-stone-800 cursor-pointer"
-              >
-                Đóng ✕
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                Tên hiển thị tại chặng
-              </label>
-              <input
-                type="text"
-                value={detailForm.name}
-                onChange={(e) => setDetailForm({ ...detailForm, name: e.target.value })}
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-rose-400"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                  Thời lượng dừng (phút)
-                </label>
-                <input
-                  type="number"
-                  step="15"
-                  min="15"
-                  max="240"
-                  value={detailForm.duration}
-                  onChange={(e) =>
-                    setDetailForm({
-                      ...detailForm,
-                      duration: Number(e.target.value) || 60,
-                    })
-                  }
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-rose-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                  Chế độ mốc giờ
-                </label>
-                <label className="flex items-center gap-1.5 text-xs py-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={detailForm.isLocked}
-                    onChange={(e) =>
-                      setDetailForm({ ...detailForm, isLocked: e.target.checked })
-                    }
-                    className="accent-rose-500"
-                  />
-                  <span className="text-stone-700">📌 Cố định giờ bắt đầu</span>
-                </label>
-              </div>
-
-              <div>
-                {detailForm.isLocked && (
-                  <>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      Giờ bắt đầu cố định
-                    </label>
-                    <input
-                      type="time"
-                      value={detailForm.lockedStartTime}
-                      onChange={(e) =>
-                        setDetailForm({ ...detailForm, lockedStartTime: e.target.value })
-                      }
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-rose-400"
-                    />
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                Ghi chú tại chặng này
-              </label>
-              <input
-                type="text"
-                value={detailForm.note}
-                onChange={(e) => setDetailForm({ ...detailForm, note: e.target.value })}
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-rose-400"
-                placeholder="Ghi chú chỗ ngồi, món nước, góc chụp ảnh..."
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setIsEditingDetails(false)}
-                className="px-3 py-1 rounded-lg text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer"
+                onClick={() => setIsEditingNoteInline(false)}
+                className="px-2.5 py-1 rounded-lg text-xs text-paper-muted hover:bg-[#FAF4E8] cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  onSaveDetailedEdit(stop.id, detailForm);
-                  setIsEditingDetails(false);
+                  onSaveQuickNote(stop.id, noteDraft);
+                  setIsEditingNoteInline(false);
                 }}
-                className="px-3.5 py-1 rounded-lg text-xs font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer shadow-2xs"
+                className="px-3 py-1 rounded-lg text-xs font-bold bg-brand-terracotta text-white hover:bg-brand-terracottaDark cursor-pointer shadow-2xs"
               >
-                Lưu thay đổi
+                Lưu ghi chú
               </button>
             </div>
           </div>
         )}
-
-        {/* Row 4: Google Maps link & stop span */}
-        <div className="mt-3 pt-2.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-rose-600 hover:underline flex items-center gap-1"
-          >
-            <Navigation className="w-3 h-3" />
-            <span>{`Chỉ đường (${stop.address})`}</span>
-          </a>
-          <span className="text-stone-400 text-[11px]">
-            {`Mốc #${index + 1}: ${stopItem.startTimeStr} → ${stopItem.endTimeStr}`}
-          </span>
-        </div>
       </div>
+
+      {/* ==============================================================
+          NATIVE BOTTOM SHEET: TÙY CHỈNH CHẶNG HẸN HÒ
+          (Giấu sạch 7 nút điều khiển cơ khí khỏi mặt thẻ chính)
+          ============================================================== */}
+      {isActionSheetOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#FFFDF9] border-t-2 sm:border-2 border-[#D8C7B0] rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl relative space-y-4 select-text">
+            {/* Drag Handle Bar trên mobile */}
+            <div className="w-12 h-1.5 bg-paper-ink/20 rounded-full mx-auto mb-2 sm:hidden" />
+
+            {/* Header Sheet */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#E2D6C5]">
+              <div className="min-w-0 pr-2">
+                <span className="text-[10px] font-extrabold text-brand-terracotta uppercase tracking-wider block">
+                  ⚙️ TÙY CHỈNH CHẶNG #{index + 1}
+                </span>
+                <h4 className="font-serif font-black text-base text-paper-ink truncate">
+                  {stop.icon} {stop.name}
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsActionSheetOpen(false)}
+                className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-paper-ink font-bold text-sm transition shrink-0"
+                aria-label="Đóng"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Khối 1: Điều chỉnh thời lượng */}
+            <div className="bg-[#FAF4E8] p-3 rounded-2xl border border-[#E2D6C5] space-y-1.5">
+              <span className="text-xs font-bold text-paper-ink flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-brand-terracotta" />
+                Thời lượng dừng chân tại quán
+              </span>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => onRippleShift(stop.id, -15)}
+                  className="flex-1 min-h-10 px-3 py-2 text-xs font-bold text-paper-ink bg-[#FFFDF9] border border-[#E2D6C5] hover:border-brand-coral rounded-xl transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                >
+                  -15 phút
+                </button>
+                <span className="font-mono font-bold text-sm text-paper-ink px-2 shrink-0">
+                  {stop.durationMin || stop.duration} phút
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onRippleShift(stop.id, 15)}
+                  className="flex-1 min-h-10 px-3 py-2 text-xs font-bold text-paper-ink bg-[#FFFDF9] border border-[#E2D6C5] hover:border-brand-coral rounded-xl transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                >
+                  +15 phút
+                </button>
+              </div>
+            </div>
+
+            {/* Khối 2: Thay đổi thứ tự chặng */}
+            <div className="bg-[#FAF4E8] p-3 rounded-2xl border border-[#E2D6C5] space-y-1.5">
+              <span className="text-xs font-bold text-paper-ink flex items-center gap-1.5">
+                ↕️ Thứ tự trong ngày hẹn
+              </span>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onReorder(index, index - 1);
+                    setIsActionSheetOpen(false);
+                  }}
+                  disabled={index === 0}
+                  className="min-h-10 px-3 py-2 text-xs font-bold text-paper-ink bg-[#FFFDF9] border border-[#E2D6C5] rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-35 cursor-pointer active:scale-95"
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                  <span>Đẩy lên trước</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onReorder(index, index + 1);
+                    setIsActionSheetOpen(false);
+                  }}
+                  disabled={index === totalStops - 1}
+                  className="min-h-10 px-3 py-2 text-xs font-bold text-paper-ink bg-[#FFFDF9] border border-[#E2D6C5] rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-35 cursor-pointer active:scale-95"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                  <span>Đẩy xuống sau</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Khối 3: Cố định giờ bắt đầu */}
+            <div className="bg-[#FAF4E8] p-3 rounded-2xl border border-[#E2D6C5] flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold text-paper-ink block">
+                  📌 Cố định giờ chặng này
+                </span>
+                <span className="text-[11px] text-paper-muted">
+                  {stop.isLocked
+                    ? `Đang khóa tại ${stopItem.startTimeStr}`
+                    : "Giờ tự động linh hoạt theo lộ trình"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onTogglePin(stop.id, stop.isLocked, stopItem.startTimeStr)}
+                className={`min-h-9 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  stop.isLocked
+                    ? "bg-brand-terracotta text-white shadow-2xs"
+                    : "bg-[#FFFDF9] text-paper-ink border border-[#E2D6C5] hover:border-brand-coral"
+                }`}
+              >
+                {stop.isLocked ? "Đang khóa 🔒" : "Khóa giờ"}
+              </button>
+            </div>
+
+            {/* Khối 4: Soạn ghi chú */}
+            <div className="space-y-1.5">
+              <span className="text-xs font-bold text-paper-ink">💌 Lời nhắn / Ghi chú chặng</span>
+              <textarea
+                rows={2}
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                placeholder="Ghi chú chỗ ngồi view đẹp, món nhất định phải gọi..."
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl border border-[#CBB292] bg-[#FAF4E8] text-paper-ink focus:outline-none focus:border-brand-terracotta resize-none"
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSaveQuickNote(stop.id, noteDraft);
+                    setIsActionSheetOpen(false);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-brand-terracotta text-white text-xs font-bold hover:bg-brand-terracottaDark transition cursor-pointer shadow-2xs"
+                >
+                  Lưu ghi chú
+                </button>
+              </div>
+            </div>
+
+            {/* Khối 5: Xóa chặng */}
+            <div className="pt-2 border-t border-[#E2D6C5]">
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteStop(stop.id);
+                  setIsActionSheetOpen(false);
+                }}
+                className="w-full min-h-10 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Xóa chặng này khỏi kế hoạch</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
+});

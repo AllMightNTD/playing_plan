@@ -1,10 +1,11 @@
 "use client";
 
 import React from "react";
-import { useApp } from "@/context/AppContext";
+import { useApp, useToastItems } from "@/context/AppContext";
 
 export function ToastContainer() {
-  const { toasts, removeToast } = useApp();
+  const { removeToast } = useApp();
+  const toasts = useToastItems();
 
   if (toasts.length === 0) return null;
 

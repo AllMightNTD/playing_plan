@@ -24,7 +24,7 @@ interface MatchRecommendation {
 
 /** Trắc nghiệm 3 bước: mood + ngân sách → địa điểm hợp nhất do server chấm điểm (POST /recommend). */
 export function MoodMatchQuiz() {
-  const { homePublic, setActiveDetailSlug, setIsWheelOpen } = useApp();
+  const { homePublic, setActiveDetailSlug, setIsWheelOpen, quickAddPlaceToPlan } = useApp();
   const isRainy = homePublic?.weather.icon === "rain" || homePublic?.weather.icon === "thunder";
 
   const [matchMood, setMatchMood] = useState<MatchMood>("sunset");
@@ -64,32 +64,146 @@ export function MoodMatchQuiz() {
 
   return (
     <section id="section-match" className="scroll-section">
-      <div className="bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-5 sm:p-7 relative shadow-md">
-        <div className="washi-tape washi-cream-top" />
+      <div className="bg-[#FFFDF9] border-2 border-[#CBB292] rounded-2xl p-4 sm:p-7 relative shadow-md">
+        <div className="hidden sm:block washi-tape washi-cream-top" />
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dashed border-[#D8CBB8] pb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-dashed border-[#D8CBB8] pb-3 sm:pb-4">
           <div>
-            <span className="bg-brand-peach text-brand-terracottaDark text-xs font-bold px-3 py-1 rounded-full">
-              💞 Trắc nghiệm nhanh đồng điệu
-            </span>
-            <h2 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink mt-2">
+            <div className="flex items-center gap-2">
+              <span className="bg-brand-peach text-brand-terracottaDark text-[11px] sm:text-xs font-bold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full">
+                💞 Trắc nghiệm nhanh đồng điệu
+              </span>
+            </div>
+            <h2 className="font-serif font-extrabold text-lg sm:text-2xl text-paper-ink mt-1.5 sm:mt-2">
               Match Cặp Đôi &amp; Bốc Quẻ Lịch Trình
             </h2>
             <p className="text-xs sm:text-sm text-paper-muted mt-0.5">
-              Chọn nhanh 3 tiêu chí bên dưới để DateMate tìm ra kịch bản hẹn hò khớp 100% tâm trạng của cả hai!
+              Chọn nhanh tiêu chí bên dưới để DateMate tìm ra kịch bản hẹn hò khớp 100% tâm trạng của cả hai!
             </p>
           </div>
 
           <button
+            type="button"
             onClick={() => setIsWheelOpen(true)}
-            className="ticket-btn bg-[#F6B092] text-paper-ink px-5 py-2.5 font-bold text-xs sm:text-sm shrink-0 self-start md:self-center"
+            className="min-h-10 bg-[#F6B092] hover:bg-[#F39A75] text-paper-ink px-4 py-2 rounded-xl font-bold text-xs sm:text-sm shrink-0 self-start md:self-center transition shadow-2xs cursor-pointer flex items-center gap-1.5"
           >
-            🎲 Mở Vòng Quay Ngẫu Nhiên
+            <span aria-hidden="true">🎲</span>
+            <span>Mở Vòng Quay Ngẫu Nhiên</span>
           </button>
         </div>
 
-        {/* Bộ chọn 3 bước Match cặp đôi */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 my-5">
+        {/* Giao diện Mobile Tinh Gọn Kiểu App (< 768px) */}
+        <div className="md:hidden space-y-3.5 my-3.5">
+          {/* Lựa chọn 1: Mood */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-extrabold uppercase text-brand-terracotta tracking-wider block">
+              1. Mood của hai bạn hôm nay?
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { key: "sunset" as MatchMood, label: "🌅 Chill hoàng hôn & gió mát" },
+                { key: "active" as MatchMood, label: "🎳 Năng động vui nhộn" },
+                { key: "art" as MatchMood, label: "🎨 Nghệ thuật & thủ công" },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setMatchMood(item.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs transition cursor-pointer flex items-center gap-1 ${
+                    matchMood === item.key
+                      ? "bg-brand-terracotta text-white font-extrabold shadow-xs"
+                      : "bg-[#FAF4E8] text-paper-ink border border-[#DED2C1] font-semibold"
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  {matchMood === item.key && <span>✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Lựa chọn 2: Ngân sách */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-extrabold uppercase text-brand-olive tracking-wider block">
+              2. Ngân sách cho buổi hẹn?
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { key: "saving" as MatchBudget, label: "🌱 Tiết kiệm (<150k)" },
+                { key: "moderate" as MatchBudget, label: "☕ Vừa vặn (150-300k)" },
+                { key: "luxury" as MatchBudget, label: "🥂 Kỷ niệm (>350k)" },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setMatchBudget(item.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs transition cursor-pointer flex items-center gap-1 ${
+                    matchBudget === item.key
+                      ? "bg-brand-olive text-white font-extrabold shadow-xs"
+                      : "bg-[#FAF4E8] text-paper-ink border border-[#DED2C1] font-semibold"
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  {matchBudget === item.key && <span>✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Khối kết quả mini kiểu Thẻ Cào Ghép Đôi trên Mobile */}
+          <div
+            className={`bg-[#F9EFC7] border-2 border-dashed border-brand-terracotta rounded-xl p-3.5 space-y-2 transition shadow-xs ${
+              isMatching ? "opacity-60" : ""
+            }`}
+          >
+            {matchResult ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="bg-brand-terracotta text-white text-[10px] font-extrabold px-2 py-0.5 rounded">
+                    ĐỘ HỢP GU: {matchResult.score}%
+                  </span>
+                  <span className="text-base">{matchResult.place.emoji || "💘"}</span>
+                </div>
+                <div>
+                  <h3 className="font-serif font-extrabold text-base text-paper-ink leading-tight">
+                    {matchResult.place.displayName || matchResult.place.name}
+                  </h3>
+                  <p className="text-xs text-paper-muted mt-0.5 line-clamp-2 leading-relaxed">
+                    {matchResult.place.summary}
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-[#DFC98B] flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-brand-terracottaDark">
+                    💰 {matchResult.place.costText}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveDetailSlug(matchResult.place.slug)}
+                      className="min-h-9 bg-paper-ink text-white text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-brand-terracotta transition cursor-pointer"
+                    >
+                      Cẩm nang
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickAddPlaceToPlan(matchResult.place)}
+                      className="min-h-9 bg-brand-terracotta hover:bg-brand-terracottaDark text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-2xs transition cursor-pointer"
+                    >
+                      + Vào lịch
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="py-4 text-center text-xs text-paper-muted">
+                {isMatching ? "Đang chấm điểm địa điểm..." : "Chưa tìm thấy quán phù hợp, thử đổi tiêu chí nhé."}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Giao diện Desktop 3 Cột (>= 768px) */}
+        <div className="hidden md:grid md:grid-cols-3 gap-5 my-5">
           {/* Bước 1: Mood hôm nay */}
           <div className="bg-[#FAF4E8] border border-[#DED2C1] rounded-xl p-4">
             <p className="text-xs font-extrabold uppercase text-brand-terracotta tracking-wider">
@@ -97,6 +211,7 @@ export function MoodMatchQuiz() {
             </p>
             <div className="space-y-2 mt-3">
               <button
+                type="button"
                 onClick={() => setMatchMood("sunset")}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between ${
                   matchMood === "sunset"
@@ -108,6 +223,7 @@ export function MoodMatchQuiz() {
                 <span>{matchMood === "sunset" ? "✓" : ""}</span>
               </button>
               <button
+                type="button"
                 onClick={() => setMatchMood("active")}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between ${
                   matchMood === "active"
@@ -119,6 +235,7 @@ export function MoodMatchQuiz() {
                 <span>{matchMood === "active" ? "✓" : ""}</span>
               </button>
               <button
+                type="button"
                 onClick={() => setMatchMood("art")}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between ${
                   matchMood === "art"
@@ -139,6 +256,7 @@ export function MoodMatchQuiz() {
             </p>
             <div className="space-y-2 mt-3">
               <button
+                type="button"
                 onClick={() => setMatchBudget("saving")}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between ${
                   matchBudget === "saving"
@@ -150,6 +268,7 @@ export function MoodMatchQuiz() {
                 <span>{matchBudget === "saving" ? "✓" : ""}</span>
               </button>
               <button
+                type="button"
                 onClick={() => setMatchBudget("moderate")}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between ${
                   matchBudget === "moderate"
@@ -161,6 +280,7 @@ export function MoodMatchQuiz() {
                 <span>{matchBudget === "moderate" ? "✓" : ""}</span>
               </button>
               <button
+                type="button"
                 onClick={() => setMatchBudget("luxury")}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between ${
                   matchBudget === "luxury"
@@ -207,16 +327,26 @@ export function MoodMatchQuiz() {
                     </ul>
                   )}
                 </div>
-                <div className="mt-3 pt-2.5 border-t border-[#DFC98B] flex items-center justify-between gap-2">
+                <div className="mt-3 pt-2.5 border-t border-[#DFC98B] flex flex-wrap items-center justify-between gap-2">
                   <span id="matchResultPrice" className="text-xs font-bold text-brand-terracottaDark">
                     💰 {matchResult.place.costText}
                   </span>
-                  <button
-                    onClick={() => setActiveDetailSlug(matchResult.place.slug)}
-                    className="bg-paper-ink text-white text-xs font-bold px-3 py-1.5 rounded hover:bg-brand-terracotta transition shrink-0"
-                  >
-                    Xem cẩm nang →
-                  </button>
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setActiveDetailSlug(matchResult.place.slug)}
+                      className="bg-paper-ink text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-brand-terracotta transition shrink-0 cursor-pointer"
+                    >
+                      Xem cẩm nang
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickAddPlaceToPlan(matchResult.place)}
+                      className="bg-brand-terracotta hover:bg-brand-terracottaDark text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-2xs transition shrink-0 cursor-pointer"
+                    >
+                      + Vào lịch
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (

@@ -35,6 +35,7 @@ export function VirtualVideoCanvas({
   const animFrameIdRef = useRef<number | null>(null);
   const slideStartTimeRef = useRef<number>(0);
   const isPlayingRef = useRef(false);
+  const isVisibleRef = useRef(true);
   isPlayingRef.current = isPlaying;
 
   const onToastRef = useRef(onToast);
@@ -232,7 +233,21 @@ export function VirtualVideoCanvas({
     slideStartTimeRef.current = performance.now();
   };
 
-  // 7. Canvas Ken Burns 60fps Render Loop
+  // 7. Canvas Ken Burns Render Loop (chỉ chạy 60fps khi đang Play & nằm trong vùng nhìn thấy)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry) isVisibleRef.current = entry.isIntersecting;
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -241,18 +256,14 @@ export function VirtualVideoCanvas({
 
     let isLoopRunning = true;
 
-    const render = (now: number) => {
-      if (!isLoopRunning) return;
-
+    const drawFrame = (now: number) => {
       if (!videoPayload || videoPayload.slides.length === 0 || loadedImages.length === 0) {
-        // Màn hình chờ khi chưa có dữ liệu
         ctx.fillStyle = "#181210";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "#FAF4E8";
         ctx.font = "14px 'Be Vietnam Pro', sans-serif";
         ctx.textAlign = "center";
         ctx.fillText("Đang chuẩn bị thước phim kỷ niệm...", canvas.width / 2, canvas.height / 2);
-        animFrameIdRef.current = requestAnimationFrame(render);
         return;
       }
 
@@ -262,7 +273,6 @@ export function VirtualVideoCanvas({
       const elapsed = isPlayingRef.current ? now - slideStartTimeRef.current : 0;
       let progress = Math.min(1.0, elapsed / durationMs);
 
-      // Chuyển slide tự động theo Beatmap khi hết thời gian slide
       if (isPlayingRef.current && elapsed >= durationMs) {
         const nextIdx = (currentSlideIndex + 1) % slides.length;
         setCurrentSlideIndex(nextIdx);
@@ -272,19 +282,16 @@ export function VirtualVideoCanvas({
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Vẽ hình ảnh hiện tại với hiệu ứng Ken Burns hoặc Crossfade tĩnh
       const currentImg = loadedImages[currentSlideIndex] || loadedImages[0];
       if (currentImg && currentImg.complete) {
         ctx.save();
 
-        if (isReducedMotion) {
-          // Crossfade tĩnh: Scale 1.0 cố định, không pan
+        if (isReducedMotion || !isPlayingRef.current) {
           ctx.drawImage(currentImg, 0, 0, canvas.width, canvas.height);
         } else {
-          // Hiệu ứng Ken Burns Pan/Zoom 60fps
           let scale = 1.0;
           let transX = 0;
-          let transY = 0;
+          const transY = 0;
 
           switch (currentSlide.panDirection) {
             case "zoom-in":
@@ -303,14 +310,12 @@ export function VirtualVideoCanvas({
               break;
           }
 
-          // Áp dụng transform với tâm điểm
           ctx.translate(canvas.width / 2 + transX, canvas.height / 2 + transY);
           ctx.scale(scale, scale);
           ctx.drawImage(currentImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
         }
         ctx.restore();
 
-        // Hiệu ứng chuyển cảnh Crossfade mềm ở 0.6s cuối của slide
         const crossfadeWindowMs = 600;
         const timeRemaining = durationMs - elapsed;
         if (isPlayingRef.current && timeRemaining < crossfadeWindowMs && slides.length > 1) {
@@ -326,26 +331,38 @@ export function VirtualVideoCanvas({
         }
       }
 
-      // Khung viền phim bán trong suốt & Phụ đề kỷ niệm
       ctx.fillStyle = "rgba(24, 18, 16, 0.65)";
       ctx.fillRect(0, canvas.height - 56, canvas.width, 56);
 
-      // Phụ đề thơ mộng từ Gemini
       ctx.fillStyle = "#FAF4E8";
       ctx.font = "bold 14px 'Be Vietnam Pro', serif";
       ctx.textAlign = "left";
       ctx.fillText(currentSlide.caption || "Khoảnh khắc hẹn hò Hà Nội", 18, canvas.height - 24);
-
-      animFrameIdRef.current = requestAnimationFrame(render);
     };
 
-    animFrameIdRef.current = requestAnimationFrame(render);
+    // Draw initial static frame immediately
+    drawFrame(performance.now());
+
+    // Only run continuous 60fps loop while playing
+    if (!isPlaying) {
+      return;
+    }
+
+    const renderLoop = (now: number) => {
+      if (!isLoopRunning) return;
+      if (isVisibleRef.current) {
+        drawFrame(now);
+      }
+      animFrameIdRef.current = requestAnimationFrame(renderLoop);
+    };
+
+    animFrameIdRef.current = requestAnimationFrame(renderLoop);
 
     return () => {
       isLoopRunning = false;
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
     };
-  }, [videoPayload, loadedImages, currentSlideIndex, isReducedMotion]);
+  }, [videoPayload, loadedImages, currentSlideIndex, isReducedMotion, isPlaying]);
 
   // Clean up audio on unmount
   useEffect(() => {

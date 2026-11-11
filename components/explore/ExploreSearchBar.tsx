@@ -20,7 +20,7 @@ export function ExploreSearchBar({
   onSearch,
   onSelectSuggestion,
   onOpenWheel,
-  placeholder = "Tìm nhanh không dấu: hồ tây, cầu long biên, cà phê, bảo tàng...",
+  placeholder = "Tìm quán, hồ tây, cà phê...",
   className,
 }: ExploreSearchBarProps) {
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -108,9 +108,12 @@ export function ExploreSearchBar({
   };
 
   return (
-    <div ref={containerRef} className={cn("relative flex-1", className)}>
+    <div ref={containerRef} className={cn("relative flex-1 min-w-0", className)}>
       <div className="relative">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-terracotta select-none text-sm">
+        <span
+          aria-hidden="true"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-terracotta select-none text-xs sm:text-sm"
+        >
           🔍
         </span>
         <input
@@ -128,15 +131,15 @@ export function ExploreSearchBar({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           aria-label="Tìm kiếm địa điểm"
-          className="w-full pl-10 pr-24 py-2.5 bg-[#FAF4E8] border border-[#CBB292] focus:border-brand-terracotta rounded-xl text-xs sm:text-sm font-medium text-paper-ink focus:outline-none transition shadow-2xs"
+          className="w-full h-10 pl-8 sm:pl-9 pr-20 sm:pr-24 bg-[#FAF4E8] border border-[#CBB292] focus:border-brand-terracotta rounded-xl text-xs sm:text-sm font-medium text-paper-ink placeholder:text-paper-muted/80 focus:outline-none transition shadow-2xs"
         />
 
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {value && (
             <button
               type="button"
               onClick={handleClear}
-              className="px-2 py-1 rounded-lg bg-[#E5D1B8] text-[11px] font-bold text-paper-ink hover:bg-[#D8C0A4] transition"
+              className="w-5 h-5 rounded-full bg-[#E5D1B8] hover:bg-[#D8C0A4] text-[10px] font-bold text-paper-ink flex items-center justify-center transition cursor-pointer"
               title="Xóa tìm kiếm"
             >
               ✕
@@ -147,10 +150,10 @@ export function ExploreSearchBar({
             <button
               type="button"
               onClick={onOpenWheel}
-              className="px-2.5 py-1 rounded-lg bg-[#F9EFC7] border border-[#D5BE7E] text-[11px] font-bold text-paper-ink hover:bg-[#F3E5A5] transition flex items-center gap-1"
+              className="px-2 py-1 rounded-lg bg-[#F9EFC7] border border-[#D5BE7E] text-[10px] sm:text-[11px] font-bold text-paper-ink hover:bg-[#F3E5A5] transition flex items-center gap-1 cursor-pointer"
               title="Quay ngẫu nhiên địa điểm"
             >
-              <span>🎲</span>
+              <span aria-hidden="true">🎲</span>
               <span className="hidden sm:inline">Gợi ý</span>
             </button>
           )}

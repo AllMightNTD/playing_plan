@@ -7,13 +7,12 @@ import { BlindDateTicket } from "@/components/scrapbook/BlindDateTicket";
 import { SecretNotesBoard } from "@/components/scrapbook/SecretNotesBoard";
 import { cn } from "@/lib/utils";
 
-type GameTab = "swipe" | "blind" | "notes" | "all";
+type GameTab = "swipe" | "blind" | "notes";
 
 const TABS: { key: GameTab; label: string }[] = [
-  { key: "swipe", label: "💞 1. Quẹt thẻ Hợp Gu" },
-  { key: "blind", label: "🎫 2. Vé Mù Bí Mật" },
-  { key: "notes", label: "💌 3. Hộp Thư Tình Bí Mật" },
-  { key: "all", label: "Xem tất cả" },
+  { key: "swipe", label: "💞 Quẹt Thẻ" },
+  { key: "blind", label: "🎫 Vé Mù" },
+  { key: "notes", label: "💌 Hộp Thư" },
 ];
 
 export default function MatchPage() {
@@ -24,20 +23,24 @@ export default function MatchPage() {
 
   const toast = (message: string, type?: "success" | "error" | "info") => addToast(message, type);
   const onCheckIn = () => setCheckInTrigger((n) => n + 1);
-  const showSwipe = tab === "swipe" || tab === "all";
-  const showBlind = tab === "blind" || tab === "all";
-  const showNotes = tab === "notes" || tab === "all";
 
   return (
-    <section className="space-y-5 animate-in fade-in duration-300">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+    <section className="space-y-4 sm:space-y-5 animate-in fade-in duration-300">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider text-brand-terracotta">💞 Tương tác cặp đôi thú vị</span>
-          <h2 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">Trò Chơi Hợp Gu & Khám Phá Bí Mật Cùng Người Ấy</h2>
-          <p className="text-xs text-paper-muted mt-0.5">Chọn một trò chơi bên dưới để cùng người thương tìm ra điểm hẹn ưng ý nhất:</p>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-brand-terracotta">
+            💞 Tương tác cặp đôi
+          </span>
+          <h2 className="font-serif font-extrabold text-xl sm:text-2xl text-paper-ink">
+            Quẹt Thẻ Hợp Gu & Khám Phá Cùng Người Ấy
+          </h2>
+          <p className="text-xs text-paper-muted mt-0.5">
+            Chọn một trò chơi để cùng người thương chốt điểm hẹn ưng ý nhất hôm nay
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 bg-[#EFE5D4] p-1.5 rounded-2xl border border-[#CBB292]" role="tablist">
+        {/* Native Segmented Control */}
+        <div className="grid grid-cols-3 sm:flex items-center gap-1 bg-[#EFE5D4] p-1 rounded-2xl border border-[#CBB292]" role="tablist">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -46,12 +49,10 @@ export default function MatchPage() {
               aria-selected={tab === t.key}
               onClick={() => setTab(t.key)}
               className={cn(
-                "px-3.5 py-2 rounded-xl text-xs transition",
+                "px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs transition cursor-pointer text-center",
                 tab === t.key
                   ? "bg-brand-terracotta text-white font-extrabold shadow-xs"
-                  : t.key === "all"
-                    ? "font-semibold text-paper-muted hover:text-paper-ink"
-                    : "font-bold text-paper-ink hover:bg-[#FFFDF9]"
+                  : "font-bold text-paper-ink hover:bg-[#FFFDF9]/60"
               )}
             >
               {t.label}
@@ -60,7 +61,7 @@ export default function MatchPage() {
         </div>
       </div>
 
-      {showSwipe && (
+      {tab === "swipe" && (
         <SwipeDeck
           roomType={roomProfile?.room.roomType ?? "couple"}
           isPaired={homeSummary?.room?.isPaired ?? false}
@@ -70,10 +71,15 @@ export default function MatchPage() {
         />
       )}
 
-      {(showBlind || showNotes) && (
-        <div className={cn("grid grid-cols-1 gap-6", tab === "all" ? "responsive-2col lg:grid-cols-2" : "max-w-xl")}>
-          {showBlind && <BlindDateTicket onToast={toast} onCheckInSuccess={onCheckIn} />}
-          {showNotes && <SecretNotesBoard onToast={toast} onCheckInSuccess={onCheckIn} />}
+      {tab === "blind" && (
+        <div className="max-w-xl mx-auto">
+          <BlindDateTicket onToast={toast} onCheckInSuccess={onCheckIn} />
+        </div>
+      )}
+
+      {tab === "notes" && (
+        <div className="max-w-xl mx-auto">
+          <SecretNotesBoard onToast={toast} onCheckInSuccess={onCheckIn} />
         </div>
       )}
     </section>

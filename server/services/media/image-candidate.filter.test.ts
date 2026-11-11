@@ -83,6 +83,33 @@ describe("image-candidate.filter", () => {
     expect(r.score).toBe(3);
   });
 
+  it("chặn tài liệu y tế / acronym khi tên ngắn không có ngữ cảnh ẩm thực (case AHA CPR)", () => {
+    const res = scoreImageCandidate(
+      c({
+        title: "2025 AHA Guidelines for CPR and ECC",
+        pageUrl: "https://shopcpr.heart.org/aha-guidelines",
+        imageUrl: "https://shopcpr.heart.org/guidelines.png",
+      }),
+      { name: "Aha Coffee" },
+    );
+    expect(res.rejectReason).toBe("missing_food_context");
+    expect(res.score).toBe(0);
+  });
+
+  it("chấp thuận Aha Cafe trên Foody với điểm cao nhờ ngữ cảnh ẩm thực và Shopee/Foody CDN", () => {
+    const res = scoreImageCandidate(
+      c({
+        title: "Aha Cafe - Tô Hiệu ở Quận Cầu Giấy, Hà Nội | Foody.vn",
+        pageUrl: "https://www.foody.vn/ha-noi/aha-cafe-to-hieu",
+        imageUrl: "https://down-vn.img.susercontent.com/vn-11134259-7r98o-lwgsjp3y7krd95@resize_w800",
+      }),
+      { name: "Aha Coffee" },
+    );
+    expect(res.rejectReason).toBeNull();
+    // 2 (coverage) + 1 (ha noi) + 1 (foody.vn) + 2 (susercontent CDN) = 6
+    expect(res.score).toBe(6);
+  });
+
   it("rank: lọc score<2, sort score giảm rồi rank tăng", () => {
     const out = rankImageCandidates(
       [

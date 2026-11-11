@@ -18,7 +18,7 @@ function parseArgs(argv: string[]): RealPhotoSyncOptions {
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
-  console.log("[real-photos] Bắt đầu tìm ảnh thật qua Bing", opts);
+  console.log("[real-photos] Bắt đầu tìm ảnh thật qua Foody/DuckDuckGo & Bing", opts);
 
   const summary = await runRealPhotoSync(opts);
 

@@ -15,6 +15,65 @@ interface PosterShareModalProps {
   places?: HanoiPlace[];
 }
 
+type PosterThemeKey = "kraft" | "rose" | "midnight";
+
+const POSTER_THEMES: Record<
+  PosterThemeKey,
+  {
+    label: string;
+    emoji: string;
+    bg: string;
+    dot: string;
+    cardBg: string;
+    border: string;
+    accent: string;
+    textMain: string;
+    textSub: string;
+    previewOuter: string;
+    previewInner: string;
+  }
+> = {
+  kraft: {
+    label: "Giấy Kraft Cổ Điển",
+    emoji: "📜",
+    bg: "#F7F1E5",
+    dot: "#E6D3B8",
+    cardBg: "#FFFDF9",
+    border: "#362721",
+    accent: "#C84B31",
+    textMain: "#362721",
+    textSub: "#6E8361",
+    previewOuter: "bg-[#EFE5D4]/80 border-[#362721]",
+    previewInner: "bg-[#FFFDF9] border-[#CBB292] text-[#362721]",
+  },
+  rose: {
+    label: "Hồng Thơ Mộng",
+    emoji: "🌸",
+    bg: "#FFF0F3",
+    dot: "#FBCFE8",
+    cardBg: "#FFFDF9",
+    border: "#881337",
+    accent: "#E11D48",
+    textMain: "#4C0519",
+    textSub: "#9F1239",
+    previewOuter: "bg-rose-100/80 border-rose-900",
+    previewInner: "bg-[#FFFDF9] border-rose-300 text-rose-950",
+  },
+  midnight: {
+    label: "Đêm Hà Nội",
+    emoji: "🌙",
+    bg: "#1E293B",
+    dot: "#334155",
+    cardBg: "#0F172A",
+    border: "#F59E0B",
+    accent: "#F59E0B",
+    textMain: "#F8FAFC",
+    textSub: "#CBD5E1",
+    previewOuter: "bg-slate-900 border-amber-400",
+    previewInner: "bg-slate-800 border-slate-700 text-amber-50",
+  },
+};
+
 export function PosterShareModal({
   isOpen,
   onClose,
@@ -27,9 +86,11 @@ export function PosterShareModal({
   const [isRevoking, setIsRevoking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [posterTheme, setPosterTheme] = useState<PosterThemeKey>("kraft");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const activeTheme = POSTER_THEMES[posterTheme];
 
   if (!isOpen) return null;
 
@@ -90,7 +151,25 @@ export function PosterShareModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Kết xuất Canvas thành ảnh Story .png (Tỷ lệ 9:16 chuẩn Story)
+  const handleNativeShare = async () => {
+    if (!shareUrl) return;
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: `Thiệp hẹn DateMate: ${plan.title}`,
+          text: `💌 Mời người thương xem lịch trình hẹn hò "${plan.title}" ngày ${plan.planDate}!`,
+          url: shareUrl,
+        });
+        showToast("📲 Đã mở bảng chia sẻ nhanh!");
+        return;
+      } catch {
+        // User cancelled or share failed; fall back to copy
+      }
+    }
+    handleCopy();
+  };
+
+  // Render 1080x1920 9:16 Story Canvas PNG with active theme
   const handleDownloadPosterPng = async () => {
     setIsDownloading(true);
     try {
@@ -100,12 +179,11 @@ export function PosterShareModal({
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // 1. Nền giấy Kraft & Scrapbook ngà
-      ctx.fillStyle = "#F7F1E5";
+      // 1. Theme background and subtle dot grid
+      ctx.fillStyle = activeTheme.bg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Vân hạt chấm bi nhẹ nhàng
-      ctx.fillStyle = "#E6D3B8";
+      ctx.fillStyle = activeTheme.dot;
       for (let x = 30; x < canvas.width; x += 60) {
         for (let y = 30; y < canvas.height; y += 60) {
           ctx.beginPath();
@@ -114,18 +192,18 @@ export function PosterShareModal({
         }
       }
 
-      // Khung viền đôi phong cách Postcard cổ điển
-      ctx.strokeStyle = "#362721";
+      // Classic double postcard border
+      ctx.strokeStyle = activeTheme.border;
       ctx.lineWidth = 6;
       ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
-      ctx.strokeStyle = "#E6D3B8";
+      ctx.strokeStyle = activeTheme.dot;
       ctx.lineWidth = 2;
       ctx.strokeRect(62, 62, canvas.width - 124, canvas.height - 124);
 
-      // Dải Airmail viền trên cùng (Xanh navy - Đỏ terracotta xen kẽ)
+      // Top airmail stripe
       const stripeWidth = 40;
       for (let i = 0; i < (canvas.width - 140) / stripeWidth; i++) {
-        ctx.fillStyle = i % 2 === 0 ? "#C84B31" : "#3E5C76";
+        ctx.fillStyle = i % 2 === 0 ? activeTheme.accent : "#3E5C76";
         ctx.beginPath();
         ctx.moveTo(70 + i * stripeWidth, 70);
         ctx.lineTo(70 + (i + 1) * stripeWidth, 70);
@@ -135,26 +213,25 @@ export function PosterShareModal({
         ctx.fill();
       }
 
-      // Con tem bưu chính góc trên phải
-      ctx.fillStyle = "#FFFDF9";
-      ctx.strokeStyle = "#BDA382";
+      // Top-right postage stamp
+      ctx.fillStyle = activeTheme.cardBg;
+      ctx.strokeStyle = activeTheme.border;
       ctx.lineWidth = 3;
       ctx.fillRect(820, 130, 180, 220);
       ctx.strokeRect(820, 130, 180, 220);
 
-      // Ảnh trong tem
-      ctx.fillStyle = "#C84B31";
+      ctx.fillStyle = activeTheme.accent;
       ctx.fillRect(835, 145, 150, 150);
       ctx.fillStyle = "#FFF";
       ctx.font = "bold 48px serif";
       ctx.textAlign = "center";
-      ctx.fillText("💌", 910, 235);
-      ctx.fillStyle = "#362721";
+      ctx.fillText(activeTheme.emoji, 910, 235);
+      ctx.fillStyle = activeTheme.textMain;
       ctx.font = "bold 16px sans-serif";
       ctx.fillText("HANOI POST 2026", 910, 325);
 
-      // Dấu nhật ấn bưu điện tròn màu mực mờ
-      ctx.strokeStyle = "#362721";
+      // Circular postmark stamp
+      ctx.strokeStyle = activeTheme.textMain;
       ctx.lineWidth = 3;
       ctx.globalAlpha = 0.55;
       ctx.beginPath();
@@ -164,48 +241,46 @@ export function PosterShareModal({
       ctx.fillText("DATEMATE", 820, 345);
       ctx.globalAlpha = 1.0;
 
-      // Header Thiệp
+      // Poster header
       ctx.textAlign = "left";
-      ctx.fillStyle = "#C84B31";
+      ctx.fillStyle = activeTheme.accent;
       ctx.font = "bold 32px sans-serif";
       ctx.fillText("DATEMATE SCRAPBOOK STORY", 100, 170);
 
-      ctx.fillStyle = "#362721";
+      ctx.fillStyle = activeTheme.textMain;
       ctx.font = "bold 64px serif";
       ctx.fillText(plan.title, 100, 250);
 
-      ctx.fillStyle = "#6E8361";
+      ctx.fillStyle = activeTheme.textSub;
       ctx.font = "32px sans-serif";
       const timeDisplay = privacyMode ? "??:??" : plan.startTime;
       ctx.fillText(`📅 Ngày hẹn: ${plan.planDate}  •  ⏰ Bắt đầu: ${timeDisplay}`, 100, 310);
 
-      // Đường kẻ ngăn cách trang trí
-      ctx.strokeStyle = "#CBB292";
+      // Divider line
+      ctx.strokeStyle = activeTheme.dot;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(100, 370);
       ctx.lineTo(750, 370);
       ctx.stroke();
 
-      // Vẽ danh sách các trạm dừng với đường nét đứt
+      // Stops with dashed route line
       const startY = 460;
       const stepGap = 200;
 
-      // Đường nét đứt nối các trạm
       ctx.setLineDash([12, 10]);
-      ctx.strokeStyle = "#C84B31";
+      ctx.strokeStyle = activeTheme.accent;
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(150, startY);
       ctx.lineTo(150, startY + (plan.stops.length - 1) * stepGap);
       ctx.stroke();
-      ctx.setLineDash([]); // Bỏ nét đứt
+      ctx.setLineDash([]);
 
       plan.stops.slice(0, 5).forEach((stop, idx) => {
         const curY = startY + idx * stepGap;
 
-        // Vòng tròn số thứ tự trạm
-        ctx.fillStyle = "#C84B31";
+        ctx.fillStyle = activeTheme.accent;
         ctx.beginPath();
         ctx.arc(150, curY, 32, 0, Math.PI * 2);
         ctx.fill();
@@ -215,22 +290,21 @@ export function PosterShareModal({
         ctx.textAlign = "center";
         ctx.fillText(String(idx + 1), 150, curY + 10);
 
-        // Khung thông tin trạm
-        ctx.fillStyle = "#FFFDF9";
-        ctx.strokeStyle = "#E6D3B8";
+        ctx.fillStyle = activeTheme.cardBg;
+        ctx.strokeStyle = activeTheme.dot;
         ctx.lineWidth = 2;
         ctx.fillRect(220, curY - 55, 750, 120);
         ctx.strokeRect(220, curY - 55, 750, 120);
 
         ctx.textAlign = "left";
-        ctx.fillStyle = "#362721";
+        ctx.fillStyle = activeTheme.textMain;
         ctx.font = "bold 34px serif";
         const stopTitle = privacyMode
           ? `Trạm dừng bí mật #${idx + 1}`
           : stopName(stop, idx);
         ctx.fillText(stopTitle, 250, curY - 10);
 
-        ctx.fillStyle = "#7A685D";
+        ctx.fillStyle = activeTheme.textSub;
         ctx.font = "24px sans-serif";
         const stopTime = privacyMode
           ? "Thời gian bí mật dành cho hai người"
@@ -238,15 +312,14 @@ export function PosterShareModal({
         ctx.fillText(stopTime, 250, curY + 35);
       });
 
-      // Footer: Khung QR Code & Mã bảo mật
+      // Footer QR box
       const footerY = 1620;
-      ctx.fillStyle = "#FAF4E8";
-      ctx.strokeStyle = "#CBB292";
+      ctx.fillStyle = activeTheme.cardBg;
+      ctx.strokeStyle = activeTheme.dot;
       ctx.lineWidth = 3;
       ctx.fillRect(100, footerY, canvas.width - 200, 200);
       ctx.strokeRect(100, footerY, canvas.width - 200, 200);
 
-      // QR thật trỏ về trang thiệp công khai
       if (shareUrl) {
         const qrCanvas = document.createElement("canvas");
         await QRCode.toCanvas(qrCanvas, shareUrl, {
@@ -258,16 +331,16 @@ export function PosterShareModal({
       }
 
       ctx.textAlign = "left";
-      ctx.fillStyle = "#C84B31";
+      ctx.fillStyle = activeTheme.accent;
       ctx.font = "bold 32px serif";
       ctx.fillText("Quét mã xem lịch trình & phản hồi RSVP", 320, footerY + 80);
 
-      ctx.fillStyle = "#362721";
+      ctx.fillStyle = activeTheme.textMain;
       ctx.font = "bold 24px monospace";
       const displayLink = shareUrl ? shareUrl.replace(/^https?:\/\//, "") : "";
       ctx.fillText(`Link: ${displayLink}`, 320, footerY + 125, 640);
 
-      ctx.fillStyle = "#6E8361";
+      ctx.fillStyle = activeTheme.textSub;
       ctx.font = "20px sans-serif";
       ctx.fillText("🔒 Bảo mật 72 giờ • Không lộ ID phòng • Chuẩn Instagram Story 9:16", 320, footerY + 165);
 
@@ -288,9 +361,22 @@ export function PosterShareModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs font-sans animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-[#FAF4E8] border-2 border-[#362721] rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-        {/* Toast nổi */}
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/65 backdrop-blur-xs font-sans animate-fadeIn"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Thiệp hẹn Scrapbook Story"
+        className="relative w-full sm:max-w-lg bg-[#FAF4E8] border-t-2 sm:border-2 border-[#362721] rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-6 shadow-2xl space-y-4 max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain"
+      >
+        <div
+          aria-hidden="true"
+          className="w-10 h-1.5 rounded-full bg-[#CBB292] mx-auto -mt-1 mb-1 sm:hidden"
+        />
+        {/* Floating toast */}
         {toastMessage && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-[#231A16] text-[#FFFDF9] border border-[#F29B7E] px-4 py-2 rounded-xl text-xs font-bold shadow-xl animate-bounce">
             {toastMessage}
@@ -318,31 +404,55 @@ export function PosterShareModal({
 
         {shareUrl ? (
           <div className="space-y-4">
-            {/* Khung xem trước Poster Scrapbook Story */}
-            <div className="bg-[#EFE5D4]/80 border-2 border-[#362721] rounded-2xl p-4 space-y-3 shadow-md relative overflow-hidden">
-              {/* Washi tape trang trí góc */}
+            {/* 3-Theme selector for Poster Story */}
+            <div className="flex items-center justify-between gap-2 bg-[#FFFDF9] border border-[#E6D3B8] p-2 rounded-xl">
+              {(Object.keys(POSTER_THEMES) as PosterThemeKey[]).map((key) => {
+                const t = POSTER_THEMES[key];
+                const isSelected = posterTheme === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPosterTheme(key)}
+                    aria-pressed={isSelected}
+                    className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                      isSelected
+                        ? "bg-[#362721] text-white shadow-xs"
+                        : "text-[#362721] hover:bg-[#FAF4E8]"
+                    }`}
+                  >
+                    <span>{t.emoji}</span>
+                    <span className="truncate">{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Live Scrapbook Story Poster Preview */}
+            <div className={`${activeTheme.previewOuter} border-2 rounded-2xl p-4 space-y-3 shadow-md relative overflow-hidden transition-colors`}>
+              {/* Decorative corner washi tape */}
               <div className="absolute top-2 left-6 w-24 h-4 bg-[#C84B31]/40 -rotate-3 rounded-sm pointer-events-none" />
 
-              <div className="bg-[#FFFDF9] p-4 rounded-xl border border-[#CBB292] space-y-2.5">
+              <div className={`${activeTheme.previewInner} p-4 rounded-xl border space-y-2.5 transition-colors`}>
                 <div className="flex items-center justify-between">
                   <span className="font-hand text-lg font-bold text-[#C84B31]">
-                    DateMate Scrapbook Story
+                    {activeTheme.emoji} DateMate Scrapbook Story
                   </span>
                   <span className="text-[10px] font-bold bg-[#EFE5D4] text-[#362721] px-2 py-0.5 rounded">
                     🔒 Riêng tư
                   </span>
                 </div>
 
-                <h4 className="font-serif font-extrabold text-lg text-[#362721]">
+                <h4 className="font-serif font-extrabold text-lg">
                   {plan.title}
                 </h4>
 
-                <p className="text-xs text-[#362721]/70">
+                <p className="text-xs opacity-75">
                   📅 {plan.planDate} • ⏰ {privacyMode ? "??:??" : plan.startTime}
                 </p>
 
-                {/* Danh sách các chặng với lộ trình nét đứt */}
-                <div className="text-xs text-[#362721]/80 space-y-1.5 border-l-2 border-dashed border-[#C84B31] pl-3 py-1 my-2">
+                {/* Stops with dashed route line */}
+                <div className="text-xs opacity-90 space-y-1.5 border-l-2 border-dashed border-[#C84B31] pl-3 py-1 my-2">
                   {plan.stops.slice(0, 4).map((s, idx) => (
                     <p key={s.id}>
                       {idx === 0 ? "☕" : idx === 1 ? "📸" : idx === 2 ? "🌅" : "🍽️"}{" "}
@@ -356,15 +466,15 @@ export function PosterShareModal({
                     </p>
                   ))}
                   {plan.stops.length > 4 && (
-                    <p className="text-[11px] text-[#362721]/60 italic">
+                    <p className="text-[11px] opacity-60 italic">
                       + và {plan.stops.length - 4} chặng dừng tiếp theo...
                     </p>
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-dashed border-[#D8CBB8] flex items-center justify-between text-[11px]">
-                  <span className="text-[#362721]/70 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <div className="pt-2 border-t border-dashed border-[#D8CBB8]/60 flex items-center justify-between text-[11px]">
+                  <span className="opacity-75 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                     Link không lộ thông tin phòng đôi
                   </span>
                   <span className="font-mono font-bold text-[#C84B31]">
@@ -374,7 +484,7 @@ export function PosterShareModal({
               </div>
             </div>
 
-            {/* Công tắc Privacy: Ẩn mốc giờ và địa điểm chính xác trên ảnh Poster */}
+            {/* Privacy toggle switch */}
             <div className="bg-[#FFFDF9] border border-[#E6D3B8] p-3 rounded-xl flex items-center justify-between">
               <label className="flex items-center gap-2 text-xs font-bold text-[#362721] cursor-pointer">
                 <input
@@ -391,24 +501,33 @@ export function PosterShareModal({
               <span className="text-[10px] text-[#362721]/60 font-medium">Bảo vệ riêng tư</span>
             </div>
 
-            {/* Các nút hành động chính (Tải ảnh Story, Sao chép link, Thu hồi) */}
-            <div className="grid grid-cols-2 gap-2.5">
+            {/* Primary actions: Download Story PNG, Native Share, Copy Link */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={handleDownloadPosterPng}
                 disabled={isDownloading}
-                className="bg-[#C84B31] hover:bg-[#9E331E] text-white font-bold text-xs py-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="min-h-11 bg-[#C84B31] hover:bg-[#9E331E] text-white font-bold text-xs py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
-                <Download className="w-4 h-4" />
-                <span>{isDownloading ? "Đang xuất ảnh..." : "📥 Tải ảnh Story (.png)"}</span>
+                <Download className="w-4 h-4 shrink-0" />
+                <span>{isDownloading ? "Đang xuất..." : "📥 Tải Story (.png)"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNativeShare}
+                className="min-h-11 bg-[#3E5C76] hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4 shrink-0" />
+                <span>📲 Chia sẻ nhanh</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleCopy}
-                className="bg-[#FFFDF9] hover:bg-[#E6D3B8]/40 border-2 border-[#362721] text-[#362721] font-bold text-xs py-3 rounded-xl shadow transition flex items-center justify-center gap-1.5"
+                className="min-h-11 bg-[#FFFDF9] hover:bg-[#E6D3B8]/40 border-2 border-[#362721] text-[#362721] font-bold text-xs py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                {copied ? <Check className="w-4 h-4 text-emerald-600 shrink-0" /> : <Copy className="w-4 h-4 shrink-0" />}
                 <span>{copied ? "Đã chép link" : "Sao chép link"}</span>
               </button>
             </div>

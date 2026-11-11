@@ -55,10 +55,11 @@ export function SearchDrawer() {
 
   return (
     <div className={cn("search-drawer-panel", isSearchDrawerOpen && "is-open")} aria-hidden={!isSearchDrawerOpen}>
+      <div className="overflow-hidden min-h-0">
       <div className="max-w-[1140px] mx-auto px-4 py-4 space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <div className="relative flex-1">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-terracotta">🔍</span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-terracotta" aria-hidden="true">🔍</span>
             <input
               ref={inputRef}
               type="text"
@@ -70,7 +71,7 @@ export function SearchDrawer() {
               }}
               tabIndex={isSearchDrawerOpen ? 0 : -1}
               placeholder="Hôm nay hai bạn thích gì? (VD: hoàng hôn, cà phê, hồ tây...)"
-              className="w-full pl-10 pr-24 py-2.5 bg-[#FFFDF9] border-2 border-brand-terracotta rounded-xl text-sm font-medium text-paper-ink focus:outline-none"
+              className="w-full pl-10 pr-24 py-2.5 bg-[#FFFDF9] border-2 border-brand-terracotta rounded-xl text-base sm:text-sm font-medium text-paper-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta/40"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <button
@@ -159,6 +160,7 @@ export function SearchDrawer() {
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

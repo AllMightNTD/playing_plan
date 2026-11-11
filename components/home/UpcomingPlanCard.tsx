@@ -28,7 +28,7 @@ export function UpcomingPlanCard({ onOpenShare }: UpcomingPlanCardProps) {
   const [newItem, setNewItem] = useState("");
 
   const summary = homeSummary?.upcomingPlan ?? null;
-  const cardClass = "lg:col-span-7 bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-5 shadow-sm flex flex-col justify-between relative";
+  const cardClass = "lg:col-span-7 min-w-0 bg-[#FFFDF9] border-2 border-[#D8C7B0] rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between relative";
 
   if (!upcomingPlan || !summary) {
     return (
@@ -156,7 +156,7 @@ export function UpcomingPlanCard({ onOpenShare }: UpcomingPlanCardProps) {
               onChange={(e) => setNewItem(e.target.value)}
               maxLength={200}
               placeholder="+ Thêm món cần mang..."
-              className="flex-1 min-w-0 bg-white border border-[#D5C5B0] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-brand-terracotta"
+              className="flex-1 min-w-0 bg-white border border-[#D5C5B0] rounded-lg px-2.5 py-1.5 text-base sm:text-xs focus:outline-none focus:border-brand-terracotta"
             />
             <button type="submit" disabled={!newItem.trim()} className="bg-brand-terracotta disabled:opacity-40 text-white text-xs font-bold px-3 rounded-lg">
               Thêm

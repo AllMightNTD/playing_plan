@@ -65,7 +65,7 @@ async function executeDailyPipeline(
     "==================================================================",
   );
   console.log(
-    "🌟 [DateMate Daily Pipeline] BẮT ĐẦU QUY TRÌNH TỰ ĐỘNG HÀNG NGÀY (03:30 AM)",
+    "🌟 [DateMate Daily Pipeline] BẮT ĐẦU QUY TRÌNH TỰ ĐỘNG HÀNG NGÀY (03:00 AM)",
   );
   console.log(
     "   Tiêu chí: 100% Free - Chia nhỏ Bounding Box - Batch DB Tốc độ cao",
@@ -286,12 +286,12 @@ async function executeDailyPipeline(
     executor: db,
   });
 
-  // 6b. Tìm ảnh thật (Bing) cho địa điểm chưa có — chạy sau video/AI để không giành thời gian của các bước chính.
-  // Mặc định TẮT: bật bằng env REAL_PHOTOS_DAILY_LIMIT=<số nguyên dương> (số place mỗi ngày).
-  // Rỗng/0/NaN/âm đều là tắt để cron không tự ghi ảnh chưa duyệt lên prod. Lỗi chỉ cảnh báo, không làm hỏng pipeline.
-  console.log("\n--- [Giai đoạn 5b] Tìm ảnh thật cho địa điểm ---");
+  // 6b. Tìm ảnh thật (Foody/DuckDuckGo & Bing Fallback) cho địa điểm chưa có — chạy sau video/AI để không giành thời gian của các bước chính.
+  // Mặc định BẬT: 30 địa điểm/ngày nếu không truyền REAL_PHOTOS_DAILY_LIMIT.
+  // Có thể ghi đè qua env REAL_PHOTOS_DAILY_LIMIT (đặt = 0 để tắt). Lỗi chỉ cảnh báo, không làm hỏng pipeline.
+  console.log("\n--- [Giai đoạn 5b] Tìm ảnh thật cho địa điểm (Foody/DuckDuckGo & Bing) ---");
   let realPhotos: RealPhotoSyncSummary | { error: string } | null = null;
-  const realPhotosLimit = resolveRealPhotosDailyLimit(process.env.REAL_PHOTOS_DAILY_LIMIT);
+  const realPhotosLimit = resolveRealPhotosDailyLimit(process.env.REAL_PHOTOS_DAILY_LIMIT, 30);
   try {
     if (realPhotosLimit === 0) {
       console.log("=> Bước ảnh thật tắt (REAL_PHOTOS_DAILY_LIMIT=0).");
@@ -299,7 +299,7 @@ async function executeDailyPipeline(
       realPhotos = await runRealPhotoSync({ limit: realPhotosLimit });
       console.log(
         `=> Ảnh thật: thay ${realPhotos.replaced} địa điểm, ${realPhotos.needsReview.length} cần duyệt tay` +
-          `${realPhotos.blocked ? ", Bing chặn nên dừng sớm" : ""}` +
+          `${realPhotos.blocked ? ", bị chặn nên dừng sớm" : ""}` +
           `${realPhotos.aborted ? ", lỗi DB liên tiếp nên dừng sớm" : ""}`,
       );
     }

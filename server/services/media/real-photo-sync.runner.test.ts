@@ -243,4 +243,12 @@ describe("resolveRealPhotosDailyLimit", () => {
   ])("%j → %i", (raw, expected) => {
     expect(resolveRealPhotosDailyLimit(raw)).toBe(expected);
   });
+
+  it("nhận defaultValue khi undefined hoặc chuỗi rỗng", () => {
+    expect(resolveRealPhotosDailyLimit(undefined, 30)).toBe(30);
+    expect(resolveRealPhotosDailyLimit("", 30)).toBe(30);
+    expect(resolveRealPhotosDailyLimit("   ", 30)).toBe(30);
+    expect(resolveRealPhotosDailyLimit("0", 30)).toBe(0);
+    expect(resolveRealPhotosDailyLimit("50", 30)).toBe(50);
+  });
 });

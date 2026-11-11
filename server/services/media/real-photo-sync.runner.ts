@@ -5,6 +5,7 @@ import {
 import { revalidatePlaceCatalog } from "@/server/services/cache/revalidation";
 import { runTrackedPipeline } from "@/server/services/pipeline/pipeline-run.service";
 import { BingBlockedError, searchBingImages, type BingImageResult } from "./bing-image-search";
+import { searchFoodyImages } from "./foody-search";
 import { verifyImageUrl, type ImageCheck } from "./image-url.verifier";
 import { buildRealPhotoMediaRows, findRealPhotosForPlace } from "./place-real-photos.service";
 
@@ -52,16 +53,18 @@ export interface RealPhotoSyncDeps {
   now: () => Date;
 }
 
-const DEFAULT_DELAY_MS = 2500;
+const DEFAULT_DELAY_MS = 3000;
 const JITTER_MS = 1500;
 const MAX_CONSECUTIVE_DB_ERRORS = 3;
 
 /**
- * Đọc REAL_PHOTOS_DAILY_LIMIT cho daily pipeline: mặc định tắt (0).
- * Chỉ số nguyên dương viết rõ mới bật; rỗng/NaN/âm đều là 0 để cron không tự ghi ảnh chưa duyệt.
+ * Đọc REAL_PHOTOS_DAILY_LIMIT cho daily pipeline.
+ * Nếu không truyền (undefined) hoặc chuỗi rỗng, nhận defaultValue (mặc định 0).
+ * Chỉ số nguyên dương viết rõ mới trả về số; rỗng/NaN/âm đều trả về defaultValue hoặc 0.
  */
-export function resolveRealPhotosDailyLimit(raw: string | undefined): number {
-  const trimmed = raw?.trim() ?? "";
+export function resolveRealPhotosDailyLimit(raw: string | undefined, defaultValue = 0): number {
+  if (raw === undefined || raw.trim() === "") return defaultValue;
+  const trimmed = raw.trim();
   if (!/^\d+$/.test(trimmed)) return 0;
   return Number.parseInt(trimmed, 10);
 }
@@ -71,7 +74,15 @@ const errMsg = (err: unknown) => (err instanceof Error ? err.message : String(er
 const defaultDeps: RealPhotoSyncDeps = {
   listPlaces: listPlacesForRealPhotoSync,
   replaceImages: replacePlaceImages,
-  search: (q) => searchBingImages(q),
+  search: async (q) => {
+    try {
+      const results = await searchFoodyImages(q);
+      if (results.length > 0) return results;
+    } catch (foodyErr) {
+      console.warn(`[Foody Search Warning] Thử lại với Bing: ${foodyErr instanceof Error ? foodyErr.message : foodyErr}`);
+    }
+    return await searchBingImages(q);
+  },
   verify: (url) => verifyImageUrl(url),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   random: Math.random,

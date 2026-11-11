@@ -1,5 +1,36 @@
 import type { Metadata, Viewport } from "next";
+import { Be_Vietnam_Pro, Fraunces, Caveat, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700", "800"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-sans",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin", "vietnamese"],
+  weight: ["600", "700", "800"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-serif",
+});
+
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  display: "swap",
+  variable: "--font-hand",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+  variable: "--font-mono",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://datemate.vn";
 
@@ -63,10 +94,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
-  themeColor: "#FFF7F3",
+  themeColor: "#F7F1E5",
 };
 
 export default function RootLayout({
@@ -75,8 +104,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi">
-      <body className="antialiased min-h-dvh flex flex-col">{children}</body>
+    <html
+      lang="vi"
+      className={`${beVietnamPro.variable} ${fraunces.variable} ${caveat.variable} ${jetbrainsMono.variable}`}
+    >
+      <body className="antialiased min-h-dvh flex flex-col font-sans">{children}</body>
     </html>
   );
 }
